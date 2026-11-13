@@ -20,6 +20,8 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | `klipper/box.py` | Thin Klipper entry point | Imports the bootstrap; refuses activation |
 | `src/cfs_box/box.py` | Configuration, lifecycle, G-code registration, sensor access, `get_status()` | Bootstrap refusal only |
 | `tests/test_box_contract.py` | Klipper layout and external contract checks | Bootstrap/layout check only |
+| `tests/test_contract_matrix.py` | Inventory completeness and verification bindings | Catalogue integrity; functional checks remain planned |
+| `docs/contract-matrix.json` | Full implementation checklist and acceptance cases | Stage 1 inventory complete; runtime pending |
 | `docs/` | Architecture, protocol and compatibility, in English and Russian | Draft specifications |
 
 Add operation, native-call and state modules when verified behavior needs a
@@ -47,6 +49,11 @@ API and its limits are tracked in the [protocol document](protocol.md#native-api
 Operations coordinate host actions with separately observed CFS, buffer and
 toolhead state. An ACK, last T-command or cached material record cannot establish
 physical load completion. Unknown observations remain unknown.
+
+Retained Python modules also use specific `box` attributes and a metadata hook.
+These paths are listed in the [contract matrix](contract-matrix.md) and share
+the active state. Their compatibility does not require the original internal
+class hierarchy. The deferred target is owned by `virtual_sdcard.resume_tnn`.
 
 Keep waits cooperative with the Klipper reactor. Transaction timeout, operation
 deadline and any verified recovery policy have separate meanings. Their concrete
@@ -79,15 +86,18 @@ verified format and failure policy; no new state store is introduced here.
 
 Public source and synthetic tests belong in this layout. Originals, captures,
 binary analysis and machine-specific files stay in the ignored local workspace.
-External research references are not included in public documentation at this stage.
+The contract matrix links the approved official factory sources. Other research
+references remain private at this stage.
 
 ## Implementation approach
 
-Recover the full stock command, lifecycle and state inventory, including its
-dependencies on the native serial API and existing macros. For each operation,
+Use the [full contract matrix](contract-matrix.md), including dependencies on
+the native serial API and existing macros. For each operation,
 document prerequisites, commands, observations, waits, completion and failure
 paths. Implement and verify manageable parts of that contract while retaining
 the full project scope. PC checks cover ordering, missing observations, timeouts
 and negative replies. Hardware acceptance is a separate step requiring authorization.
 
 Track implementation and evidence in [compatibility.md](compatibility.md).
+The [implementation plan](implementation-plan.md) defines the stage order and
+completion criteria for the full contract.

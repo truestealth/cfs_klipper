@@ -12,6 +12,7 @@ an implemented or hardware-verified one.
 | --- | --- | --- |
 | Proposed Klipper import layout | Implemented | PC regression test; not a printer installation test |
 | Refusal to activate the scaffold | Implemented | PC regression test before printer-object lookup |
+| Full contract inventory and check bindings | Stage 1 complete | Catalogue integrity checked on a PC; functional and hardware cases remain planned |
 | Native `serial_485` calls | Pending | Partial static review; target request paths unverified |
 | Wire framing | Documentation only | Offline reference checks; no target exchange by this package |
 | Filament loading | Pending | Stock loading branches and hardware acceptance pending |
@@ -146,17 +147,19 @@ inventory currently includes:
   `remain_len`, version, temperature and humidity;
 - distinct empty, present-with-unknown-material and unavailable observations.
 
-This is a preliminary inventory, not a complete validated schema. Recover exact
-types, sentinels, units and update/persistence rules from the target original.
+The [contract matrix](contract-matrix.md) records recovered types, sentinels,
+configuration and update/persistence requirements. Runtime compatibility remains
+unverified until the corresponding behavior and acceptance cases are implemented.
 Cached material/color and the last selected T-command do not establish the
 physical filament location. Preserve user mapping instead of substituting an
 identity map.
 
 ## Commands and configuration
 
-Inventory the existing `BOX_*` and tool-selection commands, parameters and error
-responses before replacement. Include commands for manual material/color edits
-and refresh, as well as the operations used by the screen and slicer.
+The matrix inventories the existing `BOX_*` and tool-selection commands,
+parameters, error behavior and macro dependencies, including material/color edits,
+refresh and operations used by the screen and slicer. Implement each with its
+bound verification cases.
 
 Preserve the working configuration and user wrappers, including
 `rename_existing` chains and the established order of macro/command registration.

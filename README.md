@@ -27,12 +27,15 @@ tests/          PC tests
 docs/           Architecture, protocol and compatibility
 ```
 
-Only the entry-point implementation and its import/refusal test exist today.
-Add further modules and synthetic fixtures alongside verified behavior.
+The runtime still contains only the entry point. Stage 1 has produced the full
+contract matrix and its integrity checks; functional implementation starts with
+the following stages. Add modules and synthetic fixtures alongside behavior.
 
 - [Architecture](docs/architecture.md): responsibilities and Klipper layout.
 - [Protocol](docs/protocol.md): framing, native API boundary and open questions.
 - [Compatibility](docs/compatibility.md): implementation and validation coverage.
+- [Implementation plan](docs/implementation-plan.md): stages and acceptance criteria for the full `box` contract.
+- [Contract matrix](docs/contract-matrix.md): complete inventory and bindings to planned PC/hardware checks, including existing G-code macros.
 
 ## Quick start
 
@@ -52,8 +55,9 @@ Linux / macOS:
 python3 -m unittest discover -s tests -v
 ```
 
-The current test checks the proposed Klipper import layout and refusal to
-activate the unfinished extension. It does not operate CFS hardware.
+Current tests check the proposed Klipper import layout, refusal to activate the
+unfinished extension and contract-catalogue integrity. They do not execute the
+planned CFS behavior or operate hardware.
 
 ## Development
 

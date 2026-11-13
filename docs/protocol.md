@@ -23,8 +23,9 @@ introduce an independent transport implementation.
 | Unknown | No adequate evidence for the stated target behavior |
 
 Scope each claim to the host/MCU versions and operation actually examined.
-Matching an opcode alone is insufficient. Original binaries and research
-references remain outside public source at this stage.
+Matching an opcode alone is insufficient. Original binaries and private research
+remain outside public source. The [contract matrix](contract-matrix.md) links
+approved official factory references and binds the full host interface to checks.
 
 <a id="firmware-versions"></a>
 
