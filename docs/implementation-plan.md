@@ -2,9 +2,11 @@
 
 English | [Русский](implementation-plan.ru.md)
 
-**Status:** stage 1 inventory and check bindings are complete; stages 2–10 are
-pending. The current extension implements bootstrap refusal only. No working
-CFS operations, installer or printer changes have been introduced.
+**Status:** stage 1 is complete. Stage 2 state, configuration and storage
+components are implemented and PC-tested; shared contracts involving later
+decoders, operations and recovery retain partial status in the matrix.
+Stages 3–10 remain pending. The bootstrap refuses activation; no installer,
+mechanical operations or printer changes have been introduced.
 
 ## Target and design
 
@@ -51,6 +53,11 @@ name or a success-returning placeholder does not establish implementation.
 bound to an implementation stage and planned checks, including macro consumers.
 
 ### 2. Implement state, configuration and compatible storage
+
+**PC result:** components and nine data handlers are implemented, with runnable
+references in the [matrix](contract-matrix.md). The stock transport is untouched.
+See the [storage differences](compatibility.md#state-configuration-and-storage)
+for preservation rules and the distinction between cached labels and observations.
 
 Implement the four-box/sixteen-slot state, physical and remapped tool names,
 configuration loading, `get_status()` and `box/get_box_cfg`. Add the applicable

@@ -2,8 +2,9 @@
 
 English | [Русский](architecture.ru.md)
 
-**Status:** agreed development structure. Only the bootstrap refusal and its
-PC-side layout test are implemented; CFS operations are not implemented.
+**Status:** state, configuration and storage are implemented with PC tests.
+The bootstrap still refuses activation; native calls and mechanical operations
+remain pending.
 
 ## Scope
 
@@ -18,13 +19,17 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | Path | Responsibility | Current state |
 | --- | --- | --- |
 | `klipper/box.py` | Thin Klipper entry point | Imports the bootstrap; refuses activation |
-| `src/cfs_box/box.py` | Configuration, lifecycle, G-code registration, sensor access, `get_status()` | Bootstrap refusal only |
+| `src/cfs_box/box.py` | Data composition, nine data commands, endpoint and `get_status()` | PC-tested; bootstrap refuses activation |
+| `src/cfs_box/state.py` | Shared live state, snapshots, tool maps and grouping | Implemented; reply acquisition remains pending |
+| `src/cfs_box/configuration.py` | Loader, UI values and MODIFY/SAVE | Implemented with explicit preservation rules |
+| `src/cfs_box/storage.py` | Spool cache, recovery hints and read-only material database | Implemented; recovery lifecycle remains pending |
 | `tests/test_box_contract.py` | Klipper layout and external contract checks | Bootstrap/layout check only |
-| `tests/test_contract_matrix.py` | Inventory completeness and verification bindings | Catalogue integrity; functional checks remain planned |
-| `docs/contract-matrix.json` | Full implementation checklist and acceptance cases | Stage 1 inventory complete; runtime pending |
+| `tests/test_contract_matrix.py` | Inventory completeness and verification bindings | Validates real test references and remaining work |
+| `tests/test_state.py`, `test_configuration.py`, `test_storage.py`, `test_box_data.py` | Component and data-command scenarios | Synthetic values, temporary files, bounded Klipper substitutes |
+| `docs/contract-matrix.json` | Full implementation checklist and acceptance cases | Per-requirement and check-family implementation status |
 | `docs/` | Architecture, protocol and compatibility, in English and Russian | Draft specifications |
 
-Add operation, native-call and state modules when verified behavior needs a
+Add operation and native-call modules when verified behavior needs a
 separate module, together with the tests and synthetic fixtures that exercise it.
 The diagram below describes logical responsibilities, not existing source files.
 

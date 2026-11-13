@@ -2,7 +2,7 @@
 
 English | [Русский](compatibility.ru.md)
 
-**Status:** development scaffold. No complete replacement cycle has been accepted
+**Status:** extension in development. No complete replacement cycle has been accepted
 on the target printer. This document distinguishes a required interface from
 an implemented or hardware-verified one.
 
@@ -12,18 +12,74 @@ an implemented or hardware-verified one.
 | --- | --- | --- |
 | Proposed Klipper import layout | Implemented | PC regression test; not a printer installation test |
 | Refusal to activate the scaffold | Implemented | PC regression test before printer-object lookup |
-| Full contract inventory and check bindings | Stage 1 complete | Catalogue integrity checked on a PC; functional and hardware cases remain planned |
+| Full contract inventory and check bindings | Stage 1 complete | Real test references, partial families and remaining acceptance cases are tracked |
+| State, configuration and compatible storage | Stage 2 components implemented | Synthetic state, all 53 options, 21 endpoint fields and temporary-file tests |
 | Native `serial_485` calls | Pending | Partial static review; target request paths unverified |
 | Wire framing | Documentation only | Offline reference checks; no target exchange by this package |
 | Filament loading | Pending | Stock loading branches and hardware acceptance pending |
 | Unload, change, pause/resume, recovery | Pending | No replacement validation |
-| Stock G-code and status interfaces | Pending | Client expectations identified; target compatibility unverified |
-| RFID, remaining length, saved materials | Pending | No replacement persistence/refresh validation |
+| Stock G-code and status interfaces | Partial | Nine data commands, endpoint and snapshot tests; other handlers and live updates pending |
+| RFID, remaining length, saved materials | Partial | Compatible metadata/cache storage tested; wire refresh and observations pending |
 | Reversible installation | Pending | No installer or rollback provided |
 | Python 3.8+ | Source target | CI tests 3.8 and 3.11 directly from the checkout; native MIPS runtime unverified |
 
 CI configuration is a proposed check matrix, not evidence that hosted checks
 have run. Record the actual Python/platform when reporting local results.
+
+<a id="state-configuration-and-storage"></a>
+
+## State, configuration and storage
+
+Stage 2 components are tested on a PC. Explicit `Box(config, base_dir)`
+construction uses the supplied data root without obtaining a printer or serial
+object. `load_config()` continues to refuse activation. The data-command subset
+is registered only in bounded tests; live Klipper lifecycle is a later stage.
+
+State preserves the four-box/sixteen-slot schema, raw value types and distinct
+sentinels. Client snapshots are deep copies. Saved labels load into a separate
+cache; an explicit presence-mask synchronization can apply them to live state.
+That synchronization does not establish sensor freshness or completed motion.
+Tool remapping saves the complete sixteen-entry map without selecting a source.
+Grouping uses type/colour and the read-only material catalogue; candidate sensor
+checks remain part of the later refill operation.
+
+All 53 loader options retain their own types, defaults and bounds. The endpoint
+uses its separate 21-field value/min/max schema. Construction errors, including
+missing optional positions, discard partial fields and send/return `{}`;
+errors from sending itself propagate. This resolves the data endpoint behavior
+for position-disabled setups; their mechanical paths remain unverified.
+
+The nine data handlers cover remapping, public/inner data edits, diagnostic
+presentation, auto-refill permission, CFS-print enable, grouping and MODIFY/SAVE.
+CFS-print enable changes the retained head runout helper with the inverse flag
+and saves enable; tests only record that G-code, without operating a sensor.
+The inner-data public command still supplies no sensor subpart.
+
+The implementation makes these deliberate storage/configuration choices:
+
+- MODIFY accepts literals, lists/tuples and numeric arithmetic, without arbitrary
+  Python execution. Supplied string `"0"` changes RAM; SAVE independently skips
+  falsey evaluated values. Existing runtime/UI/loader bounds remain separate.
+- SAVE edits only `[box]`, keeps the `.1` backup and other section bytes, and
+  rejects multiline values before any write. List/tuple profiles are written as
+  comma-separated values readable by Klipper, instead of legacy generic repr.
+  Prefix matching, truthy-only save and next-section insertion remain explicit:
+  missing keys at EOF remain pending, and zero may remain a RAM-only change.
+- Existing malformed JSON/cache data raises without replacement. Cache shape
+  is checked before later direct indexing. Writes use a temporary sibling,
+  flush/fsync and atomic replacement, preserving existing file permissions.
+  Failures are reported; a live edit made before a save failure is not falsely
+  described as rolled back. A slot edit merges the current file before writing.
+- The compatible JSON keys and material database remain unchanged. Unknown
+  fields survive. Recovery hints and cache-preserving cleanup are available as
+  data APIs; applying recovery in printer operations remains stage 8. Screen
+  material files and address-manager data stay with their owners.
+
+The matrix records **112 implemented requirements, 26 partial and 283 pending**.
+Its 96 check families include 10 implemented, 14 partial and 72 planned cases;
+all hardware acceptance is pending. These family counts differ from individual
+unittest methods. See the [matrix](contract-matrix.md) for runnable references
+and the remaining assertions of each partial family.
 
 <a id="firmware-versions"></a>
 

@@ -75,12 +75,22 @@
       "hardware": 18,
       "pc": 78
     },
-    "runtime_implementation": "pending",
-    "hardware_acceptance": "pending"
+    "runtime_implementation": "partial",
+    "hardware_acceptance": "pending",
+    "implementations": {
+      "pending": 283,
+      "implemented": 112,
+      "partial": 26
+    },
+    "check_statuses": {
+      "partial": 14,
+      "planned": 72,
+      "implemented": 10
+    }
   },
   "catalogue_validation": {
     "suite": "tests/test_contract_matrix.py",
-    "meaning": "Checks inventory integrity and traceability, not CFS runtime correctness; planned functional checks are not passing tests."
+    "meaning": "Checks inventory integrity and real unittest references. Planned or partial families do not establish complete functionality or hardware acceptance."
   },
   "references": [
     {
@@ -198,16 +208,16 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
       "id": "CMD-BOX_MODIFY_TN_DATA",
       "kind": "gcode",
       "name": "BOX_MODIFY_TN_DATA",
-      "parameters": "ADDR=<1..4> PART=<historical field> [NUM=<A/B/C/D>] DATA=<field-specific value>",
+      "parameters": "ADDR=<1..4>; optional raw NUM/PART/DATA dictionary entries; metadata fields require NUM=A/B/C/D",
       "when": "always",
-      "contract": "Update supported live fields using their original field-specific conversions and save eligible metadata. Retain historical names such as vender and distinct empty/unknown sentinels.",
+      "contract": "Update supported scalar/slot fields without blanket value coercion and save eligible metadata. Missing/invalid PART or slot warns without an invented update; missing DATA remains Python None. Retain historical vender and empty/unknown sentinels.",
       "stage": 2,
       "checks": [
         "PC-CMD-REGISTRATION",
@@ -217,14 +227,14 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
       "id": "CMD-BOX_MODIFY_TN_INNER_DATA",
       "kind": "gcode",
       "name": "BOX_MODIFY_TN_INNER_DATA",
-      "parameters": "ADDR=<1..4> PART=<inner field> [NUM=<value>] DATA=<field-specific value>",
+      "parameters": "ADDR=<1..4>; optional raw NUM/PART/DATA dictionary entries; no sensor subpart is passed",
       "when": "always",
       "contract": "Preserve supported inner-state updates; the public wrapper does not pass a sensor subpart and is not a generic setter for both sensor banks.",
       "stage": 2,
@@ -236,7 +246,7 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -1009,7 +1019,7 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -1028,7 +1038,7 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -1154,7 +1164,7 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -1196,7 +1206,7 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -1338,8 +1348,9 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Edits are restricted to [box], preserve other sections, reject multiline values and use atomic replacement. List/tuple profiles are written as Klipper-compatible CSV. Legacy prefix, falsey-save and next-section/EOF rules remain explicit."
     },
     {
       "id": "CMD-MODIFY_BOX_CFG",
@@ -1357,8 +1368,9 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Only literals and numeric arithmetic are evaluated, with no arbitrary Python execution. Raw truthiness controls MODIFY; string zero updates RAM. SAVE separately skips falsey evaluated values."
     },
     {
       "id": "CMD-TEST_BOX_EXTRUDE",
@@ -2350,7 +2362,7 @@
         "PC-STATE-ORDER"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2368,8 +2380,9 @@
         "PC-STATE-ORDER"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TOP-FILAMENT",
@@ -2385,7 +2398,7 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2402,7 +2415,7 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2419,8 +2432,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TOP-FILAMENT_USEUP",
@@ -2436,8 +2450,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TOP-SAME_MATERIAL",
@@ -2453,7 +2468,7 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2470,8 +2485,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TOP-T_COMMAND",
@@ -2487,8 +2503,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TOP-CUSTOM_COMMAND_RESULT",
@@ -2504,8 +2521,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TOP-T1",
@@ -2522,7 +2540,7 @@
         "PC-STATE-ORDER"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2540,7 +2558,7 @@
         "PC-STATE-ORDER"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2558,7 +2576,7 @@
         "PC-STATE-ORDER"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2576,7 +2594,7 @@
         "PC-STATE-ORDER"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2593,8 +2611,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-FILAMENT",
@@ -2610,8 +2629,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-TEMPERATURE",
@@ -2627,8 +2647,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-DRY_AND_HUMIDITY",
@@ -2644,8 +2665,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-FILAMENT_DETECTED",
@@ -2661,8 +2683,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-MEASURING_WHEEL",
@@ -2678,8 +2701,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-VERSION",
@@ -2696,8 +2720,9 @@
         "PC-STATE-ORDER"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-SN",
@@ -2713,8 +2738,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-MODE",
@@ -2730,8 +2756,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-VENDER",
@@ -2747,8 +2774,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-REMAIN_LEN",
@@ -2764,8 +2792,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-COLOR_VALUE",
@@ -2781,8 +2810,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-MATERIAL_TYPE",
@@ -2798,8 +2828,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "STATUS-TN-UUID",
@@ -2815,8 +2846,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
     },
     {
       "id": "CONFIG-BUS",
@@ -2831,7 +2863,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-SERIAL-NAME"
       ]
@@ -2849,7 +2881,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2865,7 +2897,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -2883,7 +2915,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-HEAD-SENSOR-NAME"
       ]
@@ -2901,7 +2933,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2917,7 +2949,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2933,7 +2965,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2949,7 +2981,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2965,7 +2997,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2981,7 +3013,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -2997,7 +3029,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3013,7 +3045,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3029,7 +3061,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3045,7 +3077,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3061,7 +3093,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3077,7 +3109,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3093,7 +3125,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3109,7 +3141,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3125,7 +3157,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3141,7 +3173,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3157,7 +3189,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3173,7 +3205,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3189,7 +3221,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3205,7 +3237,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3221,7 +3253,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3237,7 +3269,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3253,7 +3285,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3269,7 +3301,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3285,7 +3317,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3301,7 +3333,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3317,7 +3349,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3333,7 +3365,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3349,7 +3381,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3365,7 +3397,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3381,7 +3413,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3397,7 +3429,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3413,7 +3445,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3431,7 +3463,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3449,7 +3481,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3467,7 +3499,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3485,7 +3517,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3503,7 +3535,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3521,7 +3553,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3539,7 +3571,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3557,7 +3589,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3575,7 +3607,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3593,7 +3625,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3611,7 +3643,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3629,7 +3661,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3647,7 +3679,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3665,7 +3697,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3683,7 +3715,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3701,7 +3733,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3721,7 +3753,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3739,7 +3771,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3757,7 +3789,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3775,7 +3807,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3793,7 +3825,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3811,7 +3843,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3829,7 +3861,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3847,7 +3879,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -3865,7 +3897,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3885,7 +3917,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3905,7 +3937,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3925,7 +3957,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3945,7 +3977,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3965,7 +3997,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -3985,7 +4017,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -4005,7 +4037,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -4025,7 +4057,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -4045,7 +4077,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -4065,7 +4097,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4083,7 +4115,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4101,7 +4133,7 @@
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4110,14 +4142,14 @@
       "name": "box/get_box_cfg",
       "parameters": "dictionary of exactly21 value/min/max field mappings",
       "when": "always",
-      "contract": "Register the established endpoint and preserve its complete response for existing clients.",
+      "contract": "Register the established endpoint and preserve its complete response for existing clients. Construction errors discard any partial response, log the failure, send a new empty dictionary and return it. Errors from send itself propagate.",
       "stage": 2,
       "checks": [
         "PC-CONFIG-ENDPOINT",
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ]
@@ -4134,7 +4166,7 @@
         "PC-STATE-MAPPING"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4149,7 +4181,7 @@
         "PC-STATE-MAPPING"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4164,7 +4196,7 @@
         "PC-STATE-MAPPING"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4179,7 +4211,7 @@
         "PC-STATE-OBSERVATIONS"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4194,7 +4226,7 @@
         "PC-STATE-OBSERVATIONS"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4209,7 +4241,7 @@
         "PC-STATE-OBSERVATIONS"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4255,8 +4287,9 @@
         "PC-DATA-POWER-LOSS"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Data representation and storage are implemented; the associated operation, permission or recovery lifecycle is completed in later stages."
     },
     {
       "id": "STATE-LAST-CMD-TMP",
@@ -4450,8 +4483,9 @@
         "PC-STATE-PRELOAD-PREFERENCES"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Data representation and storage are implemented; the associated operation, permission or recovery lifecycle is completed in later stages."
     },
     {
       "id": "STATE-PRELOADING-POWERON",
@@ -4465,8 +4499,9 @@
         "PC-STATE-PRELOAD-PREFERENCES"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Data representation and storage are implemented; the associated operation, permission or recovery lifecycle is completed in later stages."
     },
     {
       "id": "STATE-REFILL-ACTIVE",
@@ -4645,7 +4680,7 @@
         "PC-STATE-GROUPING"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4660,7 +4695,7 @@
         "PC-CONFIG-LOAD"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4676,7 +4711,7 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4692,7 +4727,7 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4708,8 +4743,9 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Data representation and storage are implemented; the associated operation, permission or recovery lifecycle is completed in later stages."
     },
     {
       "id": "DATA-TNN-MAP",
@@ -4724,8 +4760,9 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Data representation and storage are implemented; the associated operation, permission or recovery lifecycle is completed in later stages."
     },
     {
       "id": "DATA-LAST-CMD",
@@ -4740,8 +4777,9 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Data representation and storage are implemented; the associated operation, permission or recovery lifecycle is completed in later stages."
     },
     {
       "id": "DATA-RECOVERY-CLEANUP",
@@ -4772,7 +4810,7 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4788,7 +4826,7 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4820,7 +4858,7 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4836,7 +4874,7 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4852,7 +4890,7 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4868,7 +4906,7 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4884,8 +4922,9 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "partial",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Malformed existing JSON/cache raises without replacement; complete cache shape is checked early. Atomic writes report failure instead of treating legacy logged errors as a successful save. A prior live-state edit is not falsely rolled back."
     },
     {
       "id": "DEPENDENCY-GCODE",
@@ -5116,7 +5155,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -5132,7 +5171,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -5148,7 +5187,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7729,8 +7768,11 @@
         "Compare the actual registered names with all 71 named commands and all 32 generated tools; exactly the two Hall registrations depend on switch_pin.",
         "Verify TEST_BOX_CLEAN and BOX_NOZZLE_CLEAN use the same handler and that registration order preserves existing renamed macro wrappers."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions"
+      ],
+      "remaining": "Nine data commands and the endpoint are exercised. Remaining registrations, Hall conditions and renamed mechanical aliases belong to later stages."
     },
     {
       "id": "PC-CMD-PARAMS",
@@ -7740,8 +7782,12 @@
         "Keep parameter-less handlers, warning/no-action paths and ignored parameters compatible; do not invent a global reject-unknown-parameters rule.",
         "Check required public parameters independently from internal helper defaults, particularly NUM, ADDR and ENABLE."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_box_data.py::BoxDataTests.test_public_parameters_keep_command_specific_bounds_and_defaults",
+        "tests/test_configuration.py::ConfigurationTests.test_modify_all_supported_keys_and_raw_falsey_rules"
+      ],
+      "remaining": "Stage-2 parameters are tested; other command signatures remain pending."
     },
     {
       "id": "PC-CMD-RETURNS",
@@ -7751,8 +7797,13 @@
         "Do not turn every nonzero MCU status into False; do not interpret a normal G-code None return or an ignored helper Boolean as completion.",
         "Preserve the observable distinction among False, None, an exception and queued deferred work."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_box_data.py::BoxDataTests.test_metadata_roundtrip_keeps_cached_labels_when_live_slot_is_empty",
+        "tests/test_box_data.py::BoxDataTests.test_failed_command_writes_report_failure_and_preserve_existing_files",
+        "tests/test_box_data.py::BoxDataTests.test_config_command_messages_distinguish_empty_edits_and_failures"
+      ],
+      "remaining": "Data-command returns and I/O errors are covered. Native response, operation failure and deferred-work outcomes remain pending."
     },
     {
       "id": "PC-CMD-NATIVE",
@@ -7785,19 +7836,30 @@
         "Verify complete remap validation/persistence, all aliases during replacement, and that remapping or a deferred target alone performs no feed.",
         "Verify the original requested T name remains distinct from a physically confirmed source."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_state.py::StateTests.test_virtual_mapping_is_separate_from_mutable_physical_aliases",
+        "tests/test_box_data.py::BoxDataTests.test_mapping_persists_all_entries_without_selecting_or_feeding"
+      ],
+      "remaining": "Pure tool resolution and full remap persistence are covered. Generated T handlers, operation-time aliases and physical-source transitions remain pending."
     },
     {
       "id": "PC-CMD-DATA",
       "level": "pc",
       "assertions": [
         "Check historical field names, string telemetry and none/unknown/-1/None distinctions at the client boundary.",
-        "Exercise scalar/slot-array updates, colour conversion, metadata persistence exclusions and same-material grouping by type/colour.",
+        "Exercise raw scalar/slot-array updates, diagnostic colour labels, metadata persistence exclusions and same-material grouping by type/colour.",
         "Verify display methods deep-copy presentation data and that the public inner-state command does not gain an invented sensor-subpart setter."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_state.py::StateTests.test_raw_getters_and_distinct_sentinels",
+        "tests/test_state.py::StateTests.test_metadata_setters_validate_fields_without_coercion",
+        "tests/test_state.py::StateTests.test_shared_buffer_and_independent_sensor_banks",
+        "tests/test_box_data.py::BoxDataTests.test_metadata_roundtrip_keeps_cached_labels_when_live_slot_is_empty",
+        "tests/test_box_data.py::BoxDataTests.test_diagnostic_presentation_and_inner_command_do_not_replace_live_values",
+        "tests/test_box_data.py::BoxDataTests.test_grouping_uses_metadata_and_never_substitutes_for_live_sensors"
+      ]
     },
     {
       "id": "PC-CMD-DIAGNOSTIC",
@@ -7806,8 +7868,11 @@
         "Use synthetic source/target values and malformed inputs to verify diagnostic calculation/output without invoking unrelated mechanical operations.",
         "Check that reporting a switch observation or a generated table does not change physical-completion state."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_box_data.py::BoxDataTests.test_diagnostic_presentation_and_inner_command_do_not_replace_live_values"
+      ],
+      "remaining": "The data presentation command is covered. Other diagnostic calculations and sensor commands remain pending."
     },
     {
       "id": "PC-CMD-LOAD",
@@ -7860,8 +7925,11 @@
         "Verify BOX_END_PRINT cleanup differs from BOX_END physical completion, and preserve remap, resume fields, sensor and tighten-up side effects.",
         "Check service restoration of PRINT after nozzle clearing and interactions with renamed macros and client status."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_box_data.py::BoxDataTests.test_cfs_enable_persists_and_controls_the_retained_runout_helper"
+      ],
+      "remaining": "Only data enable and its retained runout-helper command are covered. Print/tool-change lifecycle remains pending."
     },
     {
       "id": "PC-CMD-REFILL",
@@ -7925,8 +7993,13 @@
         "Check backup creation, line-prefix and next-section save behavior, unrelated sections/macros and filesystem failures.",
         "Verify saved coordinates use supplied/current values as documented; do not replace existing user settings with reference defaults."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_configuration.py::ConfigurationTests.test_save_updates_all_21_fields_using_the_file_spelling",
+        "tests/test_configuration.py::ConfigurationTests.test_save_zero_prefix_and_eof_rules",
+        "tests/test_box_data.py::BoxDataTests.test_config_endpoint_modify_and_save_preserve_the_existing_wrapper",
+        "tests/test_box_data.py::BoxDataTests.test_config_command_messages_distinguish_empty_edits_and_failures"
+      ]
     },
     {
       "id": "PC-CMD-CALIBRATION",
@@ -8019,8 +8092,11 @@
         "Keep None, \"None\", \"none\", \"unknown\", \"-1\", numeric zero and False distinct where the contract distinguishes them.",
         "Preserve slot order A,B,C,D and historical field spellings."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_state.py::StateTests.test_initial_status_schema_order_and_client_isolation",
+        "tests/test_state.py::StateTests.test_raw_getters_and_distinct_sentinels"
+      ]
     },
     {
       "id": "PC-STATE-OBSERVATIONS",
@@ -8031,8 +8107,13 @@
         "Keep one shared buffer observation and independent material/connection masks for every address.",
         "Do not infer physical filament position from startup markers, reported mode, last T-command or cached material."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_state.py::StateTests.test_shared_buffer_and_independent_sensor_banks",
+        "tests/test_state.py::StateTests.test_saved_cache_is_loaded_separately_and_needs_presence_observation",
+        "tests/test_box_data.py::BoxDataTests.test_metadata_roundtrip_keeps_cached_labels_when_live_slot_is_empty"
+      ],
+      "remaining": "Cache/presence separation and independent raw observations are covered. Reply-specific acquisition and freshness belong to the decoder/lifecycle stages."
     },
     {
       "id": "PC-STATE-MAPPING",
@@ -8042,8 +8123,12 @@
         "Exercise non-identity and cross-box remaps, invalid tool names and every alias of a replacement source.",
         "Restore all remap entries after power-loss and expose that change to dependent operations."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_state.py::StateTests.test_virtual_mapping_is_separate_from_mutable_physical_aliases",
+        "tests/test_storage.py::SpoolStoreTests.test_recovery_hints_are_separate_and_cleanup_keeps_cache_and_unknown_keys"
+      ],
+      "remaining": "The mappings and stored recovery hints are covered. Applying recovery in dependent operations remains pending."
     },
     {
       "id": "PC-STATE-GROUPING",
@@ -8053,8 +8138,12 @@
         "Exclude ineligible none/-1 vendor and unknown type/colour values while retaining compatible saved metadata.",
         "Check the candidate material sensor after grouping before selecting a refill source."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_state.py::StateTests.test_grouping_uses_type_and_colour_without_claiming_sensor_presence",
+        "tests/test_box_data.py::BoxDataTests.test_grouping_uses_metadata_and_never_substitutes_for_live_sensors"
+      ],
+      "remaining": "Group eligibility, record shape and metadata names are covered. Refill candidate sensor validation belongs to stage 8."
     },
     {
       "id": "PC-STATE-ERROR-CONTEXT",
@@ -8098,8 +8187,11 @@
         "Keep permission, power-on policy and mechanical RUN/TIGHT actions distinct.",
         "Do not add preference restoration from JSON without evidence for that path."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_box_data.py::BoxDataTests.test_preload_preferences_are_independent_ram_values"
+      ],
+      "remaining": "Independent None/False/True RAM values are covered. Permission-command paths and RUN/TIGHT mechanics remain pending."
     },
     {
       "id": "PC-CONFIG-LOAD",
@@ -8110,8 +8202,13 @@
         "Cover host encoding0/1, optional sensors, positional settings enabled/disabled and mismatched feed-profile lists.",
         "Keep positions in mm, temperatures in degrees Celsius, feedrates in mm/min and accelerations in mm/s squared."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_configuration.py::ConfigurationTests.test_all_53_loader_options_and_defaults",
+        "tests/test_configuration.py::ConfigurationTests.test_supplied_values_limits_and_profile_validation",
+        "tests/test_configuration.py::ConfigurationTests.test_optional_positions_are_not_fabricated",
+        "tests/test_configuration.py::ConfigurationTests.test_disabled_positions_do_not_require_z_limits"
+      ]
     },
     {
       "id": "PC-CONFIG-ENDPOINT",
@@ -8120,10 +8217,16 @@
         "Return exactly the 21 established value/min/max field mappings with current values.",
         "Check derived cut Y, retraction-velocity presentation and the endpoint-specific limits.",
         "Keep endpoint limits distinct from loader and MODIFY limits, including buffer length, counts and line length.",
-        "Check a configuration without optional positional attributes before claiming its endpoint compatibility."
+        "Check a configuration without optional positional attributes before claiming its endpoint compatibility.",
+        "When optional positions are absent, discard partial fields and send/return an empty dictionary; do not suppress an exception raised by send itself."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_configuration.py::ConfigurationTests.test_endpoint_exact_shape_bounds_and_derived_values",
+        "tests/test_configuration.py::ConfigurationTests.test_optional_positions_are_not_fabricated",
+        "tests/test_box_data.py::BoxDataTests.test_config_endpoint_modify_and_save_preserve_the_existing_wrapper",
+        "tests/test_box_data.py::BoxDataTests.test_endpoint_discards_partial_fields_but_does_not_hide_send_errors"
+      ]
     },
     {
       "id": "PC-CONFIG-MODIFY",
@@ -8131,10 +8234,14 @@
       "assertions": [
         "Exercise every supported modification key with valid, boundary, zero/falsey and invalid values.",
         "Retain runtime modification and pending-save rules independently of loader and endpoint validation.",
-        "Preserve established Tn-prefixed file spelling and uppercase command-key conventions."
+        "Preserve established Tn-prefixed file spelling and uppercase command-key conventions.",
+        "The string zero updates RAM; unsupported Python execution is rejected while prior successful edits remain visible."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_configuration.py::ConfigurationTests.test_modify_all_supported_keys_and_raw_falsey_rules",
+        "tests/test_configuration.py::ConfigurationTests.test_modify_rejects_code_and_preserves_earlier_edits_on_error"
+      ]
     },
     {
       "id": "PC-CONFIG-SAVE",
@@ -8142,10 +8249,17 @@
       "assertions": [
         "Use temporary files to verify path preference, existing backup suffix and supported key updates.",
         "Exercise missing keys and following-section placement under the specified line-oriented save rules.",
-        "Preserve unrelated sections and wrapper text; verify failed-save outcomes without claiming a successful write."
+        "Preserve unrelated sections and wrapper text; verify failed-save outcomes without claiming a successful write.",
+        "Keep unrelated section bytes, reject multiline values before any write, and serialize list/tuple profiles in the compatible comma-separated format."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_configuration.py::ConfigurationTests.test_save_path_preference_backup_and_other_sections",
+        "tests/test_configuration.py::ConfigurationTests.test_save_updates_all_21_fields_using_the_file_spelling",
+        "tests/test_configuration.py::ConfigurationTests.test_save_zero_prefix_and_eof_rules",
+        "tests/test_configuration.py::ConfigurationTests.test_failed_save_preserves_original_and_pending_edits",
+        "tests/test_configuration.py::ConfigurationTests.test_save_rejects_multiline_values_before_any_file_change"
+      ]
     },
     {
       "id": "PC-DATA-PERSISTENCE",
@@ -8156,8 +8270,18 @@
         "Keep saved source and metadata separate from current sensors.",
         "Recover and verify failed-read/write outcomes before completing persistence."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_storage.py::SpoolStoreTests.test_initialization_is_explicit_and_missing_cache_is_complete",
+        "tests/test_storage.py::SpoolStoreTests.test_existing_data_round_trips_and_none_does_not_erase_cached_identity",
+        "tests/test_storage.py::SpoolStoreTests.test_missing_base_data_keeps_other_existing_keys",
+        "tests/test_storage.py::SpoolStoreTests.test_slot_update_merges_data_added_to_disk_since_load",
+        "tests/test_storage.py::SpoolStoreTests.test_malformed_existing_files_are_preserved_without_automatic_reset",
+        "tests/test_storage.py::SpoolStoreTests.test_failed_writes_preserve_disk_and_cache_and_remove_temporary_files",
+        "tests/test_state.py::StateTests.test_saved_cache_is_loaded_separately_and_needs_presence_observation",
+        "tests/test_state.py::StateTests.test_persistence_failures_do_not_claim_a_saved_or_rolled_back_change",
+        "tests/test_storage.py::SpoolStoreTests.test_reload_keeps_the_cache_object_shared_with_state_consumers"
+      ]
     },
     {
       "id": "PC-DATA-POWER-LOSS",
@@ -8167,8 +8291,12 @@
         "Clear only the transient recovery keys on the specified cleanup path, retaining base_data.",
         "Exercise a saved source that conflicts with current observations."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_storage.py::SpoolStoreTests.test_recovery_hints_are_separate_and_cleanup_keeps_cache_and_unknown_keys",
+        "tests/test_storage.py::SpoolStoreTests.test_invalid_hints_and_slot_updates_never_write"
+      ],
+      "remaining": "Compatible hints, complete saved remaps and cache-preserving cleanup are covered. Applying them in the printer recovery lifecycle belongs to stage 8."
     },
     {
       "id": "PC-DATA-MATERIAL-DB",
@@ -8178,8 +8306,11 @@
         "Exercise the established missing-data/lookup fallback.",
         "Leave separately owned screen material files and address-manager data unchanged."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_storage.py::SpoolStoreTests.test_material_catalogue_metadata_and_missing_data_fallback_are_read_only",
+        "tests/test_box_data.py::BoxDataTests.test_grouping_uses_metadata_and_never_substitutes_for_live_sensors"
+      ]
     },
     {
       "id": "PC-DATA-FLUSH-FLAG",
@@ -8201,8 +8332,12 @@
         "Preserve rename_existing chains, status clients and borrowed object ownership.",
         "Read axis limits, runtime data root and resume interfaces without replacing other subsystems."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_configuration.py::ConfigurationTests.test_supplied_values_limits_and_profile_validation",
+        "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions"
+      ],
+      "remaining": "Configured limits and caller-supplied data roots are covered without printer lookup. Live Klipper/native lifecycle and alternate dependency names remain pending."
     },
     {
       "id": "PC-INTEGRATION-EVENTS",
@@ -8263,8 +8398,10 @@
         "Preserve T1,T2,T3,T4 version enumeration order for the consumer that collects those string values by order.",
         "Treat this as the requirement of the examined consumer, not a universal JSON ordering rule or proof of live state."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions"
+      ]
     },
     {
       "id": "PC-NATIVE-REQUEST",
@@ -8528,8 +8665,12 @@
         "BOX_ADD_TNN and the resume route use virtual_sdcard.resume_tnn; setting it does not execute the deferred T immediately.",
         "record_tn_move_z forwards the current print-file metadata and tn_move_z value to gcode_move.recordPrintFileName without inventing a motion command."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions",
+        "tests/test_box_data.py::BoxDataTests.test_cfs_enable_persists_and_controls_the_retained_runout_helper"
+      ],
+      "remaining": "The shared state aliases and enable path are exercised. Metadata forwarding, cancel/heartbeat coordination and virtual-SD resume integration remain pending."
     },
     {
       "id": "PC-INSTALLATION-SCOPE",
@@ -8725,8 +8866,12 @@
         "The examined diagnostic consumer reads aggregate string state before nested states and enumerates T1 through T4 version strings in object order.",
         "Preserve those serialized-status observations, or explicitly resolve this consumer compatibility before claiming it."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_storage.py::SpoolStoreTests.test_material_catalogue_metadata_and_missing_data_fallback_are_read_only",
+        "tests/test_configuration.py::ConfigurationTests.test_save_path_preference_backup_and_other_sections"
+      ],
+      "remaining": "Separately owned data and synthetic wrapper bytes are preserved. Actual diagnostic services, material helpers and macro execution remain pending."
     },
     {
       "id": "PC-MACRO-RENDER",
@@ -8784,7 +8929,7 @@
     {
       "id": "GAP-OPTIONAL-POSITIONS",
       "status": "open",
-      "observation": "Position-disabled configurations omit attributes used by some endpoint, movement and resume paths.",
+      "observation": "Position-disabled configurations omit attributes used by some movement and resume paths. The original endpoint empty-response fallback is recovered and PC-tested.",
       "close_when": "Specify and check every affected command/endpoint with has_extrude_pos both enabled and disabled; never invent live positions.",
       "items": [
         "CMD-TEST_BOX_CLEAN",

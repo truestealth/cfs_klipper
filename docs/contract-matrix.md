@@ -4,9 +4,10 @@ English | [Русский](contract-matrix.ru.md)
 
 **Stage 1:** the inventory and verification bindings are complete. The
 [machine-readable matrix](contract-matrix.json) contains **421 requirements**
-and **96 planned check cases**: 78 on a PC and 18 on hardware. Runtime behavior
-and hardware acceptance remain pending. Passing the catalogue integrity tests
-does not mean these functional cases have passed.
+and **96 check families**: 78 on a PC and 18 on hardware. Stage 2 data components
+are PC-tested: 10 families are implemented, 14 partial and 72 planned. Mechanical
+operations and hardware acceptance remain pending. Catalogue integrity alone
+does not establish functional compatibility.
 
 The baseline is CFS MCU **1.1.3**, with the retained stock `serial_485.so` and
 the reference K1C CFS Upgrade configuration. Differences between known MCU
@@ -48,7 +49,8 @@ questions:
 | `stage` | Implementation stage from the [plan](implementation-plan.md), not a wire-stage number |
 | `checks` | PC/HW case IDs; each resolves to concrete assertions in the catalogue |
 | `evidence` | `static`, `partial` or later `hardware`; this is independent of implementation |
-| `implementation` | Currently `pending` for all functional requirements |
+| `implementation` | `pending`, `partial` or `implemented`; component status is separate from hardware acceptance |
+| `implementation_note` | Scope of partial implementation or a deliberate difference from the original |
 | `blockers` | Applicable unresolved questions, with affected rows and closing criteria in `gaps` |
 | `code`, `alias_of` | Numeric wire/status value or a registered alias, where applicable |
 
@@ -57,10 +59,18 @@ preload checks. `MACRO-INFO-REFRESH` adds the requirement that a consumer's
 refresh invokes preload RUN. `OP-HEAD-CALLBACK` binds the stage4/stage6
 interaction to callback timing, failure and hardware cases.
 
-All functional cases currently have `status: planned` and `test: null`.
-When a real check is implemented, record its runnable test reference and actual
-validation separately. Do not create empty test functions, mark a retained macro
-as newly implemented, or count a command registration as working mechanics.
+Check families use `status: planned` with `test: null`, or `partial`/`implemented`
+with a list of runnable references such as
+`tests/test_state.py::StateTests.test_raw_getters_and_distinct_sentinels`.
+A partial family also records `remaining` assertions. The catalogue test verifies
+that each reference resolves to an actual method; executing the suite establishes
+its local result. Do not create empty tests, mark a retained macro as newly
+implemented, or count registration as working mechanics.
+
+The matrix currently has 112 implemented requirements, 26 partial and 283 pending.
+Some stage-2-owned schemas also require later wire updates, operations or recovery;
+those rows remain partial. The [compatibility notes](compatibility.md#state-configuration-and-storage)
+describe cache/observation separation, error behavior and deliberate save rules.
 
 ## Macro integration found during the inventory
 
@@ -117,7 +127,7 @@ context-specific pause/after-pause effects.
 | --- | --- |
 | `GAP-LEGACY-13` | Establish callers and behavior for the host two-byte request versus the MCU one-byte request; make the compatibility decision before executing that route |
 | `GAP-STAGES` | Verify public-to-wire conversion and legacy triggers; public STAGE bounds do not establish accepted wire-stage numbers |
-| `GAP-OPTIONAL-POSITIONS` | Check affected endpoint, movement and resume paths with positions enabled and disabled |
+| `GAP-OPTIONAL-POSITIONS` | The empty endpoint fallback is recovered and PC-tested; check remaining movement/resume paths with positions enabled and disabled |
 | `GAP-SERIAL-NAME` | Resolve the historical fixed serial lookup versus the configured bus for alternate section names |
 | `GAP-HEAD-SENSOR-NAME` | Resolve configured sensor lookup versus fixed enable/disable names and retain a distinct no-sensor fallback |
 | `GAP-RESERVED-WIRE` | Keep three reserved identifiers separate from invented direct APIs; recover a required path before using it |
@@ -164,11 +174,12 @@ Run the existing checkout-based suite:
 python -m unittest discover -s tests -v
 ```
 
-`test_contract_matrix.py` checks the finite external inventories, stable IDs,
-stage/check references, aliases, conditional registrations, gap links and coverage
-counts. It also keeps planned cases distinct from implemented tests. The existing
-bootstrap check still verifies refusal to access printer objects. Neither suite
-executes the planned CFS operations or operates equipment.
+`test_contract_matrix.py` checks the finite inventories, IDs, stages, real test
+references, aliases, conditional registrations, gaps and coverage counts. It
+keeps partial and planned cases separate from completed check families.
+State/configuration/storage and data-command suites execute synthetic scenarios
+and temporary-file operations. The bootstrap check verifies refusal to access
+printer objects. None of these tests operates equipment.
 
 See [compatibility.md](compatibility.md) for implementation/validation status
 and [protocol.md](protocol.md) for the native API boundary.

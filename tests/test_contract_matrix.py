@@ -1,6 +1,7 @@
 """Check contract inventory integrity, not the pending printer implementation."""
 
 from collections import Counter
+import ast
 import json
 from pathlib import Path
 import unittest
@@ -99,14 +100,32 @@ class ContractMatrixTests(unittest.TestCase):
                 self.assertTrue(case["id"].startswith(prefix))
                 self.assertTrue(case["assertions"])
                 self.assertTrue(all(isinstance(value, str) and value for value in case["assertions"]))
-                self.assertIn(case["status"], {"planned", "implemented"})
+                self.assertIn(case["status"], {"planned", "partial", "implemented"})
                 if case["status"] == "planned":
                     self.assertIsNone(case["test"])
                 else:
                     self.assertTrue(case["test"])
+                    self.assertIsInstance(case["test"], list)
+                    for reference in case["test"]:
+                        filename, qualified = reference.split("::")
+                        owner, name = qualified.split(".")
+                        path = (ROOT / filename).resolve()
+                        self.assertEqual(path.parent, ROOT / "tests")
+                        tree = ast.parse(path.read_text(encoding="utf-8"))
+                        self.assertTrue(any(
+                            isinstance(node, ast.ClassDef) and node.name == owner
+                            and any(isinstance(method, ast.FunctionDef) and method.name == name
+                                    for method in node.body)
+                            for node in tree.body
+                        ), reference)
+                if case["status"] == "partial":
+                    self.assertTrue(case["remaining"])
         for item in self.items:
             self.assertIn(item["evidence"], {"static", "partial", "hardware"})
-            self.assertIn(item["implementation"], {"pending", "implemented"})
+            self.assertIn(item["implementation"], {"pending", "partial", "implemented"})
+            if item["implementation"] != "pending":
+                cases = {case["id"]: case for case in self.checks}
+                self.assertTrue(any(cases[name]["test"] for name in item["checks"]))
 
     def test_gaps_and_coverage_summary_match_the_inventory(self):
         gaps = {row["id"]: row for row in self.matrix["gaps"]}
@@ -125,6 +144,8 @@ class ContractMatrixTests(unittest.TestCase):
         self.assertEqual(summary["checks"], len(self.checks))
         self.assertEqual(summary["kinds"], dict(Counter(row["kind"] for row in self.items)))
         self.assertEqual(summary["check_levels"], dict(Counter(row["level"] for row in self.checks)))
+        self.assertEqual(summary["implementations"], dict(Counter(row["implementation"] for row in self.items)))
+        self.assertEqual(summary["check_statuses"], dict(Counter(row["status"] for row in self.checks)))
 
 
 if __name__ == "__main__":

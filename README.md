@@ -14,8 +14,8 @@ The baseline is CFS MCU firmware **1.1.3** on the reference K1C. The
 [firmware change history](docs/compatibility.md#firmware-history) records the
 examined differences through 1.5.3 and their compatibility implications.
 
-**Status:** early Klipper extension development. CFS operations are not
-implemented. The entry point explicitly refuses activation before accessing
+**Status:** state, configuration and compatible storage are implemented and
+tested on a PC. Mechanical CFS operations are pending. The entry point refuses activation before accessing
 printer objects. No installer or printer-ready release is provided.
 
 ## Project layout
@@ -27,9 +27,10 @@ tests/          PC tests
 docs/           Architecture, protocol and compatibility
 ```
 
-The runtime still contains only the entry point. Stage 1 has produced the full
-contract matrix and its integrity checks; functional implementation starts with
-the following stages. Add modules and synthetic fixtures alongside behavior.
+Stage 1 produced the full contract matrix. Stage 2 adds the state, configuration
+and storage components, with nine data-command handlers and the configuration
+endpoint tested through Klipper substitutes. Native calls and operations follow
+in later stages.
 
 - [Architecture](docs/architecture.md): responsibilities and Klipper layout.
 - [Protocol](docs/protocol.md): framing, native API boundary and open questions.
@@ -55,9 +56,10 @@ Linux / macOS:
 python3 -m unittest discover -s tests -v
 ```
 
-Current tests check the proposed Klipper import layout, refusal to activate the
-unfinished extension and contract-catalogue integrity. They do not execute the
-planned CFS behavior or operate hardware.
+Tests cover state snapshots and remapping, all 53 settings and 21 endpoint
+fields, data commands and temporary-file persistence, as well as bootstrap and
+matrix integrity. They do not operate hardware. See the [coverage and deliberate
+storage differences](docs/compatibility.md#state-configuration-and-storage).
 
 ## Development
 
