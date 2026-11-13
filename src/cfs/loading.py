@@ -233,6 +233,11 @@ class Loading:
         """Load a physical slot through the retained box and head actions."""
         box = self.box
         guard = box.host_guard()
+        owns_operation = not box.operations.active
+        if not owns_operation:
+            box.operations._check(box.operations._serial, check_error=False)
+            if box.operations.target != tnn:
+                raise RuntimeError("a nested load must use its owning operation's target")
         printing = box.print_stats.state in ("printing", "paused")
         if printing:
             if not box.store.update("last_cmd", last_cmd=tnn):
@@ -242,7 +247,10 @@ class Loading:
         address, slot = content["addr"], content["num"]
         guard = box.host_guard(address)
         source = box.last_cmd if box.last_cmd is not None else box.last_cmd_tmp
-        box.operations.begin(source, tnn, address)
+        if owns_operation:
+            box.operations.begin(source, tnn, address)
+        elif box.operations.address != address:
+            raise RuntimeError("a nested load must use its owning operation's address")
         serial = box.operations._serial
         guard = box.host_guard(address)
         try:
@@ -307,5 +315,5 @@ class Loading:
             box.box_state.modify_Tn_data(0, 1, uppart="filament")
             return True
         finally:
-            if box.operations.active and box.operations._serial == serial:
+            if owns_operation and box.operations.active and box.operations._serial == serial:
                 box.operations.cancel()

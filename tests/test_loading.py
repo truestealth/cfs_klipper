@@ -149,8 +149,11 @@ class LoadTests(unittest.TestCase):
         events = []
         state = BoxState()
         state.modify_Tn_data(1, "connect", "state")
-        operations = SimpleNamespace(_heartbeat_saved=None, _serial=1, active=True)
-        operations.begin = lambda source, target, addr: events.append(("begin", source, target, addr))
+        operations = SimpleNamespace(_heartbeat_saved=None, _serial=1, active=False)
+        def begin(source, target, addr):
+            operations.active = True
+            events.append(("begin", source, target, addr))
+        operations.begin = begin
         operations.arm_head = lambda: events.append("arm")
         operations.cancel = lambda: events.append("cancel")
         box = SimpleNamespace(

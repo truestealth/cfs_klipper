@@ -101,6 +101,7 @@ class BoxConfiguration:
             setattr(self, name, config.getfloat(name, default, minval=lower, maxval=upper))
         for name, default in (("extrude_material_velocity", 180), ("Tn_line_len", 1)):
             setattr(self, name, config.getfloat(name, default))
+        self.tn_final_extrude_len = config.getfloat("tn_final_extrude_len", -2.5)
         self.Tn_retrude_velocity = config.getintlist("Tn_retrude_velocity", (360,))
         self.Tn_extrude_percent = config.getintlist("Tn_extrude_percent", (1,))
         self.Tn_extrude_velocity = config.getintlist("Tn_extrude_velocity", (360,))

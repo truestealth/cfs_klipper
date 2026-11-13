@@ -17,6 +17,9 @@ from .firmware import DeviceVersions
 from .feeding import Feeding
 from .loading import Loading
 from .retraction import Retraction
+from .toolchange import ToolChange
+from .printing import Printing
+from .finishing import Finishing
 from .errors import format_error
 from .lifecycle import Lifecycle
 from .motion import Motion
@@ -105,6 +108,11 @@ class Box:
         self.feeding = Feeding(self)
         self.loading = Loading(self)
         self.retraction = Retraction(self)
+        self.toolchange = ToolChange(self)
+        self.printing = Printing(self)
+        self.finishing = Finishing(self)
+        self.flushing_sign = str(self.store.path.parent.parent / "config" / "flushing_sign")
+        self.material_auto_refill_flag = False
 
     def host_guard(self, address=None):
         """Capture ownership once for a host action's cooperative calls."""
@@ -296,6 +304,24 @@ class Box:
     def go_to_extrude_pos(self):
         return self.motion.go_to_extrude_pos()
 
+    def Tn_action(self, vtnn):
+        return self.toolchange.Tn_action(vtnn)
+
+    def extruder_extrude(self, tnn):
+        return self.loading.extruder_extrude(tnn)
+
+    def material_change_flush(self, source, target, error_report=True):
+        return self.finishing.material_change_flush(source, target, error_report)
+
+    def is_use_ending_material_flush(self, err, vtnn):
+        return self.finishing.is_use_ending_material_flush(err=err, vtnn=vtnn)
+
+    def record_tn_cur_tnn(self, tnn):
+        self.printing.record_tn_cur_tnn(tnn)
+
+    def has_flushing_sign(self):
+        return self.printing.has_flushing_sign()
+
     def startup_refresh(self, address):
         guard = self.host_guard(address)
         self.communication_set_pre_loading(address, 2)
@@ -361,6 +387,26 @@ class Box:
             ("BOX_RETRUDE_MATERIAL_WITH_TNN", self.cmd_retrude_material_with_tnn),
         ):
             self.gcode.register_command(name, handler)
+        for name, handler in (
+            ("BOX_START_PRINT", self.printing.cmd_box_start_print),
+            ("BOX_END_PRINT", self.printing.cmd_box_end_print),
+            ("BOX_START_PRINT_EXTRUDE_MATERIAL", self.printing.cmd_box_start_print_extrude_material),
+            ("BOX_END", self.finishing.cmd_box_end),
+            ("BOX_MATERIAL_CHANGE_FLUSH", self.finishing.cmd_material_change_flush),
+            ("SET_BOX_MODE_PRINT_WHEN_NOZZLE_CLEAR", self.finishing.cmd_set_box_mode_print_when_nozzle_clear),
+        ):
+            self.gcode.register_command(name, handler)
+        for name in self.box_state.Tnn_map:
+            self.gcode.register_command(name, self._tool_handler(name, virtual=False))
+        for name in self.box_state.Tn_map:
+            self.gcode.register_command(name, self._tool_handler(name, virtual=True))
+
+    def _tool_handler(self, name, virtual):
+        def command(gcmd):
+            self.t_command = name
+            logical = self.box_state.Tn_map[name] if virtual else name
+            self.Tn_action(logical)
+        return command
 
     def cmd_extrude_2_process(self, gcmd):
         try:

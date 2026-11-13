@@ -86,6 +86,27 @@ class PhaseActionTests(unittest.TestCase):
                 self.assertEqual(self.gcode.scripts.count("M83\n G0 E5 F60"), 1)
                 self.assertIn("M82", self.gcode.scripts)
 
+    def test_nested_load_preserves_its_parent_operation(self):
+        self.make_box()
+        self.box.operations.begin("T1B", "T1A", 1)
+        serial = self.box.operations._serial
+        self.assertTrue(self.box.box_extrude_material("T1A"))
+        self.assertTrue(self.box.operations.active)
+        self.assertEqual(self.box.operations._serial, serial)
+        self.assertTrue(self.box.heart_process_enable[0])
+        self.assertFalse(self.box.filament_sensor_enable)
+        self.box.operations.cancel()
+
+    def test_nested_load_rejects_another_target_before_effects(self):
+        self.make_box()
+        self.box.operations.begin(None, "T1B", 1)
+        with self.assertRaisesRegex(RuntimeError, "owning operation"):
+            self.box.box_extrude_material("T1A")
+        self.assertEqual(self.native.calls, [])
+        self.assertEqual(self.gcode.scripts, [])
+        self.assertTrue(self.box.operations.active)
+        self.box.operations.cancel()
+
     def test_failed_head_result_is_not_hidden_by_outer_stage4_success(self):
         self.make_box()
         self.head_status = 0x0D

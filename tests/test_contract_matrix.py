@@ -38,7 +38,7 @@ class ContractMatrixTests(unittest.TestCase):
 
         counts = Counter(row["kind"] for row in self.items)
         for kind, expected in {
-            "gcode": 103, "configuration": 53, "endpoint": 22,
+            "gcode": 103, "configuration": 54, "endpoint": 22,
             "wire": 19, "response": 25, "firmware": 6, "macro": 26,
         }.items():
             with self.subTest(kind=kind):

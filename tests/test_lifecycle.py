@@ -173,7 +173,7 @@ class LifecycleTests(unittest.TestCase):
 
     def test_registration_aliases_ready_order_and_borrowed_transport(self):
         self.make_box()
-        self.assertEqual(len(self.printer.gcode.commands), 55)
+        self.assertEqual(len(self.printer.gcode.commands), 93)
         original = self.printer.gcode.register_command("BOX_GET_BOX_STATE", None)
         self.printer.gcode.register_command("BOX_GET_BOX_STATE_OLD", original)
         wrapper = lambda gcmd: None

@@ -70,14 +70,14 @@ def configuration(**values):
 
 
 class ConfigurationTests(unittest.TestCase):
-    def test_all_53_loader_options_and_defaults(self):
+    def test_all_loader_options_and_defaults(self):
         """PC-CONFIG-LOAD: finite loader surface, default types and no hardware."""
         source = FakeConfig({"bus": "stock", "has_extrude_pos": 1})
         config = BoxConfiguration(source)
         matrix = json.loads((ROOT / "docs/contract-matrix.json").read_text(encoding="utf-8"))
         expected_names = {row["name"] for row in matrix["items"] if row["kind"] == "configuration"}
         self.assertEqual({name for name, _, _ in source.calls}, expected_names)
-        self.assertEqual(len(expected_names), 53)
+        self.assertEqual(len(expected_names), 54)
         for name, expected in {
             "version": 0, "has_extrude_pos": 1, "filament_sensor": None,
             "switch_pin": None, "box_extrude_retry_num": 5,
@@ -95,6 +95,7 @@ class ConfigurationTests(unittest.TestCase):
             "extrude_material_len_for_box": 3,
             "extrude_material_len_for_extruder": 18,
             "extrude_material_velocity": 180, "extrude_material_times": 6,
+            "tn_final_extrude_len": -2.5,
             "Tn_line_len": 1, "clean_run_count": 1, "cr_machine": 1,
             "clean_left_pos_x": 150, "clean_left_pos_y": 368,
             "clean_left_pos_z": 23.0, "clean_right_pos_x": 170,
@@ -119,6 +120,12 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIs(type(explicit.getfloat("amount", 3)), float)
         self.assertIs(type(configuration().extrude_material_len_for_box), int)
         self.assertIs(type(configuration(extrude_material_len_for_box="3").extrude_material_len_for_box), float)
+
+    def test_final_extrusion_length_keeps_its_unbounded_loader_contract(self):
+        for value in ("-8.5", "0", "10000"):
+            config = configuration(tn_final_extrude_len=value)
+            self.assertEqual(config.tn_final_extrude_len, float(value))
+            self.assertIn(("tn_final_extrude_len", "float", {}), config.config.calls)
 
     def test_supplied_values_limits_and_profile_validation(self):
         config = configuration(

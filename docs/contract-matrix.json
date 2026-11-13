@@ -50,12 +50,12 @@
     "10": "Hardware acceptance"
   },
   "coverage": {
-    "requirements": 422,
+    "requirements": 423,
     "checks": 96,
     "kinds": {
       "gcode": 103,
       "status": 28,
-      "configuration": 53,
+      "configuration": 54,
       "endpoint": 22,
       "state": 36,
       "persistence": 14,
@@ -78,14 +78,14 @@
     "runtime_implementation": "partial",
     "hardware_acceptance": "pending",
     "implementations": {
-      "implemented": 235,
-      "partial": 72,
-      "pending": 115
+      "implemented": 243,
+      "partial": 112,
+      "pending": 68
     },
     "check_statuses": {
-      "partial": 35,
-      "implemented": 21,
-      "planned": 40
+      "partial": 38,
+      "implemented": 22,
+      "planned": 36
     }
   },
   "catalogue_validation": {
@@ -784,8 +784,9 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-BOX_CUT_MATERIAL",
@@ -901,7 +902,7 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -945,8 +946,9 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-BOX_RETRUDE_MATERIAL_WITH_TNN",
@@ -1153,7 +1155,7 @@
         "HW-CMD-FILAMENT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -1162,7 +1164,7 @@
       "name": "BOX_END_PRINT",
       "parameters": "none",
       "when": "always",
-      "contract": "Apply end preload policy, enable tighten-up, reset remapping/resume fields, disable CFS printing and disable the head callback sensor. This cleanup differs from BOX_END.",
+      "contract": "Apply end preload policy, enable tighten-up, reset remapping and resume fields, set global enable to 1 and disable configured head runout when present. This cleanup differs from BOX_END.",
       "stage": 7,
       "checks": [
         "PC-CMD-REGISTRATION",
@@ -1177,8 +1179,9 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Uses the configured head sensor, omitting the command when absent; the source used a fixed sensor name."
     },
     {
       "id": "CMD-BOX_ENABLE_CFS_PRINT",
@@ -1654,8 +1657,9 @@
         "HW-CMD-NATIVE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T1A",
@@ -1677,8 +1681,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T1B",
@@ -1700,8 +1705,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T1C",
@@ -1723,8 +1729,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T1D",
@@ -1746,8 +1753,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T2A",
@@ -1769,8 +1777,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T2B",
@@ -1792,8 +1801,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T2C",
@@ -1815,8 +1825,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T2D",
@@ -1838,8 +1849,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T3A",
@@ -1861,8 +1873,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T3B",
@@ -1884,8 +1897,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T3C",
@@ -1907,8 +1921,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T3D",
@@ -1930,8 +1945,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T4A",
@@ -1953,8 +1969,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T4B",
@@ -1976,8 +1993,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T4C",
@@ -1999,8 +2017,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T4D",
@@ -2022,8 +2041,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T0",
@@ -2045,8 +2065,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T1",
@@ -2068,8 +2089,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T2",
@@ -2091,8 +2113,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T3",
@@ -2114,8 +2137,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T4",
@@ -2137,8 +2161,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T5",
@@ -2160,8 +2185,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T6",
@@ -2183,8 +2209,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T7",
@@ -2206,8 +2233,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T8",
@@ -2229,8 +2257,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T9",
@@ -2252,8 +2281,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T10",
@@ -2275,8 +2305,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T11",
@@ -2298,8 +2329,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T12",
@@ -2321,8 +2353,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T13",
@@ -2344,8 +2377,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T14",
@@ -2367,8 +2401,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "CMD-T15",
@@ -2390,8 +2425,9 @@
         "HW-CMD-PRINT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "STATUS-GET-STATUS",
@@ -3295,6 +3331,23 @@
       "stage": 2,
       "checks": [
         "PC-CONFIG-LOAD",
+        "HW-CONFIG-PRESERVATION"
+      ],
+      "evidence": "static",
+      "implementation": "implemented",
+      "blockers": []
+    },
+    {
+      "id": "CONFIG-TN_FINAL_EXTRUDE_LEN",
+      "kind": "configuration",
+      "name": "tn_final_extrude_len",
+      "parameters": "float; default -2.5; no loader bounds",
+      "when": "always",
+      "contract": "Retain the configured final extrusion distance for the tool-change route, including negative values and supplied settings.",
+      "stage": 7,
+      "checks": [
+        "PC-CONFIG-LOAD",
+        "PC-OP-TOOLCHANGE",
         "HW-CONFIG-PRESERVATION"
       ],
       "evidence": "static",
@@ -4317,7 +4370,7 @@
         "PC-RETAINED-BOX-API"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4895,7 +4948,7 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -6592,8 +6645,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "OP-T-CONTINUE",
@@ -6609,8 +6663,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "OP-PURGE-TRAY",
@@ -6626,8 +6681,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "OP-PURGE-TOWER",
@@ -6643,8 +6699,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "OP-PRINT-START",
@@ -6660,7 +6717,7 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -6677,7 +6734,7 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -6694,8 +6751,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "PC substitutes exercise the implemented route; ending-material drain and reason-specific recovery remain gated or pending, and hardware behavior is unverified."
     },
     {
       "id": "OP-RUNOUT-DRAIN",
@@ -7905,9 +7963,10 @@
         "tests/test_lifecycle.py::LifecycleTests.test_registration_aliases_ready_order_and_borrowed_transport",
         "tests/test_host_actions.py::HostActionTests.test_stage5_registration_alias_and_truthy_hall_condition_before_ready",
         "tests/test_phase_actions.py::PhaseActionTests.test_raw_target_is_not_remapped_twice_and_pickup_accepts_none",
-        "tests/test_phase_actions.py::PhaseActionTests.test_direct_feed_keeps_stage_binding_and_legacy_execution_gates"
+        "tests/test_phase_actions.py::PhaseActionTests.test_direct_feed_keeps_stage_binding_and_legacy_execution_gates",
+        "tests/test_tool_actions.py::ToolActionTests.test_all_generated_bindings_keep_raw_request_and_single_logical_lookup"
       ],
-      "remaining": "All stage-5 handlers, conditional Hall registration and the shared cleaning alias are checked. Later-stage commands, generated tools and actual macro rename_existing execution remain incomplete."
+      "remaining": "All 32 generated bindings dispatch the expected logical name in an isolated registration check; 93 commands plus two conditional Hall commands are registered. Later commands and retained macro rename_existing execution remain incomplete."
     },
     {
       "id": "PC-CMD-PARAMS",
@@ -7924,9 +7983,10 @@
         "tests/test_box_native.py::BoxNativeTests.test_cli_required_fields_enums_masks_and_cached_five_way_presentation",
         "tests/test_box_native.py::BoxNativeTests.test_raw_diagnostic_keeps_digit_encoding_and_explicit_missing_field_paths",
         "tests/test_box_native.py::BoxNativeTests.test_communication_test_counts_messages_and_uses_cooperative_intervals",
-        "tests/test_lifecycle.py::LifecycleTests.test_create_connect_command_print_gate_and_parameter_contract"
+        "tests/test_lifecycle.py::LifecycleTests.test_create_connect_command_print_gate_and_parameter_contract",
+        "tests/test_printing.py::PrintingTests.test_start_parameter_name_and_default"
       ],
-      "remaining": "Data/native signatures and selected stage-5 command inputs are checked. Remaining mechanical, recovery and diagnostic signatures need broader cases."
+      "remaining": "Recovery and diagnostic signatures need broader cases."
     },
     {
       "id": "PC-CMD-RETURNS",
@@ -7947,9 +8007,11 @@
         "tests/test_lifecycle.py::LifecycleTests.test_create_connect_command_print_gate_and_parameter_contract",
         "tests/test_lifecycle.py::LifecycleTests.test_missing_buffer_reply_returns_false_after_own_disconnect",
         "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook",
-        "tests/test_host_actions.py::HostActionTests.test_blocked_nozzle_and_missing_wheel_have_distinct_results"
+        "tests/test_host_actions.py::HostActionTests.test_blocked_nozzle_and_missing_wheel_have_distinct_results",
+        "tests/test_toolchange.py::ToolChangeTests.test_none_phase_results_are_not_normalized_to_failure",
+        "tests/test_printing.py::PrintingIntegrationTests.test_failed_cleanup_preserves_disk_after_live_map_reset"
       ],
-      "remaining": "Data/native/lifecycle outcomes and selected host failure branches are covered. Full composed mechanical and reason-specific recovery outcomes remain pending."
+      "remaining": "Composed mechanical, ending-material and reason-specific recovery outcomes remain pending."
     },
     {
       "id": "PC-CMD-NATIVE",
@@ -7967,7 +8029,8 @@
         "tests/test_box_native.py::BoxNativeTests.test_raw_diagnostic_keeps_digit_encoding_and_explicit_missing_field_paths",
         "tests/test_box_native.py::BoxNativeTests.test_cli_required_fields_enums_masks_and_cached_five_way_presentation",
         "tests/test_lifecycle.py::LifecycleTests.test_create_connect_command_print_gate_and_parameter_contract",
-        "tests/test_lifecycle.py::LifecycleTests.test_missing_buffer_reply_returns_false_after_own_disconnect"
+        "tests/test_lifecycle.py::LifecycleTests.test_missing_buffer_reply_returns_false_after_own_disconnect",
+        "tests/test_tool_actions.py::ToolActionTests.test_nozzle_clear_service_reads_banks_and_selects_highest_connection_bit"
       ],
       "remaining": "Thirteen native handlers are PC-tested, with real common error and lifecycle handlers. Full slot/refill/mechanical routes, unaddressed diagnostics and unresolved legacy requests remain gated."
     },
@@ -7998,9 +8061,13 @@
       "status": "partial",
       "test": [
         "tests/test_state.py::StateTests.test_virtual_mapping_is_separate_from_mutable_physical_aliases",
-        "tests/test_box_data.py::BoxDataTests.test_mapping_persists_all_entries_without_selecting_or_feeding"
+        "tests/test_box_data.py::BoxDataTests.test_mapping_persists_all_entries_without_selecting_or_feeding",
+        "tests/test_toolchange.py::ToolChangeTests.test_remapping_is_applied_once",
+        "tests/test_printing.py::PrintingTests.test_start_and_end_connected_units_and_cleanup",
+        "tests/test_tool_actions.py::ToolActionTests.test_all_generated_bindings_keep_raw_request_and_single_logical_lookup",
+        "tests/test_tool_actions.py::ToolActionTests.test_alias_of_same_source_skips_cut_unload_and_load"
       ],
-      "remaining": "Pure tool resolution and full remap persistence are covered. Generated T handlers, operation-time aliases and physical-source transitions remain pending."
+      "remaining": "Tool-change remapping and end reset are covered; refill alias replacement and physical-source transitions remain pending."
     },
     {
       "id": "PC-CMD-DATA",
@@ -8056,7 +8123,9 @@
         "tests/test_loading.py::LoadingTests.test_pickup_clears_useup",
         "tests/test_phase_actions.py::PhaseActionTests.test_raw_target_is_not_remapped_twice_and_pickup_accepts_none",
         "tests/test_phase_actions.py::PhaseActionTests.test_direct_feed_keeps_stage_binding_and_legacy_execution_gates",
-        "tests/test_phase_actions.py::PhaseActionTests.test_phase_resume_and_existing_error_capture_precede_target_parsing"
+        "tests/test_phase_actions.py::PhaseActionTests.test_phase_resume_and_existing_error_capture_precede_target_parsing",
+        "tests/test_tool_actions.py::ToolActionTests.test_first_tool_tray_cycle_composes_phases_and_restores_context",
+        "tests/test_tool_actions.py::ToolActionTests.test_known_source_to_another_box_uses_each_firmware_profile"
       ],
       "remaining": "Broader command integration, failure combinations and hardware behavior require further verification."
     },
@@ -8072,7 +8141,10 @@
       "test": [
         "tests/test_retraction.py::RetractionTests.test_with_tnn_ignores_normal_failures_and_uses_connection_stop",
         "tests/test_phase_actions.py::PhaseActionTests.test_known_unload_updates_source_only_on_its_normal_tail",
-        "tests/test_phase_actions.py::PhaseActionTests.test_explicit_retract_retains_its_distinct_resume_and_return_policy"
+        "tests/test_phase_actions.py::PhaseActionTests.test_explicit_retract_retains_its_distinct_resume_and_return_policy",
+        "tests/test_tool_actions.py::ToolActionTests.test_known_source_to_another_box_uses_each_firmware_profile",
+        "tests/test_tool_actions.py::ToolActionTests.test_box_end_runs_actual_cut_unload_and_safe_position",
+        "tests/test_tool_actions.py::ToolActionTests.test_box_end_source_replacement_cannot_unload_the_replacement"
       ],
       "remaining": "Broader command integration, failure combinations and hardware behavior require further verification."
     },
@@ -8107,9 +8179,15 @@
         "tests/test_extrusion.py::MaterialFlushTests.test_configured_flush_order_and_coordinate_restore",
         "tests/test_extrusion.py::FlushFallbackTests.test_bad_profile_values_use_configured_values",
         "tests/test_host_actions.py::HostActionTests.test_standalone_flush_keeps_negative_default_and_restores_coordinate_mode",
-        "tests/test_host_actions.py::HostActionTests.test_material_flush_base_survives_retained_macro_alias_and_parameters"
+        "tests/test_host_actions.py::HostActionTests.test_material_flush_base_survives_retained_macro_alias_and_parameters",
+        "tests/test_finishing.py::FinishingTests.test_change_flush_uses_target_temperature_only_after_success",
+        "tests/test_finishing.py::FinishingTests.test_matrix_uses_virtual_tool_indices_after_remapping",
+        "tests/test_tool_actions.py::ToolActionTests.test_slicer_matrix_volume_drives_target_aware_tray_flush",
+        "tests/test_tool_actions.py::ToolActionTests.test_failed_purge_keeps_loaded_source_and_records_flush_error",
+        "tests/test_tool_actions.py::ToolActionTests.test_standalone_purge_replacement_during_heating_stops_before_feed",
+        "tests/test_finishing.py::FinishingTests.test_change_flush_device_replacement_during_metadata_or_heat_stops"
       ],
-      "remaining": "Standalone purge profiles and colour calculation use substitutes; source/target-aware routes and combined tray/tower behavior remain later stages."
+      "remaining": "Source/target profiles and matrix selection use substitutes; physical purge and remaining recovery paths are unverified."
     },
     {
       "id": "PC-CMD-PRINT",
@@ -8121,9 +8199,17 @@
       ],
       "status": "partial",
       "test": [
-        "tests/test_box_data.py::BoxDataTests.test_cfs_enable_persists_and_controls_the_retained_runout_helper"
+        "tests/test_box_data.py::BoxDataTests.test_cfs_enable_persists_and_controls_the_retained_runout_helper",
+        "tests/test_printing.py::PrintingTests.test_start_and_end_connected_units_and_cleanup",
+        "tests/test_printing.py::PrintingIntegrationTests.test_nested_operation_serial_change_and_shutdown",
+        "tests/test_finishing.py::FinishingTests.test_nozzle_clear_uses_first_nonzero_connection_bank",
+        "tests/test_tool_actions.py::ToolActionTests.test_first_tool_metadata_dispatch_allows_owned_child_and_consumes_retraction",
+        "tests/test_tool_actions.py::ToolActionTests.test_print_end_resets_mapping_and_hints_but_preserves_cache_and_source",
+        "tests/test_tool_actions.py::ToolActionTests.test_nozzle_clear_service_reads_banks_and_selects_highest_connection_bit",
+        "tests/test_tool_actions.py::ToolActionTests.test_late_ending_latch_reaches_the_explicit_gate",
+        "tests/test_finishing.py::FinishingTests.test_end_late_ending_flag_stops_before_cut_and_retract"
       ],
-      "remaining": "Only data enable and its retained runout-helper command are covered. Print/tool-change lifecycle remains pending."
+      "remaining": "Print bookkeeping and service paths have PC checks; retained macro rendering, ending-material drain and physical behavior remain pending."
     },
     {
       "id": "PC-CMD-REFILL",
@@ -8449,9 +8535,11 @@
         "tests/test_motion.py::MotionTests.test_homing_and_restoring_limits",
         "tests/test_cutting.py::CuttingTests.test_stale_latch_cleared_and_failure_does_not_restore_limits",
         "tests/test_host_actions.py::HostActionTests.test_shared_motion_context_and_print_metadata_restore",
-        "tests/test_host_actions.py::HostActionTests.test_shared_error_handler_consumes_real_saved_motion_context"
+        "tests/test_host_actions.py::HostActionTests.test_shared_error_handler_consumes_real_saved_motion_context",
+        "tests/test_toolchange.py::ToolChangeTests.test_continuation_uses_old_old_profile_and_has_distinct_restore_tail",
+        "tests/test_tool_actions.py::ToolActionTests.test_retained_continue_flag_uses_its_distinct_route"
       ],
-      "remaining": "Selected Z and limit restoration/retention paths are checked; complete route and recovery exits remain pending. The saved speed_factor initializes to None; no M220 path was recovered."
+      "remaining": "Continuation and selected restoration paths are checked; recovery exits remain pending."
     },
     {
       "id": "PC-STATE-PRELOAD-PREFERENCES",
@@ -8479,11 +8567,12 @@
       ],
       "status": "implemented",
       "test": [
-        "tests/test_configuration.py::ConfigurationTests.test_all_53_loader_options_and_defaults",
+        "tests/test_configuration.py::ConfigurationTests.test_all_loader_options_and_defaults",
         "tests/test_configuration.py::ConfigurationTests.test_supplied_values_limits_and_profile_validation",
         "tests/test_configuration.py::ConfigurationTests.test_optional_positions_are_not_fabricated",
         "tests/test_configuration.py::ConfigurationTests.test_disabled_positions_do_not_require_z_limits",
-        "tests/test_configuration.py::ConfigurationTests.test_missing_numeric_default_is_not_a_parsed_option"
+        "tests/test_configuration.py::ConfigurationTests.test_missing_numeric_default_is_not_a_parsed_option",
+        "tests/test_configuration.py::ConfigurationTests.test_final_extrusion_length_keeps_its_unbounded_loader_contract"
       ]
     },
     {
@@ -8596,8 +8685,11 @@
         "A second read sees the consumed state; an absent flag does not invent a flush request.",
         "Consume only on the documented helper path."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_printing.py::PrintingTests.test_marker_is_consumed_once",
+        "tests/test_printing.py::PrintingTests.test_marker_remove_failure_propagates"
+      ]
     },
     {
       "id": "PC-INTEGRATION-DEPENDENCIES",
@@ -9009,8 +9101,20 @@
         "Exercise remapped full T, same-content and continue paths, then cut/unload/load/PRINT/extruder/flush and restoration.",
         "Direct phase handlers remain callable with their own guards and error behavior."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_toolchange.py::ToolChangeTests.test_full_tray_sequence_restores_only_at_successful_tail",
+        "tests/test_toolchange.py::ToolChangeTests.test_remapping_is_applied_once",
+        "tests/test_toolchange.py::ToolChangeTests.test_continuation_uses_old_old_profile_and_has_distinct_restore_tail",
+        "tests/test_toolchange.py::ToolChangeTests.test_exact_false_phase_failures_have_typed_context_and_no_success_restoration",
+        "tests/test_tool_actions.py::ToolActionTests.test_first_tool_tray_cycle_composes_phases_and_restores_context",
+        "tests/test_tool_actions.py::ToolActionTests.test_known_source_to_another_box_uses_each_firmware_profile",
+        "tests/test_tool_actions.py::ToolActionTests.test_alias_of_same_source_skips_cut_unload_and_load",
+        "tests/test_tool_actions.py::ToolActionTests.test_retained_continue_flag_uses_its_distinct_route",
+        "tests/test_tool_actions.py::ToolActionTests.test_source_replacement_during_nested_load_stops_the_next_phase",
+        "tests/test_tool_actions.py::ToolActionTests.test_late_ending_latch_reaches_the_explicit_gate"
+      ],
+      "remaining": "Real Box phases run together with synthetic native replies, including cross-box identities, continuation, late ending latch and source replacement. Ending-material drain, replay/recovery and physical execution remain pending."
     },
     {
       "id": "PC-OP-PURGE-TOWER",
@@ -9019,8 +9123,15 @@
         "Exercise tray/tower choice, nested print metadata, numeric slicer-version comparison and one-shot flushing flag.",
         "Verify colour/length/profile calculation, malformed inputs and resume-specific paths without invented defaults."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_toolchange.py::ToolChangeTests.test_tower_skips_tray_height_strike_and_host_flush",
+        "tests/test_finishing.py::FinishingTests.test_matrix_uses_virtual_tool_indices_after_remapping",
+        "tests/test_finishing.py::FinishingTests.test_flush_uses_colors_when_matrix_is_unavailable",
+        "tests/test_tool_actions.py::ToolActionTests.test_printing_prime_tower_omits_the_host_tray_purge",
+        "tests/test_tool_actions.py::ToolActionTests.test_slicer_matrix_volume_drives_target_aware_tray_flush"
+      ],
+      "remaining": "Tray/tower policy and calculations are PC-tested; real chelper execution, physical purge and remaining recovery paths need further checks."
     },
     {
       "id": "PC-OP-PRINT-LIFECYCLE",
@@ -9029,8 +9140,21 @@
         "Exercise first T from print metadata, enable/start policy, end policy, remap reset and resume-field removal.",
         "BOX_END_PRINT, BOX_END and restore-PRINT-after-cleaning retain their separate effects."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_printing.py::PrintingTests.test_start_and_end_connected_units_and_cleanup",
+        "tests/test_printing.py::PrintingTests.test_first_tool_and_metadata",
+        "tests/test_printing.py::PrintingIntegrationTests.test_start_and_end_printing_state_preload_policy",
+        "tests/test_finishing.py::FinishingTests.test_ending_material_drain_is_explicitly_unavailable",
+        "tests/test_printing.py::PrintingIntegrationTests.test_end_uses_configured_head_and_omits_absent_sensor",
+        "tests/test_tool_actions.py::ToolActionTests.test_first_tool_metadata_dispatch_allows_owned_child_and_consumes_retraction",
+        "tests/test_tool_actions.py::ToolActionTests.test_print_end_resets_mapping_and_hints_but_preserves_cache_and_source",
+        "tests/test_tool_actions.py::ToolActionTests.test_box_end_runs_actual_cut_unload_and_safe_position",
+        "tests/test_tool_actions.py::ToolActionTests.test_ending_material_gate_precedes_unfinished_mechanical_route",
+        "tests/test_tool_actions.py::ToolActionTests.test_box_end_source_replacement_cannot_unload_the_replacement",
+        "tests/test_finishing.py::FinishingTests.test_end_late_ending_flag_stops_before_cut_and_retract"
+      ],
+      "remaining": "Real Box phases exercise print metadata, end cleanup and BOX_END, including source replacement and late ending latch; ending-material drain remains gated and hardware is unverified."
     },
     {
       "id": "PC-OP-REFILL",
@@ -9093,9 +9217,17 @@
         "tests/test_motion.py::MotionTests.test_fan_restore_failure_retains_saved_value",
         "tests/test_extrusion.py::ExtrusionActionTests.test_short_feed_and_failure_preserve_mode",
         "tests/test_cutting.py::CuttingTests.test_calibration_failure_does_not_save_or_restore",
-        "tests/test_host_actions.py::HostActionTests.test_shutdown_or_target_change_stops_next_host_effect"
+        "tests/test_host_actions.py::HostActionTests.test_shutdown_or_target_change_stops_next_host_effect",
+        "tests/test_toolchange.py::ToolChangeTests.test_exact_false_phase_failures_have_typed_context_and_no_success_restoration",
+        "tests/test_printing.py::PrintingIntegrationTests.test_failed_cleanup_preserves_disk_after_live_map_reset",
+        "tests/test_tool_actions.py::ToolActionTests.test_failed_purge_keeps_loaded_source_and_records_flush_error",
+        "tests/test_tool_actions.py::ToolActionTests.test_source_replacement_during_nested_load_stops_the_next_phase",
+        "tests/test_tool_actions.py::ToolActionTests.test_standalone_purge_replacement_during_heating_stops_before_feed",
+        "tests/test_tool_actions.py::ToolActionTests.test_box_end_source_replacement_cannot_unload_the_replacement",
+        "tests/test_finishing.py::FinishingTests.test_outer_end_guard_covers_safe_move",
+        "tests/test_finishing.py::FinishingTests.test_material_flush_checks_target_after_extrusion"
       ],
-      "remaining": "Several host-action failure paths join native/lifecycle checks; loading, recovery and untested combined boundaries remain pending."
+      "remaining": "Several composed return paths are covered; reason-specific recovery and real hardware remain pending."
     },
     {
       "id": "PC-ERROR-REPORT",

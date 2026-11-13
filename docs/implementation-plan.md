@@ -6,8 +6,9 @@ English | [Русский](implementation-plan.ru.md)
 native/decoder/version components are implemented and PC-tested.
 Stage 4 adds lifecycle, operation-context and common-error components. Stage 5
 implements configured host mechanical primitives with synthetic PC checks. Stage 6
-adds preload, loading and unloading phases with PC checks. Full tool changes,
-retained sensor-producer execution, recovery and hardware acceptance remain incomplete. The bootstrap refuses activation; no installer or printer
+adds preload, loading and unloading phases with PC checks. Stage 7 adds tool-change
+and print lifecycle routes with substitute checks. Ending-material drain, retained
+sensor-producer execution, recovery and hardware acceptance remain incomplete. The bootstrap refuses activation; no installer or printer
 changes have been introduced.
 
 ## Target and design

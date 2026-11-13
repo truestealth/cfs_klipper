@@ -3,11 +3,11 @@
 English | [Русский](contract-matrix.ru.md)
 
 **Stage 1:** the inventory and verification bindings are complete. The
-[machine-readable matrix](contract-matrix.json) contains **422 requirements**
+[machine-readable matrix](contract-matrix.json) contains **423 requirements**
 and **96 check families**: 78 on a PC and 18 on hardware. Data, native/version and
 lifecycle/error/context components and selected mechanical primitives are
-PC-tested: 21 families are implemented, 35 partial and 40 planned. Complete
-tool changes, recovery and hardware acceptance remain pending. Catalogue integrity
+PC-tested: 22 families are implemented, 38 partial and 36 planned. Ending-material
+drain, recovery and hardware acceptance remain pending. Catalogue integrity
 alone does not establish functional compatibility.
 
 The baseline is CFS MCU **1.1.3**, with the retained stock `serial_485.so` and
@@ -20,7 +20,7 @@ versions are represented in the shared implementation.
 | --- | ---: | --- |
 | G-code | 103 | 71 named commands: 69 unconditional and two conditional Hall commands; 32 individual T commands |
 | Status and internal compatibility state | 64 | 28 status/API rows and 36 mapping, observation and operation-context rows |
-| Configuration and endpoint | 75 | Every one of 53 loader options; the endpoint API and its 21 individual fields |
+| Configuration and endpoint | 76 | Every one of 54 loader options; the endpoint API and its 21 individual fields |
 | Persistence | 14 | Stored keys, files, cleanup and failure outcomes |
 | Native boundary | 52 | Eight API/ownership requirements, all 19 host command identifiers and all 25 decoded statuses |
 | Operations and errors | 49 | 29 operation routes, 19 ordinary/macro error families and the client error-report API |
@@ -68,15 +68,19 @@ that each reference resolves to an actual method; executing the suite establishe
 its local result. Do not create empty tests, mark a retained macro as newly
 implemented, or count registration as working mechanics.
 
-The matrix currently has 235 implemented requirements, 72 partial and 115 pending.
+The matrix currently has 243 implemented requirements, 112 partial and 68 pending.
 Shared contracts that also require full mechanical operations or recovery remain
 partial. The [compatibility notes](compatibility.md#state-configuration-and-storage)
 describe cache/observation separation, error behavior and deliberate save rules;
 [native integration](protocol.md#native-integration) records the implemented
 boundary and execution gates. The [lifecycle notes](protocol.md#lifecycle-integration)
 describe the new components and deliberate policies. Handler registration alone
-does not complete shared contracts: 55 commands are explicitly registered,
-including one blocked legacy command, plus two conditional Hall handlers.
+does not complete shared contracts: 93 commands are explicitly registered,
+including one blocked legacy command, plus two conditional Hall handlers. The 32
+generated bindings have an isolated dispatch check. Separate composed PC tests
+exercise real Box phases with synthetic native replies, including cross-box
+changes, print cleanup and purge failures; retained Jinja and hardware checks
+remain separate.
 
 ## Macro integration found during the inventory
 

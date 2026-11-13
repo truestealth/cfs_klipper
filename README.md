@@ -18,8 +18,8 @@ examined differences through 1.5.3 and their compatibility implications.
 reply decoding, per-device versions, lifecycle, operation context and common
 error handling are implemented and PC-tested.
 Configured motion, heating, cutting, cleaning, preload, loading and unloading
-components have synthetic PC checks. Complete tool changes, recovery and hardware
-acceptance remain pending. The entry point refuses activation before accessing
+components and tool-change/print lifecycle routes have synthetic PC checks.
+Ending-material drain, recovery and hardware acceptance remain pending. The entry point refuses activation before accessing
 printer objects. No installer or printer-ready release is provided.
 
 ## Project layout
@@ -37,10 +37,10 @@ native API, validated replies, exact firmware profiles and twelve native-command
 handlers. Stage 4 adds explicit ready/shutdown wiring, reconnect, heartbeat,
 guarded operation waits and shared error reporting. Stage 5 adds configured
 host motion, fans, heating, extrusion, cutting, cleaning and calibration
-handlers. Stage 6 adds preload, loading and unloading phases. Explicit registration
-contains 55 commands, including the deliberately blocked legacy feed command;
-two Hall commands are added when a cut switch is configured. Complete tool
-changes and recovery follow in later stages.
+handlers. Stage 6 adds preload, loading and unloading phases. Stage 7 adds tool
+changes and print lifecycle routes. Explicit registration contains 93 commands,
+including the deliberately blocked legacy feed command; two Hall commands are
+added when a cut switch is configured. Recovery and hardware acceptance remain pending.
 
 - [Architecture](docs/architecture.md): responsibilities and Klipper layout.
 - [Protocol](docs/protocol.md): framing, native API boundary and open questions.
@@ -73,7 +73,7 @@ python3.8 -m venv .venv
 An existing Python 3.8 `.venv` can be reused. With `uv` installed, the environment
 creation command can instead be `uv venv --python 3.8 .venv`.
 
-Tests cover state snapshots and remapping, all 53 settings and 21 endpoint
+Tests cover state snapshots and remapping, all 54 settings and 21 endpoint
 fields, data commands, temporary-file persistence, native requests and replies,
 mixed device versions and stale work, as well as bootstrap and matrix integrity.
 Lifecycle cases cover targeted heartbeat, shutdown/restart, pause/reporting and

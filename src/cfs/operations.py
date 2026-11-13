@@ -14,6 +14,7 @@ class OperationContext:
     def __init__(self, box):
         self.box = box
         self.active = False
+        self.source_address = None
         self._serial = 0
         self._head_running = False
         self._heartbeat_saved = None
@@ -39,6 +40,10 @@ class OperationContext:
         self._error = deepcopy(self.box.error)
         self._binding = self.box._binding_generation
         self._device = self.box.device_versions.generation(address)
+        source_content = self.box.box_state.Tnn_content.get(source) if isinstance(source, str) else None
+        self.source_address = source_content["addr"] if source_content else None
+        self._source_device = (self.box.device_versions.generation(self.source_address)
+                               if self.source_address is not None else None)
         self.box.last_cmd_tmp = deepcopy(source)
         self.box.extrude_tnn = deepcopy(target)
         self.box.filament_sensor_enable = False
@@ -72,6 +77,8 @@ class OperationContext:
         if (not self.active or serial != self._serial or self.box.native is None
                 or self._binding != self.box._binding_generation
                 or self._device != self.box.device_versions.generation(self.address)
+                or (self.source_address is not None and self._source_device !=
+                    self.box.device_versions.generation(self.source_address))
                 or (check_error and self._error != self.box.error)
                 or self.target != self.box.extrude_tnn):
             if self.active and serial == self._serial:
