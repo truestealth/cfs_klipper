@@ -1,0 +1,40 @@
+# Private workspace (ignore complete directories)
+/.local/
+
+# Local instruction entry point; full policy lives in .local/
+/AGENTS.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments and local tool caches
+.venv/
+venv/
+.cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local code indexes
+.cocoindex_code/
+graphify-out/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.log
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
