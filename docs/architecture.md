@@ -4,8 +4,9 @@ English | [Русский](architecture.ru.md)
 
 **Status:** state, configuration, storage, native-call integration, reply decoding
 and per-device versions are implemented with PC tests. Lifecycle, cooperative
-operation context and common errors are also PC-tested. The bootstrap still
-refuses activation; full mechanical and recovery procedures remain pending.
+operation context, common errors and configured mechanical primitives are also
+PC-tested. The bootstrap still refuses activation; full mechanical and recovery
+procedures remain pending.
 
 ## Scope
 
@@ -20,7 +21,7 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | Path | Responsibility | Current state |
 | --- | --- | --- |
 | `klipper/box.py` | Thin Klipper entry point | Imports the bootstrap; refuses activation |
-| `src/cfs/box.py` | Shared data, endpoint, status, metadata hook and 23 functional handlers | PC-tested with substitutes; bootstrap refuses activation |
+| `src/cfs/box.py` | Shared data, endpoint, status, metadata hook and handler integration | PC-tested with substitutes; bootstrap refuses activation |
 | `src/cfs/state.py` | Shared live state, snapshots, tool maps and grouping | Implemented; decoded observations share this state |
 | `src/cfs/configuration.py` | Loader, UI values and MODIFY/SAVE | Implemented with explicit preservation rules |
 | `src/cfs/storage.py` | Spool cache, recovery hints and read-only material database | Implemented; recovery lifecycle remains pending |
@@ -30,11 +31,13 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | `src/cfs/lifecycle.py` | Ready/shutdown, configured dependencies, reconnect, heartbeat and pause wait | Own work is removed or invalidated; borrowed transport stays with stock serial |
 | `src/cfs/operations.py` | Source/target ownership, cooperative waits and head-result latch | Required phase callbacks, targeted heartbeat suspension and cancellation PC-tested |
 | `src/cfs/errors.py` | Client reports, pause/restore ordering and saved error context | Duplicate/special-key behavior and caught-error exits PC-tested |
+| `src/cfs/motion.py`, `extrusion.py`, `cutting.py` | Configured motion, fans, heating, extrusion, cutting and calibration | Component checks with substitutes; hardware acceptance pending |
 | `tests/test_box_contract.py` | Klipper layout and external contract checks | Bootstrap/layout check only |
 | `tests/test_contract_matrix.py` | Inventory completeness and verification bindings | Validates real test references and remaining work |
 | `tests/test_state.py`, `test_configuration.py`, `test_storage.py`, `test_box_data.py` | Component and data-command scenarios | Synthetic values, temporary files, bounded Klipper substitutes |
 | `tests/test_native.py`, `test_protocol.py`, `test_firmware.py`, `test_box_native.py` | Native boundary, decoding, identity and integration scenarios | Synthetic frames, borrowed API and reactor substitutes |
 | `tests/test_lifecycle.py`, `test_operations.py`, `test_errors.py` | Lifecycle, operation ownership and reporting | Controlled cooperative reactor, native replies, waits and callbacks |
+| `tests/test_motion.py`, `test_extrusion.py`, `test_cutting.py`, `test_host_actions.py` | Host actions and their registration/integration | Synthetic G-code, heaters, fans, buttons and wheel replies; no hardware |
 | `docs/contract-matrix.json` | Full implementation checklist and acceptance cases | Per-requirement and check-family implementation status |
 | `docs/` | Architecture, protocol and compatibility, in English and Russian | Draft specifications |
 
@@ -51,6 +54,9 @@ flowchart LR
     Box --> State[Observations and status]
     Box --> Native[Native serial calls]
     Box --> Versions[Per-device versions]
+    Box --> Host[Motion, extrusion and cutter]
+    Host --> State
+    Host --> Helper[Retained Klipper chelper]
     Operations --> State
     Operations --> Native
     Native --> Stock[Existing serial_485]

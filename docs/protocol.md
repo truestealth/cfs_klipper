@@ -85,7 +85,8 @@ counts, scheduling and mechanical completion remain hardware acceptance work.
 
 ## Lifecycle, errors and operation context
 
-Explicit registration provides 23 functional handlers. On `klippy:ready`, the
+Explicit registration provides 46 functional handlers and two conditional Hall
+handlers. On `klippy:ready`, the
 lifecycle resolves its dependencies, borrows serial, emits `box:ready` and then
 starts its own heartbeat timer. Presence uses the address manager's `online == 1`
 and the serial port's existence, independently of the native connection flag.

@@ -18,12 +18,13 @@ an implemented or hardware-verified one.
 | Wire contract | Request bodies and reply validation implemented | Synthetic CRC, length, address and command checks; real exchange unverified |
 | Per-device firmware selection | Implemented for six exact cfs0 versions | Independent identities, profiles and four-/six-byte layouts tested on a PC |
 | Lifecycle, shared errors and operation context | Component implementation | Cooperative reactor and substitute tests; physical operations remain incomplete |
+| Configured motion, heating, cutting and cleaning | Stage 5 components implemented | Synthetic G-code, fan, heater and sensor checks; hardware acceptance pending |
 | Filament loading | Pending | Operation sequencing and hardware acceptance pending |
 | Unload, change, pause/resume, recovery | Pending | No replacement validation |
-| Stock G-code and status interfaces | Partial | 23 functional handlers registered explicitly; endpoint and snapshots tested; full 103-name contract pending |
+| Stock G-code and status interfaces | Partial | 46 handlers registered explicitly, plus two conditional Hall handlers; endpoint and snapshots tested; full 103-name contract pending |
 | RFID, remaining length, saved materials | Partial | Normal replies, metadata/cache updates and deferred grouping tested; hardware observations and mechanical slot handling pending |
 | Reversible installation | Pending | No installer or rollback provided |
-| Python 3.8 | Project and CI default | 150 local tests passed on Python 3.8.20/Windows; native MIPS runtime unverified |
+| Python 3.8 | Project and CI default | 226 local tests passed on Python 3.8.20/Windows; native MIPS runtime unverified |
 
 Coverage records local component checks. Hosted results for each commit are
 available in [GitHub Actions](https://github.com/truestealth/cfs_klipper/actions).
@@ -52,7 +53,8 @@ All 53 loader options retain their own types, defaults and bounds. The endpoint
 uses its separate 21-field value/min/max schema. Construction errors, including
 missing optional positions, discard partial fields and send/return `{}`;
 errors from sending itself propagate. This resolves the data endpoint behavior
-for position-disabled setups; their mechanical paths remain unverified.
+for position-disabled setups. Stage 5 validates fields needed by an affected
+move before issuing it; complete position-disabled routes remain unverified.
 
 The nine data handlers cover remapping, public/inner data edits, diagnostic
 presentation, auto-refill permission, CFS-print enable, grouping and MODIFY/SAVE.
@@ -93,13 +95,49 @@ data/cache updates, missing-response distinctions, communication-test byte zero
 and EXTRUDE_PROCESS snapshots before error effects. Deferred RFID grouping is
 guarded against a changed device or binding. Lifecycle, shared reporting,
 timeout handling and operation ownership have component tests. Slot-event
-mechanics, tighten-up, drain/refill and other motion remain pending; a route
+mechanics, tighten-up, drain/refill and full loading routes remain pending; a route
 requiring an unbound handler fails explicitly. An ACK does not establish
 completed motion.
 
 See [native integration and its execution limits](protocol.md#native-integration)
 and [lifecycle integration](protocol.md#lifecycle-integration) for the implemented
 boundaries and remaining checks.
+
+<a id="host-actions"></a>
+
+## Host actions
+
+Stage 5 implements configured positioning, Z and acceleration context, fan
+save/restore, heating, extrusion, cutting, cleaning and calibration. Registration
+before retained macro aliases provides 46 handlers plus two Hall commands when
+`switch_pin` is truthy. Cleaning uses four fixed strokes; `clean_run_count` is
+retained as configuration without changing that routine. Cutter current state
+and the sticky observed event remain separate; blind motion is not a measured cut.
+
+Colour purge volume uses the retained Klipper `chelper.get_ffi()` interface,
+`rgb_t` structures and `get_flushing_volume`. PC substitutes verify that call
+and the subsequent length conversion; the target native helper has not been
+executed. No colour-volume approximation or replacement helper is introduced.
+
+The implemented host policies are:
+
+- Validate required optional positions before the affected action; missing
+  fields raise without inventing coordinates. Calibration requires actual head
+  and cut sensors, and each search candidate must stay within configured travel.
+- Guard cooperative calls against shutdown/restart, rebinding and a changed
+  active target/device. Error and restoration tails follow their own branches;
+  an exception does not promise physical rollback.
+- Use a fresh, successful ordinary measuring-wheel reply with a finite value.
+  Cached data, event replies and missing measurements cannot establish success
+  or become an invented nozzle-blockage result.
+- Reject a nonpositive segment size when purge splitting needs it, avoiding
+  the original nonterminating zero-step branch.
+
+Tests compose native wheel replies with segmented extrusion and actual Python
+cleaning, shared error restoration, macro alias dispatch and temporary-file
+configuration saves. Retained Jinja rendering, the extruder-feed macro base
+from stage 6, complete tool changes/recovery and hardware acceptance remain
+separate checks. The bootstrap still refuses activation.
 
 <a id="firmware-versions"></a>
 

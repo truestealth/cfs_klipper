@@ -3,11 +3,12 @@
 English | [Русский](contract-matrix.ru.md)
 
 **Stage 1:** the inventory and verification bindings are complete. The
-[machine-readable matrix](contract-matrix.json) contains **421 requirements**
+[machine-readable matrix](contract-matrix.json) contains **422 requirements**
 and **96 check families**: 78 on a PC and 18 on hardware. Data, native/version and
-lifecycle/error/context components are PC-tested: 18 families are implemented,
-24 partial and 54 planned. Mechanical operations and hardware acceptance remain
-pending. Catalogue integrity alone does not establish functional compatibility.
+lifecycle/error/context components and selected mechanical primitives are
+PC-tested: 21 families are implemented, 29 partial and 46 planned. Full
+mechanical routes and hardware acceptance remain pending. Catalogue integrity
+alone does not establish functional compatibility.
 
 The baseline is CFS MCU **1.1.3**, with the retained stock `serial_485.so` and
 the reference K1C CFS Upgrade configuration. Differences between known MCU
@@ -23,7 +24,7 @@ versions are represented in the shared implementation.
 | Persistence | 14 | Stored keys, files, cleanup and failure outcomes |
 | Native boundary | 52 | Eight API/ownership requirements, all 19 host command identifiers and all 25 decoded statuses |
 | Operations and errors | 49 | 29 operation routes, 19 ordinary/macro error families and the client error-report API |
-| Dependencies and events | 30 | 27 dependency boundaries, including retained Python consumers, and three registered events |
+| Dependencies and events | 31 | 28 dependency boundaries, including retained Python consumers and `chelper`, and three registered events |
 | Firmware variants | 6 | 1.1.3, 1.2.2, 1.4.2, 1.5.0, 1.5.2, 1.5.3 |
 | Existing macro consumers | 26 | Required preservation and interaction contracts, including grouped external macro families |
 | Installation and build | 2 | Reversible Klipper layout and checkout-based Python checks |
@@ -67,14 +68,15 @@ that each reference resolves to an actual method; executing the suite establishe
 its local result. Do not create empty tests, mark a retained macro as newly
 implemented, or count registration as working mechanics.
 
-The matrix currently has 199 implemented requirements, 55 partial and 167 pending.
+The matrix currently has 225 implemented requirements, 66 partial and 131 pending.
 Shared contracts that also require full mechanical operations or recovery remain
 partial. The [compatibility notes](compatibility.md#state-configuration-and-storage)
 describe cache/observation separation, error behavior and deliberate save rules;
 [native integration](protocol.md#native-integration) records the implemented
 boundary and execution gates. The [lifecycle notes](protocol.md#lifecycle-integration)
 describe the new components and deliberate policies. Handler registration alone
-does not complete shared contracts: 23 handlers are exercised through substitutes.
+does not complete shared contracts: 46 handlers and two conditional Hall handlers
+are available through explicit substitute-based registration.
 
 ## Macro integration found during the inventory
 
@@ -187,6 +189,8 @@ and temporary-file operations. Native, protocol, firmware and box-integration
 suites cover request bytes, all decoded statuses, payloads, mixed identities and
 stale work through substitutes. Lifecycle/error/context tests add cooperative
 ready/shutdown, reconnect, heartbeat, reporting and re-entrant head-event cases.
+Motion, extrusion and cutting tests exercise configured commands, limits, fan
+state, heater and wheel substitutes, sensor latches and calibration failures.
 Retained sensor-producer behavior and full loading-result consumption remain
 separate from these component checks. The bootstrap check verifies refusal to access
 printer objects. None of these tests executes the stock binary or operates equipment.

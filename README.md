@@ -17,8 +17,10 @@ examined differences through 1.5.3 and their compatibility implications.
 **Status:** state, configuration, compatible storage, native-call integration,
 reply decoding, per-device versions, lifecycle, operation context and common
 error handling are implemented and PC-tested.
-Mechanical CFS operations are pending. The entry point refuses activation before
-accessing printer objects. No installer or printer-ready release is provided.
+Configured motion, heating, cutting, cleaning and purge components have
+synthetic PC checks. Complete loading, tool changes, recovery and hardware
+acceptance remain pending. The entry point refuses activation before accessing
+printer objects. No installer or printer-ready release is provided.
 
 ## Project layout
 
@@ -33,9 +35,11 @@ Stage 1 produced the full contract matrix. Stage 2 added state, configuration,
 storage and nine data-command handlers. Stage 3 added calls through the retained
 native API, validated replies, exact firmware profiles and twelve native-command
 handlers. Stage 4 adds explicit ready/shutdown wiring, reconnect, heartbeat,
-guarded operation waits and shared error reporting. There are 23 functional
-handlers tested through Klipper substitutes. Full mechanical and recovery
-procedures follow in later stages.
+guarded operation waits and shared error reporting. Stage 5 adds configured
+host motion, fans, heating, extrusion, cutting, cleaning and calibration
+handlers. Explicit substitute-based registration comprises 46 handlers, plus
+two Hall handlers when a cut switch is configured. Full loading, tool changes
+and recovery follow in later stages.
 
 - [Architecture](docs/architecture.md): responsibilities and Klipper layout.
 - [Protocol](docs/protocol.md): framing, native API boundary and open questions.
@@ -72,10 +76,13 @@ Tests cover state snapshots and remapping, all 53 settings and 21 endpoint
 fields, data commands, temporary-file persistence, native requests and replies,
 mixed device versions and stale work, as well as bootstrap and matrix integrity.
 Lifecycle cases cover targeted heartbeat, shutdown/restart, pause/reporting and
-head-event re-entry while a native request is waiting.
-They do not execute the stock native binary or operate hardware. See the
+head-event re-entry while a native request is waiting. Motion and extrusion
+cases use synthetic coordinates, fan pins, heaters and wheel samples; cutting
+cases distinguish a fresh switch event from a cached value and exercise blind
+cutting. These tests do not execute the stock native binary or operate hardware. See the
 [coverage and deliberate storage differences](docs/compatibility.md#state-configuration-and-storage)
-and [lifecycle integration limits](docs/protocol.md#lifecycle-integration).
+and [host-action policies](docs/compatibility.md#host-actions), as well as
+[lifecycle integration limits](docs/protocol.md#lifecycle-integration).
 
 ## Development
 

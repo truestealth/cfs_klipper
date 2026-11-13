@@ -5,7 +5,7 @@
     "mcu": "1.1.3",
     "transport": "retained stock serial_485.so"
   },
-  "scope": "Full observed box interface and preservation of its macro/configuration consumers; functional implementation remains pending.",
+  "scope": "Full observed box interface and preservation of its macro/configuration consumers; PC components are partial and full mechanical integration remains pending.",
   "domains": {
     "Tn": [
       "T1",
@@ -50,26 +50,26 @@
     "10": "Hardware acceptance"
   },
   "coverage": {
-    "requirements": 421,
+    "requirements": 422,
     "checks": 96,
     "kinds": {
-      "build": 1,
-      "configuration": 53,
-      "dependency": 27,
-      "endpoint": 22,
-      "error": 20,
-      "event": 3,
-      "firmware": 6,
       "gcode": 103,
-      "installation": 1,
-      "macro": 26,
+      "status": 28,
+      "configuration": 53,
+      "endpoint": 22,
+      "state": 36,
+      "persistence": 14,
+      "dependency": 28,
+      "event": 3,
+      "wire": 19,
+      "response": 25,
       "native": 8,
       "operation": 29,
-      "persistence": 14,
-      "response": 25,
-      "state": 36,
-      "status": 28,
-      "wire": 19
+      "error": 20,
+      "firmware": 6,
+      "installation": 1,
+      "build": 1,
+      "macro": 26
     },
     "check_levels": {
       "hardware": 18,
@@ -78,14 +78,14 @@
     "runtime_implementation": "partial",
     "hardware_acceptance": "pending",
     "implementations": {
-      "pending": 167,
-      "partial": 55,
-      "implemented": 199
+      "implemented": 225,
+      "partial": 66,
+      "pending": 131
     },
     "check_statuses": {
-      "partial": 24,
-      "planned": 54,
-      "implemented": 18
+      "partial": 29,
+      "planned": 46,
+      "implemented": 21
     }
   },
   "catalogue_validation": {
@@ -148,8 +148,9 @@
         "HW-CMD-CUT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_SEND_DATA",
@@ -540,11 +541,12 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
       ],
-      "alias_of": "BOX_NOZZLE_CLEAN"
+      "alias_of": "BOX_NOZZLE_CLEAN",
+      "implementation_note": "Four cleaning strokes independent of clean_run_count; its shared alias and component execution are tested. Hardware acceptance remains pending."
     },
     {
       "id": "CMD-BOX_NOZZLE_CLEAN",
@@ -563,10 +565,11 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
-      ]
+      ],
+      "implementation_note": "Four cleaning strokes independent of clean_run_count; its shared alias and component execution are tested. Hardware acceptance remains pending."
     },
     {
       "id": "CMD-BOX_MOVE_TO_SAFE_POS",
@@ -584,10 +587,11 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
-      ]
+      ],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_TN_EXTRUDE",
@@ -605,8 +609,9 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_BLOW",
@@ -624,8 +629,9 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_GET_FLUSH_LEN",
@@ -643,8 +649,9 @@
         "PC-CMD-DIAGNOSTIC"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Colour-volume calculation uses retained chelper get_ffi, rgb_t and get_flushing_volume; PC tests use a substitute. Native execution and hardware acceptance remain pending."
     },
     {
       "id": "CMD-BOX_GO_TO_EXTRUDE_POS",
@@ -663,10 +670,11 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
-      ]
+      ],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_GO_TO_BOX_EXTRUDE_POS",
@@ -684,10 +692,11 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
-      ]
+      ],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_MOVE_TO_CUT",
@@ -707,8 +716,9 @@
         "HW-CMD-CUT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_SAVE_FAN",
@@ -726,8 +736,9 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_RESTORE_FAN",
@@ -745,8 +756,9 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_END",
@@ -792,8 +804,9 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_RETRUDE_MATERIAL",
@@ -901,8 +914,9 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_MATERIAL_CHANGE_FLUSH",
@@ -1009,8 +1023,9 @@
         "PC-CMD-DIAGNOSTIC"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Colour-volume calculation uses retained chelper get_ffi, rgb_t and get_flushing_volume; PC tests use a substitute. Native execution and hardware acceptance remain pending."
     },
     {
       "id": "CMD-BOX_SHOW_TNN_INNER_DATA",
@@ -1257,8 +1272,9 @@
         "HW-CMD-CALIBRATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_CUT_HALL_TEST",
@@ -1278,8 +1294,9 @@
         "HW-CMD-CALIBRATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_GET_FLUSH_VELOCITY_TEST",
@@ -1297,8 +1314,9 @@
         "PC-CMD-DIAGNOSTIC"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-MOVE_BOX_PRE_CUT_POS",
@@ -1318,8 +1336,9 @@
         "HW-CMD-CALIBRATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-MOVE_BOX_CUT_POS",
@@ -1339,8 +1358,9 @@
         "HW-CMD-CALIBRATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-SAVE_BOX_CFG",
@@ -1400,10 +1420,11 @@
         "HW-CMD-CALIBRATION"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
-      ]
+      ],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_FIND_CUT_POS",
@@ -1425,8 +1446,9 @@
         "HW-CMD-CALIBRATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_GET_FIVE_WAY_STATE",
@@ -1486,8 +1508,9 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_ADD_TNN",
@@ -1529,10 +1552,11 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
-      ]
+      ],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-BOX_CUSTOM_COMMAND",
@@ -1554,10 +1578,11 @@
         "HW-CMD-CALIBRATION"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-OPTIONAL-POSITIONS"
-      ]
+      ],
+      "implementation_note": "Stage-5 handler implemented and exercised on PC substitutes. Hardware acceptance and any later composed routes remain pending."
     },
     {
       "id": "CMD-WAIT_EXTRUSION_ALL_MATERIALS",
@@ -4435,8 +4460,9 @@
         "PC-STATE-MOTION-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Host components and selected registered-command compositions are PC-tested; complete load/change/recovery consumers and their exit paths remain pending."
     },
     {
       "id": "STATE-MAX-VELOCITY",
@@ -4450,8 +4476,9 @@
         "PC-STATE-MOTION-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Host components and selected registered-command compositions are PC-tested; complete load/change/recovery consumers and their exit paths remain pending."
     },
     {
       "id": "STATE-MAX-ACCEL",
@@ -4465,8 +4492,9 @@
         "PC-STATE-MOTION-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Host components and selected registered-command compositions are PC-tested; complete load/change/recovery consumers and their exit paths remain pending."
     },
     {
       "id": "STATE-SPEED-FACTOR",
@@ -4474,14 +4502,15 @@
       "name": "speed_factor",
       "parameters": "saved motion context",
       "when": "always",
-      "contract": "Preserve the prior speed factor through documented temporary changes.",
+      "contract": "Initialize the compatibility speed_factor field to None; no runtime override or M220 restoration is established by the recovered behavior.",
       "stage": 5,
       "checks": [
         "PC-STATE-MOTION-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "The recovered initial value is None; no M220 usage was found in selected exports. No additional speed-factor action is inferred."
     },
     {
       "id": "STATE-PRELOADING-EN",
@@ -5151,15 +5180,16 @@
       "name": "fan0/fan2",
       "parameters": "retained fan objects/commands",
       "when": "always",
-      "contract": "Preserve established fan names and operation-specific save/restore behaviour.",
+      "contract": "Use optional output_pin fan0/fan2; save last_value multiplied by scale and preserve operation-specific restore behavior.",
       "stage": 5,
       "checks": [
         "PC-INTEGRATION-DEPENDENCIES",
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Host components and selected registered-command compositions are PC-tested; complete load/change/recovery consumers and their exit paths remain pending."
     },
     {
       "id": "DEPENDENCY-STEPPER-LIMITS",
@@ -5256,8 +5286,9 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The raw retained attribute guards four implemented host handlers independently from paused print state; later phase/retry/resume consumers remain pending."
     },
     {
       "id": "EVENT-READY",
@@ -6473,8 +6504,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Host components and selected registered-command compositions are PC-tested; complete load/change/recovery consumers and their exit paths remain pending."
     },
     {
       "id": "OP-HEATING-FANS",
@@ -6490,8 +6522,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Host components and selected registered-command compositions are PC-tested; complete load/change/recovery consumers and their exit paths remain pending."
     },
     {
       "id": "OP-CUTTING",
@@ -6507,8 +6540,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Host components and selected registered-command compositions are PC-tested; complete load/change/recovery consumers and their exit paths remain pending."
     },
     {
       "id": "OP-CLEANING",
@@ -6516,7 +6550,7 @@
       "name": "Nozzle cleaning",
       "parameters": "success, guarded skip, negative reply, None and exception variants",
       "when": "always",
-      "contract": "Use configured positions/counters and preserve the required fan/wait/limit effects.",
+      "contract": "Use configured positions and preserve fan/wait/limit effects; the recovered cleaning route makes four strokes independent of clean_run_count.",
       "stage": 5,
       "checks": [
         "PC-OP-HOST-PRIMITIVES",
@@ -6524,8 +6558,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Host components and selected registered-command compositions are PC-tested; complete load/change/recovery consumers and their exit paths remain pending."
     },
     {
       "id": "OP-T-FULL",
@@ -7459,11 +7494,13 @@
       "checks": [
         "PC-MACRO-INCLUDE",
         "PC-MACRO-TEMP",
-        "HW-MACRO-CLIENTS"
+        "HW-MACRO-CLIENTS",
+        "PC-CMD-FLUSH"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The base flush handler and a substitute rename_existing alias are tested. Real macro-template execution and temperature forwarding remain unverified."
     },
     {
       "id": "MACRO-CHECK-MATERIAL",
@@ -7818,6 +7855,23 @@
       "blockers": [
         "GAP-MACRO-SNAPSHOT"
       ]
+    },
+    {
+      "id": "DEPENDENCY-CHELPER",
+      "kind": "dependency",
+      "name": "chelper.get_ffi / rgb_t / get_flushing_volume",
+      "parameters": "retained Klipper CFFI helper",
+      "when": "colour-derived purge calculation",
+      "contract": "Use the retained chelper get_ffi interface, rgb_t type and get_flushing_volume function for colour-derived purge volume; retain the existing helper and its ownership.",
+      "stage": 5,
+      "checks": [
+        "PC-INTEGRATION-DEPENDENCIES",
+        "HW-DEPENDENCIES"
+      ],
+      "evidence": "static",
+      "implementation": "partial",
+      "implementation_note": "The call shape is checked with a substitute; execution of the target native helper remains unverified.",
+      "blockers": []
     }
   ],
   "checks": [
@@ -7832,9 +7886,10 @@
       "test": [
         "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions",
         "tests/test_box_native.py::BoxNativeTests.test_binding_uses_configured_bus_without_connecting_or_projecting_presence",
-        "tests/test_lifecycle.py::LifecycleTests.test_registration_aliases_ready_order_and_borrowed_transport"
+        "tests/test_lifecycle.py::LifecycleTests.test_registration_aliases_ready_order_and_borrowed_transport",
+        "tests/test_host_actions.py::HostActionTests.test_stage5_registration_alias_and_truthy_hall_condition_before_ready"
       ],
-      "remaining": "Twenty-three functional names are registered before connect on substitutes: nine data, thirteen native and DO_AFTER_PAUSE. Full registration, Hall conditions and mechanical aliases remain later stages."
+      "remaining": "All stage-5 handlers, conditional Hall registration and the shared cleaning alias are checked. Later-stage commands, generated tools and actual macro rename_existing execution remain incomplete."
     },
     {
       "id": "PC-CMD-PARAMS",
@@ -7853,7 +7908,7 @@
         "tests/test_box_native.py::BoxNativeTests.test_communication_test_counts_messages_and_uses_cooperative_intervals",
         "tests/test_lifecycle.py::LifecycleTests.test_create_connect_command_print_gate_and_parameter_contract"
       ],
-      "remaining": "Data/native signatures and the stage-4 connect command are checked. Remaining mechanical/recovery/diagnostic signatures await their stages."
+      "remaining": "Data/native signatures and selected stage-5 command inputs are checked. Remaining mechanical, recovery and diagnostic signatures need broader cases."
     },
     {
       "id": "PC-CMD-RETURNS",
@@ -7873,9 +7928,10 @@
         "tests/test_box_native.py::BoxNativeTests.test_timeouts_events_and_communication_bytes_have_separate_outcomes",
         "tests/test_lifecycle.py::LifecycleTests.test_create_connect_command_print_gate_and_parameter_contract",
         "tests/test_lifecycle.py::LifecycleTests.test_missing_buffer_reply_returns_false_after_own_disconnect",
-        "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook"
+        "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook",
+        "tests/test_host_actions.py::HostActionTests.test_blocked_nozzle_and_missing_wheel_have_distinct_results"
       ],
-      "remaining": "Data/native/lifecycle outcomes and common errors are covered. Full mechanical and reason-specific recovery outcomes remain pending."
+      "remaining": "Data/native/lifecycle outcomes and selected host failure branches are covered. Full composed mechanical and reason-specific recovery outcomes remain pending."
     },
     {
       "id": "PC-CMD-NATIVE",
@@ -7956,9 +8012,11 @@
         "tests/test_box_data.py::BoxDataTests.test_diagnostic_presentation_and_inner_command_do_not_replace_live_values",
         "tests/test_box_native.py::BoxNativeTests.test_communication_test_counts_messages_and_uses_cooperative_intervals",
         "tests/test_box_native.py::BoxNativeTests.test_raw_diagnostic_keeps_digit_encoding_and_explicit_missing_field_paths",
-        "tests/test_box_native.py::BoxNativeTests.test_cli_required_fields_enums_masks_and_cached_five_way_presentation"
+        "tests/test_box_native.py::BoxNativeTests.test_cli_required_fields_enums_masks_and_cached_five_way_presentation",
+        "tests/test_extrusion.py::ColorCommandTests.test_color_arguments_and_short_input",
+        "tests/test_extrusion.py::ArrayCommandTests.test_array_parsing_and_short_matrix_failure"
       ],
-      "remaining": "Data presentation, raw-body diagnostics, communication tests and cached five-way presentation are covered. Other diagnostics/calibration commands remain pending."
+      "remaining": "Data/native diagnostics and selected flush calculations are covered. Other diagnostics and composed calibration remain incomplete."
     },
     {
       "id": "PC-CMD-LOAD",
@@ -7989,8 +8047,13 @@
         "Set virtual_sdcard.do_resume_status independently from print_stats paused state and verify which handlers warn/return without running their phase.",
         "Verify callbacks and retry dispatch obey their own guards; do not apply one assumed pause rule to every command."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_motion.py::MotionTests.test_calibration_and_resume_guard",
+        "tests/test_extrusion.py::MaterialFlushTests.test_resume_skips_flush",
+        "tests/test_host_actions.py::HostActionTests.test_resume_guards_precede_parameter_access_and_all_effects"
+      ],
+      "remaining": "Motion and standalone flush guards are checked; callbacks, retries and other resume-specific procedures remain incomplete."
     },
     {
       "id": "PC-CMD-FLUSH",
@@ -8000,8 +8063,17 @@
         "Preserve the public difference between standalone BOX_MATERIAL_FLUSH and source/target-aware BOX_MATERIAL_CHANGE_FLUSH.",
         "Exercise invalid temperature fallback, mismatched profiles, tray versus tower ownership, and no automatic TNN parameter for standalone flush."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_extrusion.py::ProfileTests.test_speed_profiles_and_forwarding",
+        "tests/test_extrusion.py::ProfileTests.test_temperature_profile",
+        "tests/test_extrusion.py::ColorPurgeTests.test_native_volume_and_conversion",
+        "tests/test_extrusion.py::MaterialFlushTests.test_configured_flush_order_and_coordinate_restore",
+        "tests/test_extrusion.py::FlushFallbackTests.test_bad_profile_values_use_configured_values",
+        "tests/test_host_actions.py::HostActionTests.test_standalone_flush_keeps_negative_default_and_restores_coordinate_mode",
+        "tests/test_host_actions.py::HostActionTests.test_material_flush_base_survives_retained_macro_alias_and_parameters"
+      ],
+      "remaining": "Standalone purge profiles and colour calculation use substitutes; source/target-aware routes and combined tray/tower behavior remain later stages."
     },
     {
       "id": "PC-CMD-PRINT",
@@ -8051,8 +8123,17 @@
         "Exercise the unhomed safe-position no-action path and optional-position configurations without synthesising missing configured fields.",
         "Verify specified completion and failure exits retain the required E/Z/fan/limit context without promising universal physical rollback."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_motion.py::MotionTests.test_homing_and_restoring_limits",
+        "tests/test_motion.py::MotionTests.test_z_down_bounds_accumulation_and_restore",
+        "tests/test_motion.py::MotionTests.test_z_move_and_missing_positions",
+        "tests/test_extrusion.py::MaterialFlushTests.test_configured_flush_order_and_coordinate_restore",
+        "tests/test_host_actions.py::HostActionTests.test_shared_motion_context_and_print_metadata_restore",
+        "tests/test_host_actions.py::HostActionTests.test_position_disabled_commands_fail_before_required_actions",
+        "tests/test_motion.py::MotionTests.test_safe_position_skips_unhomed_axes_without_coordinates"
+      ],
+      "remaining": "Configured components and selected failure boundaries are checked on substitutes; combined phase routes and remaining exit paths require later stages."
     },
     {
       "id": "PC-CMD-CUT",
@@ -8062,8 +8143,21 @@
         "Verify Hall handlers are conditional and a current switch value is not equivalent to a recorded cut event.",
         "Check BOX_CUT_MATERIAL error/macro capture and preserve its resume guard independently from raw positioning commands."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_cutting.py::CuttingTests.test_blind_three_times_count_and_hot_retraction",
+        "tests/test_cutting.py::CuttingTests.test_sensed_fresh_latch_success_restores_limits",
+        "tests/test_cutting.py::CuttingTests.test_stale_latch_cleared_and_failure_does_not_restore_limits",
+        "tests/test_cutting.py::CuttingTests.test_hall_counter_quirk_and_zero_bound",
+        "tests/test_host_actions.py::HostActionTests.test_failed_cut_records_macro_context_with_real_shared_reporter",
+        "tests/test_host_actions.py::HostActionTests.test_registered_cut_sensor_keeps_initial_observation_and_invalidates_shutdown",
+        "tests/test_cutting.py::CuttingTests.test_sticky_event_then_release_still_satisfies_legacy_result",
+        "tests/test_cutting.py::CuttingTests.test_report_suppression_and_no_filament_skip",
+        "tests/test_cutting.py::CuttingTests.test_loaded_counts_do_not_inherit_ui_limits",
+        "tests/test_cutting.py::CuttingTests.test_missing_cut_fallback_coordinates_prevent_all_effects",
+        "tests/test_cutting.py::CuttingTests.test_blind_cut_does_not_require_unrelated_tray_positions",
+        "tests/test_host_actions.py::HostActionTests.test_stage5_registration_alias_and_truthy_hall_condition_before_ready"
+      ]
     },
     {
       "id": "PC-CMD-FAN",
@@ -8072,8 +8166,14 @@
         "Cover available/missing fan0 and fan2, saved values, zeroing and restoration/clearing.",
         "Verify BOX_BLOW uses its own on/wait/off sequence and does not silently become the general fan-save route."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_motion.py::MotionTests.test_fans_save_once_restore_zero_and_blow",
+        "tests/test_motion.py::MotionTests.test_fan_restore_failure_retains_saved_value",
+        "tests/test_cutting.py::CuttingTests.test_nozzle_sequence_preserves_four_strokes_and_fan_units",
+        "tests/test_host_actions.py::HostActionTests.test_fan_context_is_shared_with_cut_and_restored_once",
+        "tests/test_motion.py::MotionTests.test_optional_fan_combinations_and_empty_restore"
+      ]
     },
     {
       "id": "PC-CMD-CONFIG",
@@ -8088,7 +8188,8 @@
         "tests/test_configuration.py::ConfigurationTests.test_save_updates_all_21_fields_using_the_file_spelling",
         "tests/test_configuration.py::ConfigurationTests.test_save_zero_prefix_and_eof_rules",
         "tests/test_box_data.py::BoxDataTests.test_config_endpoint_modify_and_save_preserve_the_existing_wrapper",
-        "tests/test_box_data.py::BoxDataTests.test_config_command_messages_distinguish_empty_edits_and_failures"
+        "tests/test_box_data.py::BoxDataTests.test_config_command_messages_distinguish_empty_edits_and_failures",
+        "tests/test_motion.py::MotionTests.test_custom_save_uses_both_current_coordinates_if_one_missing"
       ]
     },
     {
@@ -8098,8 +8199,20 @@
         "Use synthetic sensor/homing inputs and a G-code recorder to verify each calibration/custom action, completion marker and failure exit.",
         "Check permitted configuration writes occur only on the documented success path and preserve unrelated values."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_motion.py::MotionTests.test_calibration_and_resume_guard",
+        "tests/test_motion.py::MotionTests.test_custom_prepare_checks_positions_before_mutation",
+        "tests/test_cutting.py::CuttingTests.test_calibration_observed_success_only_saves_measured_y",
+        "tests/test_cutting.py::CuttingTests.test_calibration_missing_event_and_preconditions_never_save",
+        "tests/test_host_actions.py::HostActionTests.test_calibration_saves_through_existing_data_handlers",
+        "tests/test_motion.py::MotionTests.test_calibration_positions_and_all_custom_completion_markers",
+        "tests/test_motion.py::MotionTests.test_custom_save_uses_both_current_coordinates_if_one_missing",
+        "tests/test_cutting.py::CuttingTests.test_calibration_checks_actual_candidate_not_entire_search",
+        "tests/test_cutting.py::CuttingTests.test_calibration_initial_positions_are_checked_before_motion",
+        "tests/test_cutting.py::CuttingTests.test_calibration_failure_does_not_save_or_restore",
+        "tests/test_cutting.py::CuttingTests.test_hall_zero_cannot_search_beyond_configured_x_minimum"
+      ]
     },
     {
       "id": "HW-CMD-NATIVE",
@@ -8294,8 +8407,15 @@
         "Check the required Z, velocity, acceleration and speed-factor context on every specified completion and failure exit.",
         "Keep the continue-print route distinct; cleanup is not a universal physical rollback."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_motion.py::MotionTests.test_z_down_bounds_accumulation_and_restore",
+        "tests/test_motion.py::MotionTests.test_homing_and_restoring_limits",
+        "tests/test_cutting.py::CuttingTests.test_stale_latch_cleared_and_failure_does_not_restore_limits",
+        "tests/test_host_actions.py::HostActionTests.test_shared_motion_context_and_print_metadata_restore",
+        "tests/test_host_actions.py::HostActionTests.test_shared_error_handler_consumes_real_saved_motion_context"
+      ],
+      "remaining": "Selected Z and limit restoration/retention paths are checked; complete route and recovery exits remain pending. The saved speed_factor initializes to None; no M220 path was recovered."
     },
     {
       "id": "PC-STATE-PRELOAD-PREFERENCES",
@@ -8448,7 +8568,8 @@
         "Resolve the established Klipper objects in registration/ready order while retaining stock native ownership.",
         "Exercise configured versus fixed serial/head-sensor names and identify unresolved mismatches.",
         "Preserve rename_existing chains, status clients and borrowed object ownership.",
-        "Read axis limits, runtime data root and resume interfaces without replacing other subsystems."
+        "Read axis limits, runtime data root and resume interfaces without replacing other subsystems.",
+        "Check retained chelper get_ffi, rgb_t and get_flushing_volume call shape with a substitute."
       ],
       "status": "partial",
       "test": [
@@ -8461,9 +8582,14 @@
         "tests/test_lifecycle.py::LifecycleTests.test_dependency_failure_and_ready_event_failure_do_not_leave_live_work",
         "tests/test_lifecycle.py::LifecycleTests.test_poweron_requires_real_refresh_hook_and_optional_head_fallback",
         "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook",
-        "tests/test_lifecycle.py::LifecycleTests.test_metadata_hook_catches_record_errors_but_not_dependency_lookup"
+        "tests/test_lifecycle.py::LifecycleTests.test_metadata_hook_catches_record_errors_but_not_dependency_lookup",
+        "tests/test_motion.py::MotionTests.test_fans_save_once_restore_zero_and_blow",
+        "tests/test_host_actions.py::HostActionTests.test_material_metadata_profiles_and_retained_helper_are_read_only",
+        "tests/test_motion.py::MotionTests.test_optional_fan_combinations_and_empty_restore",
+        "tests/test_host_actions.py::HostActionTests.test_resume_guards_precede_parameter_access_and_all_effects",
+        "tests/test_host_actions.py::HostActionTests.test_stage5_registration_alias_and_truthy_hall_condition_before_ready"
       ],
-      "remaining": "Configured lookup, explicit ready/shutdown, actual retained-table shape, optional sensor policy and metadata are tested. Full mechanical registrations/aliases, target runtime data-root discovery and later motion/resume dependencies remain unverified."
+      "remaining": "Configured lookup, lifecycle, optional sensors and synthetic fan pin use are tested. Full macro chains, target runtime data-root discovery and later dependencies remain unverified."
     },
     {
       "id": "PC-INTEGRATION-EVENTS",
@@ -8516,7 +8642,8 @@
       "level": "hardware",
       "assertions": [
         "Confirm the retained Klipper/native objects, configured sensors, fan names and wrappers on the actual target.",
-        "Verify ready/shutdown and permitted restart behaviour without replacing other subsystems."
+        "Verify ready/shutdown and permitted restart behaviour without replacing other subsystems.",
+        "Verify the retained chelper interface and colour-volume calculation in the target host runtime."
       ],
       "status": "planned",
       "test": null
@@ -8788,8 +8915,23 @@
         "Check cut sensor present/absent variants and exact E/Z/fan/motion-limit effects at each specified exit.",
         "Preserve target configuration values rather than substituting sample printer coordinates."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_motion.py::MotionTests.test_homing_and_restoring_limits",
+        "tests/test_extrusion.py::ExtrusionTests.test_heat_repeats_until_strict_temperature_window",
+        "tests/test_cutting.py::CuttingTests.test_sensed_fresh_latch_success_restores_limits",
+        "tests/test_cutting.py::CuttingTests.test_nozzle_sequence_preserves_four_strokes_and_fan_units",
+        "tests/test_host_actions.py::HostActionTests.test_segmented_feed_uses_native_wheel_and_real_nozzle_clean",
+        "tests/test_host_actions.py::HostActionTests.test_blocked_nozzle_and_missing_wheel_have_distinct_results",
+        "tests/test_host_actions.py::HostActionTests.test_native_wheel_requires_fresh_successful_finite_sample",
+        "tests/test_host_actions.py::HostActionTests.test_shutdown_or_target_change_stops_next_host_effect",
+        "tests/test_host_actions.py::HostActionTests.test_heating_wait_cannot_continue_after_shutdown_and_ready",
+        "tests/test_host_actions.py::HostActionTests.test_shared_error_handler_consumes_real_saved_motion_context",
+        "tests/test_host_actions.py::HostActionTests.test_position_disabled_commands_fail_before_required_actions",
+        "tests/test_cutting.py::CuttingTests.test_cleaning_missing_coordinates_prevents_all_effects",
+        "tests/test_host_actions.py::HostActionTests.test_report_target_change_stops_inner_error_effects"
+      ],
+      "remaining": "Registered actions, native wheel/cleaning composition, shared error context and cooperative cancellation are PC-tested. Complete load/change/recovery consumers and their additional exit paths remain later stages."
     },
     {
       "id": "PC-OP-TOOLCHANGE",
@@ -8878,9 +9020,13 @@
       "test": [
         "tests/test_operations.py::OperationTests.test_action_and_wait_exceptions_release_ownership_without_rollback",
         "tests/test_lifecycle.py::LifecycleTests.test_head_reenters_stage4_native_wait_and_keeps_failed_stage6_snapshot",
-        "tests/test_lifecycle.py::LifecycleTests.test_missing_buffer_reply_returns_false_after_own_disconnect"
+        "tests/test_lifecycle.py::LifecycleTests.test_missing_buffer_reply_returns_false_after_own_disconnect",
+        "tests/test_motion.py::MotionTests.test_fan_restore_failure_retains_saved_value",
+        "tests/test_extrusion.py::ExtrusionActionTests.test_short_feed_and_failure_preserve_mode",
+        "tests/test_cutting.py::CuttingTests.test_calibration_failure_does_not_save_or_restore",
+        "tests/test_host_actions.py::HostActionTests.test_shutdown_or_target_change_stops_next_host_effect"
       ],
-      "remaining": "Native/lifecycle/operation-context False, None and exception boundaries are tested. All configured motion, loading and recovery phase boundaries remain later stages."
+      "remaining": "Several host-action failure paths join native/lifecycle checks; loading, recovery and untested combined boundaries remain pending."
     },
     {
       "id": "PC-ERROR-REPORT",
@@ -9186,7 +9332,7 @@
     {
       "id": "GAP-OPTIONAL-POSITIONS",
       "status": "open",
-      "observation": "Position-disabled configurations omit attributes used by some movement and resume paths. The original endpoint empty-response fallback is recovered and PC-tested.",
+      "observation": "Position-disabled setups omit fields needed by tray moves. The endpoint empty fallback and host-command preflight are PC-tested; complete resume/phase consumers remain pending. No coordinates are synthesized.",
       "close_when": "Specify and check every affected command/endpoint with has_extrude_pos both enabled and disabled; never invent live positions.",
       "items": [
         "CMD-TEST_BOX_CLEAN",

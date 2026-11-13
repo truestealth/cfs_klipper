@@ -11,12 +11,15 @@ _MESSAGES = {
     "key_extrude_err4": (838, "extrude error, through the connections but not extrude", "slot"),
     "key_filament_err": (839, "filament error, no filament detected at box extrude position", "slot"),
     "key_state_err": (840, "box switch state error, check it's current action, addr: %d, cmd: 0x%x", "state"),
+    "key_cut_err": (841, "cut error, cut sensor not detected, cutting not rebound", None),
     "key_rfid_err": (843, "rfid is error, get rfid: %s", "rfid"),
     "key_joint_err": (844, "the pneumatic joint is abnormal and may collapse", None),
+    "key_nozzle_blocked_err": (845, "the nozzle is blocked", None),
     "key_speed_err": (846, "empty printing, box speed is smaller than extruder", None),
     "key_enwind_err": (847, "empty printing, material enwind", None),
     "key_retrude_err1": (849, "retrude error, failed to exit connections", "slot"),
     "key_retrude_err2": (850, "retrude error, unspecified retrude, multiple connections triggered, addr: %d", "in_address"),
+    "key_cut_filament_err": (854, "the presence of filament when cutting detected", None),
     "key_load_err": (857, "motor load error", None),
 }
 _SPECIAL = tuple("key%d" % n for n in (843, 853, 858, 859, 860, 861, 862))

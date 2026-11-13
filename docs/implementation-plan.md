@@ -4,11 +4,11 @@ English | [Русский](implementation-plan.ru.md)
 
 **Status:** stage 1 is complete. Stage 2 state/configuration/storage and stage 3
 native/decoder/version components are implemented and PC-tested.
-Stage 4 adds lifecycle, operation-context and common-error components. Shared
-contracts involving full mechanical operations, sensor producers and recovery
-retain partial status in the matrix. Stages 5–10 remain pending. The bootstrap
-refuses activation; no installer,
-mechanical operations or printer changes have been introduced.
+Stage 4 adds lifecycle, operation-context and common-error components. Stage 5
+implements configured host mechanical primitives with synthetic PC checks.
+Full loading, tool changes, sensor producers, recovery and hardware acceptance
+remain incomplete. The bootstrap refuses activation; no installer or printer
+changes have been introduced.
 
 ## Target and design
 
@@ -143,6 +143,18 @@ any mechanical operation depends on it. Incomplete builds cannot start unfinishe
 procedures or report them as successful.
 
 ### 5. Implement configured motion, heating, cutting and cleaning
+
+**PC result:** configured positioning, Z and limit context, optional fan pins,
+heating and extrusion, cut-sensor and blind cutting, cleaning and calibration
+are implemented and tested with substitutes. Missing position fields are checked
+before the affected movement. The cleaning route uses four strokes independent
+of `clean_run_count`; fan saves use `last_value * scale`. `speed_factor` starts
+as `None`; no M220 behavior is inferred. Registered-action compositions cover
+wheel/feed/cleaning, shared error restoration and macro aliases. Hardware and
+full tool-change routes remain unverified. The [host policies](compatibility.md#host-actions)
+record deliberate guards. Colour-derived purge calculations use the retained Klipper
+`chelper` interface (`get_ffi`, `rgb_t` and `get_flushing_volume`); its native
+implementation is substituted in PC tests.
 
 Implement the host primitives used by all routes: configured positions, heating,
 extruder modes, Z moves, temporary motion limits, fans, cutting with and without

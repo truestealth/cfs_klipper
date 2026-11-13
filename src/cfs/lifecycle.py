@@ -42,6 +42,7 @@ class Lifecycle:
         box.gcode = self.printer.lookup_object("gcode")
         box.register_data_commands(box.gcode, self.printer.lookup_object("webhooks"))
         box.register_native_commands(box.gcode)
+        box.register_host_commands(self.printer)
         box.gcode.register_command("BOX_CREATE_CONNECT", box.cmd_create_connect)
         box.gcode.register_command("DO_AFTER_PAUSE", box.cmd_do_after_pause)
         self.printer.register_event_handler("klippy:ready", self.ready)
@@ -90,6 +91,7 @@ class Lifecycle:
         self._generation += 1
         self.is_shutdown = False
         self.running = True
+        box.cut_sensor.activate()
         self.address, self.counters = 0, [5] * 4
         self._initialized.clear()
         self._initial_wait_done = False
@@ -111,6 +113,8 @@ class Lifecycle:
 
     def shutdown(self):
         self.running, self.is_shutdown = False, True
+        if self.box.cut_sensor is not None:
+            self.box.cut_sensor.invalidate()
         self._generation += 1
         if self._timer is not None:
             self.reactor.unregister_timer(self._timer)
@@ -288,13 +292,18 @@ class Lifecycle:
         generation, binding = self._generation, self.box._binding_generation
         device = self.box.device_versions.generation(address) if address else None
         serial = self.box.operations._serial
+        active_operation = operation and self.box.operations.active
 
         def check():
             self.check(generation)
             if (binding != self.box._binding_generation or
                     (operation and serial != self.box.operations._serial) or
                     (address is not None and device != self.box.device_versions.generation(address))):
-                raise LifecycleStopped("CFS context changed during error handling")
+                raise LifecycleStopped("CFS context changed during a cooperative action")
+            if active_operation:
+                # Explicit result/error branches consume changed errors; a
+                # different target or device cannot inherit the old action.
+                self.box.operations._check(serial, check_error=False)
         return check
 
     def report_error(self, key, facts):

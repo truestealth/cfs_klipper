@@ -1,16 +1,21 @@
-"""Data and borrowed-native integration; the bootstrap still refuses activation.
+"""Box contract components; the bootstrap still refuses activation.
 
 Explicit construction supports PC checks of state, settings and storage. It
 does not obtain a printer or a serial object, start timers, or run mechanics.
 """
 
 from copy import deepcopy
+import importlib
 import logging
+from math import isfinite
 
 from .configuration import BoxConfiguration, _field_name
+from .cutting import CutSensor, Cutter
+from .extrusion import Extrusion
 from .firmware import DeviceVersions
 from .errors import format_error
 from .lifecycle import Lifecycle
+from .motion import Motion
 from .native import NativeSerial, Request, UnsupportedRequest, build_request, diagnostic_request, slot_mask
 from .operations import OperationContext
 from .protocol import DecodeContext, decode_reply
@@ -41,8 +46,8 @@ class Box:
     """Compose implemented data behavior without activating an unfinished box.
 
     ``base_dir`` is supplied by the caller; PC tests always use a temporary
-    directory. Data and native command groups are registered explicitly on
-    substitutes until lifecycle and mechanical operations have been implemented.
+    directory. Lifecycle and host actions are wired explicitly on substitutes
+    until the complete replacement is ready for printer acceptance.
     """
 
     def __init__(self, config, base_dir, config_paths=None):
@@ -86,6 +91,131 @@ class Box:
         self._printer = None
         self.slot_events = {}
         self.operations = OperationContext(self)
+        self.speed_factor = None
+        self.start_print_retraction_distance = 0
+        self.error_next_macro = []
+        self._ffi_pair = None
+        self.motion = Motion(self)
+        self.extrusion = Extrusion(self)
+        self.cut_sensor = self.cutter = None
+
+    def host_guard(self):
+        """Capture ownership once for a host action's cooperative calls."""
+        if self.lifecycle is None or not self.lifecycle.running:
+            raise RuntimeError("the CFS host lifecycle is not ready")
+        guard = self.lifecycle._report_guard()
+        guard()
+        return guard
+
+    def get_filament_sensor_detect(self):
+        guard = self.host_guard()
+        value = self.lifecycle.head_present()
+        guard()
+        return value
+
+    def has_actual_head_sensor(self):
+        return self.lifecycle is not None and getattr(self.lifecycle, "head_sensor", None) is not None
+
+    def if_in_resume(self):
+        guard = self.host_guard()
+        virtual_sd = self._printer.lookup_object("virtual_sdcard")
+        guard()
+        value = virtual_sd.do_resume_status
+        logging.info("virtual-SD resume status: %s", value)
+        return value
+
+    def set_flushing_sign(self):
+        guard = self.host_guard()
+        self.gcode.run_script_from_command("M400")
+        guard()
+
+    def reset_flushing_sign(self):
+        self.set_flushing_sign()
+
+    def _material_type(self, tnn):
+        if tnn is None:
+            return None
+        content = self.box_state.get_Tnn_content(tnn)
+        return self.box_state.get_Tn_data(content["addr"], "material_type", content["num"])
+
+    def get_material_target_temp(self, tnn):
+        try:
+            return self.store.get_material_temperature(self._material_type(tnn), self.boxcfg.Tn_extrude_temp)
+        except Exception:
+            logging.exception("Could not read CFS material temperature")
+            return self.boxcfg.Tn_extrude_temp
+
+    def get_material_max_extrusion_speed(self, tnn):
+        try:
+            return self.store.get_material_max_speed(self._material_type(tnn))
+        except Exception:
+            logging.exception("Could not read CFS material extrusion speed")
+            return None
+
+    def _host_ffi(self):
+        if self._ffi_pair is None:
+            guard = self.host_guard()
+            pair = importlib.import_module("chelper").get_ffi()
+            guard()
+            self._ffi_pair = pair
+        return self._ffi_pair
+
+    @property
+    def ffi_main(self):
+        return self._host_ffi()[0]
+
+    @property
+    def ffi_lib(self):
+        return self._host_ffi()[1]
+
+    def read_measuring_wheel(self, address):
+        """Return a fresh ordinary wheel sample; a retained cache is not one."""
+        guard = self.host_guard()
+        result = self.send_native(build_request(address, "MEASURING_WHEEL", b"\x01"))
+        guard()
+        frame = self.last_replies.get(address)
+        if result is not True or frame is None or frame.command != 0x0E or frame.status != 0:
+            return False, None
+        value = self.box_state.get_Tn_data(address, "measuring_wheel")
+        if not isinstance(value, (int, float)) or not isfinite(value):
+            return False, None
+        return True, value
+
+    def Tn_Extrude(self, extrude, velocity, temp, percent=None, tnn=None, error_report=True):
+        return self.extrusion.Tn_Extrude(extrude, velocity, temp, percent, tnn, error_report)
+
+    def cal_flush_list(self, source, result):
+        self.extrusion.cal_flush_list(source, result)
+
+    def get_flush_len(self, source, target):
+        return self.extrusion.get_flush_len(source, target)
+
+    def get_flush_velocity(self, source, target):
+        return self.extrusion.get_flush_velocity(source, target)
+
+    def get_flush_temp(self, source, target):
+        return self.extrusion.get_flush_temp(source, target)
+
+    def quickly_wait_heating(self, temperature):
+        self.extrusion.quickly_wait_heating(temperature)
+
+    def nozzle_clean(self):
+        self.cutter.nozzle_clean()
+
+    def do_after_extrude(self):
+        self.motion.do_after_extrude()
+
+    def check_and_extrude(self, extrude, velocity, wait=True):
+        guard = self.host_guard()
+        if self.box_state.extrude_err:
+            return False
+        for command in ("G91", "G0 E%.2f F%.2f" % (extrude, velocity), "G90"):
+            self.gcode.run_script_from_command(command)
+            guard()
+        if wait:
+            self.gcode.run_script_from_command("M400")
+            guard()
+        return not self.box_state.extrude_err
 
     def register_lifecycle(self, printer, **kwargs):
         """Wire functional Klipper hooks explicitly; bootstrap activation is gated."""
@@ -95,6 +225,62 @@ class Box:
         lifecycle.register()
         self.lifecycle, self._printer = lifecycle, printer
         return lifecycle
+
+    def register_host_commands(self, printer):
+        """Register real host actions before retained macro aliases are loaded."""
+        self.cut_sensor = CutSensor(self.boxcfg.config, self.boxcfg.switch_pin, printer=printer)
+        self.cutter = Cutter(self, self.motion, self.cut_sensor)
+        for name, method in Motion.COMMANDS.items():
+            self.gcode.register_command(name, getattr(self.motion, method))
+        for name, handler in (
+            ("BOX_TN_EXTRUDE", self.extrusion.cmd_Tn_Extrude),
+            ("BOX_GET_FLUSH_LEN", self.extrusion.cmd_get_flush_len),
+            ("BOX_MATERIAL_FLUSH", self.extrusion.cmd_material_flush),
+            ("BOX_GENERATE_FLUSH_ARRAY", self.extrusion.cmd_generate_flush_array),
+            ("BOX_GET_FLUSH_VELOCITY_TEST", self.extrusion.cmd_get_flush_velocity_test),
+            ("BOX_MOVE_TO_CUT", self.cmd_move_to_cut),
+            ("BOX_CUT_STATE", self.cmd_cut_state),
+            ("BOX_CUT_MATERIAL", self.cmd_cut_material),
+            ("BOX_FIND_CUT_POS", self.cmd_find_cut_pos),
+        ):
+            self.gcode.register_command(name, handler)
+        clean = self.cmd_nozzle_clean
+        self.gcode.register_command("BOX_NOZZLE_CLEAN", clean)
+        self.gcode.register_command("TEST_BOX_CLEAN", clean)
+        if self.boxcfg.switch_pin:
+            self.gcode.register_command("BOX_CUT_HALL_ZERO", self.cmd_cut_hall_zero)
+            self.gcode.register_command("BOX_CUT_HALL_TEST", self.cmd_cut_hall_test)
+
+    def cmd_cut_state(self, gcmd):
+        self.cut_sensor.state()
+
+    def cmd_move_to_cut(self, gcmd):
+        self.cutter.move_to_cut()
+
+    def cmd_nozzle_clean(self, gcmd):
+        self.nozzle_clean()
+
+    def cmd_find_cut_pos(self, gcmd):
+        self.cutter.find_cut_pos()
+
+    def cmd_cut_hall_zero(self, gcmd):
+        self.cutter.hall_zero()
+
+    def cmd_cut_hall_test(self, gcmd):
+        self.cutter.hall_test()
+
+    def cmd_cut_material(self, gcmd):
+        guard = self.host_guard()
+        if self.if_in_resume():
+            logging.warning("In resume, can not cut material now")
+            return
+        guard()
+        result = self.cutter.cut_material()
+        guard()
+        if not result:
+            self.lifecycle.record_error("macro_cut_err", {})
+            guard()
+            self.error_next_macro.append(gcmd.get_commandline())
 
     def set_head_runout_enabled(self, enabled):
         name = self.boxcfg.filament_sensor
