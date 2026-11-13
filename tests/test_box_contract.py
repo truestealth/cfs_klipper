@@ -19,8 +19,8 @@ class BootstrapTests(unittest.TestCase):
             (extras / "__init__.py").write_text("", encoding="utf-8")
             shutil.copy2(ROOT / "klipper/box.py", extras / "box.py")
             shutil.copytree(
-                ROOT / "src/cfs_box",
-                extras / "cfs_box",
+                ROOT / "src/cfs",
+                extras / "cfs",
                 ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
             )
             result = subprocess.run(

@@ -12,10 +12,10 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from cfs_box.firmware import DeviceVersions
-from cfs_box.native import Request, build_request, crc8, validate_reply
-from cfs_box.protocol import DecodeContext, Effect, STATUS_NAMES, decode_reply
-from cfs_box.state import BoxState
+from cfs.firmware import DeviceVersions
+from cfs.native import Request, build_request, crc8, validate_reply
+from cfs.protocol import DecodeContext, Effect, STATUS_NAMES, decode_reply
+from cfs.state import BoxState
 
 
 def reply(request, status=0, data=b""):

@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from cfs_box.state import BOX_FIELDS, BoxState
-from cfs_box.storage import CACHE_FIELDS, SpoolStore
+from cfs.state import BOX_FIELDS, BoxState
+from cfs.storage import CACHE_FIELDS, SpoolStore
 
 
 class StateTests(unittest.TestCase):

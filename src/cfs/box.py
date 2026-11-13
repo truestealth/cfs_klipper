@@ -9,7 +9,10 @@ import logging
 
 from .configuration import BoxConfiguration, _field_name
 from .firmware import DeviceVersions
+from .errors import format_error
+from .lifecycle import Lifecycle
 from .native import NativeSerial, Request, UnsupportedRequest, build_request, diagnostic_request, slot_mask
+from .operations import OperationContext
 from .protocol import DecodeContext, decode_reply
 from .state import BoxState
 from .storage import SpoolStore
@@ -57,7 +60,8 @@ class Box:
         self.box_save = self
         self.last_cmd = None
         self.last_err = None
-        self.move_z = 0.0
+        self.move_z = None
+        self.max_velocity = self.max_accel = None
         self.preloading_en = None
         self.preloading_poweron = None
         self.inside_error = False
@@ -77,6 +81,39 @@ class Box:
         self.inside_extrusion_all_materials = False
         self.print_state = ""
         self.filament_error_message = None
+        self.last_cmd_tmp = None
+        self.lifecycle = None
+        self._printer = None
+        self.slot_events = {}
+        self.operations = OperationContext(self)
+
+    def register_lifecycle(self, printer, **kwargs):
+        """Wire functional Klipper hooks explicitly; bootstrap activation is gated."""
+        if self.lifecycle is not None:
+            raise RuntimeError("the CFS lifecycle is already registered")
+        lifecycle = Lifecycle(self, printer, **kwargs)
+        lifecycle.register()
+        self.lifecycle, self._printer = lifecycle, printer
+        return lifecycle
+
+    def set_head_runout_enabled(self, enabled):
+        name = self.boxcfg.filament_sensor
+        if name is not None:
+            self.gcode.run_script_from_command(
+                "SET_FILAMENT_SENSOR SENSOR=%s ENABLE=%d" % (name, enabled))
+
+    def record_tn_move_z(self, move_z):
+        """Forward the retained print metadata hook; this does not move Z."""
+        if self._printer is None:
+            raise RuntimeError("CFS printer dependencies are not bound")
+        virtual_sd = self._printer.lookup_object("virtual_sdcard")
+        gcode_move = self._printer.lookup_object("gcode_move")
+        try:
+            gcode_move.recordPrintFileName(
+                virtual_sd.print_file_name_path, virtual_sd.current_file.name,
+                tn_move_z=move_z)
+        except Exception:
+            logging.exception("Could not record CFS Z metadata")
 
     def bind_native(self, printer, families=None, effect_handlers=None):
         """Borrow the configured object explicitly, without connecting it.
@@ -94,12 +131,17 @@ class Box:
         if set(handlers) & set(self._data_effect_handlers(None)):
             raise ValueError("protocol data handlers cannot be overridden")
         versions = DeviceVersions(families)
+        if self.lifecycle is not None and self.lifecycle.running:
+            self.lifecycle.shutdown()
+        self.operations.cancel()
         self._binding_generation += 1
+        self._printer = printer
         self.native, self._reactor = adapter, reactor
         self.device_versions = versions
         self._effect_handlers = handlers
         self.last_replies.clear()
         self.state_extensions.clear()
+        self.slot_events.clear()
         for address in range(1, 5):
             self.box_state.modify_Tn_data(address, "-1", "version")
             self.box_state.modify_Tn_data(address, "-1", "sn")
@@ -107,6 +149,7 @@ class Box:
     def unbind_native(self):
         """Invalidate own pending work without closing the borrowed transport."""
         self._binding_generation += 1
+        self.operations.cancel()
         for address in range(1, 5):
             self.invalidate_device(address)
         self.native = None
@@ -114,10 +157,14 @@ class Box:
         self._effect_handlers.clear()
         self.last_replies.clear()
         self.state_extensions.clear()
+        self.slot_events.clear()
 
     def invalidate_device(self, address, raw_reply=None):
         self.device_versions.invalidate(address, raw_reply=raw_reply)
+        if self.operations.active and self.operations.address == address:
+            self.operations.cancel()
         self.state_extensions.pop(address, None)
+        self.slot_events.pop(address, None)
         self.box_state.modify_Tn_data(address, "-1", "version")
         self.box_state.modify_Tn_data(address, "-1", "sn")
 
@@ -130,6 +177,9 @@ class Box:
             raise
         if self.device_versions.generation(address) != previous:
             self.state_extensions.pop(address, None)
+            self.slot_events.pop(address, None)
+            if self.operations.active and self.operations.address == address:
+                self.operations.cancel()
         self.box_state.modify_Tn_data(address, identity.version, "version")
         self.box_state.modify_Tn_data(address, identity.sn, "sn")
 
@@ -143,7 +193,10 @@ class Box:
                 return
             self.box_state.update_same_material_list(self.store.get_material_name)
 
-        self._reactor.register_callback(update)
+        if self.lifecycle is not None and self.lifecycle.running:
+            self.lifecycle.schedule(update)
+        else:
+            self._reactor.register_callback(update)
 
     def _data_effect_handlers(self, request):
         return {
@@ -180,6 +233,8 @@ class Box:
         generation = self.device_versions.generation(address)
 
         def check_context():
+            if self.lifecycle is not None and self.lifecycle.running:
+                self.lifecycle.guard_device(address)
             if (binding != self._binding_generation
                     or generation != self.device_versions.generation(address)):
                 raise StaleReplyError("CFS context changed while awaiting a native reply")
@@ -201,6 +256,12 @@ class Box:
             self.invalidate_device(address, raw_reply=frame.raw if frame else None)
             generation = self.device_versions.generation(address)
         if context is None:
+            if self.lifecycle is not None and self.lifecycle.running:
+                self.print_state = self.print_stats.state
+                if frame is not None and frame.status == 0x50 and self.last_cmd:
+                    self.filament_error_message = format_error("key_filament_err", {
+                        "request_address": address, "slot": self.last_cmd[2],
+                    })
             context = DecodeContext(
                 last_cmd=self.last_cmd, error=self.error, last_err=self.last_err,
                 print_state=self.print_state,
@@ -222,11 +283,19 @@ class Box:
             raise MissingProtocolEffect("unbound protocol effects: " + ", ".join(sorted(missing)))
         for effect in result.effects:
             check_context()
-            handlers[effect.name](*effect.args)
+            effect_result = handlers[effect.name](*effect.args)
             if effect.name == "identity" and binding == self._binding_generation:
                 # Accepting this request's own new identity legitimately
                 # advances its generation; external changes never do.
                 generation = self.device_versions.generation(address)
+            elif (effect.name == "timeout_process" and self.lifecycle is not None
+                  and handlers[effect.name] == self.lifecycle.timeout_process
+                  and binding == self._binding_generation
+                  and type(effect_result) is int and effect_result == generation + 1
+                  and effect_result == self.device_versions.generation(address)):
+                # This handler's own guarded disconnect is a normal False
+                # outcome; a different binding/device change is still stale.
+                generation = effect_result
             check_context()
         return result.value
 
@@ -255,7 +324,7 @@ class Box:
             request = build_request(address, command, data, timeout=timeout, encoding=self.boxcfg.version)
             return self.send_native(request)
         except (OSError, ValueError, RuntimeError) as error:
-            raise gcmd.error("cfs_box: %s" % error) from error
+            raise gcmd.error("cfs: %s" % error) from error
 
     def cmd_send_data(self, gcmd):
         address = gcmd.get_int("ADDR", None, minval=1, maxval=4)
@@ -273,7 +342,7 @@ class Box:
             data = bytes(int(character) for character in raw)
             self.send_native(diagnostic_request(address, state, command, data, timeout))
         except (OSError, ValueError, RuntimeError) as error:
-            raise gcmd.error("cfs_box: %s" % error) from error
+            raise gcmd.error("cfs: %s" % error) from error
 
     def cmd_communication_test(self, gcmd):
         count = gcmd.get_int("COUNT", 10, minval=0, maxval=1000000)
@@ -358,6 +427,18 @@ class Box:
     def cmd_get_version_sn(self, gcmd):
         self._native_command(gcmd, "GET_VERSION_SN")
 
+    def cmd_create_connect(self, gcmd):
+        address = gcmd.get_int("ADDR", minval=1, maxval=4)
+        if self.lifecycle is None or not self.lifecycle.running:
+            raise gcmd.error("cfs: the Klipper lifecycle is not ready")
+        if self.print_stats.state != "printing":
+            self._native_command(gcmd, "CREATE_CONNECT", address=address)
+
+    def cmd_do_after_pause(self, gcmd):
+        if self.lifecycle is None or not self.lifecycle.running:
+            raise gcmd.error("cfs: the Klipper lifecycle is not ready")
+        self.lifecycle.do_after_pause()
+
     def cmd_get_five_way_state(self, gcmd):
         for address in range(1, 5):
             name = "T%d" % address
@@ -411,7 +492,7 @@ class Box:
         try:
             return function(*args, **kwargs)
         except (OSError, ValueError) as error:
-            raise gcmd.error("cfs_box: %s" % error) from error
+            raise gcmd.error("cfs: %s" % error) from error
 
     def cmd_modify_Tnn_map(self, gcmd):
         self._data_command(
@@ -452,11 +533,9 @@ class Box:
         enabled = gcmd.get_int("ENABLE", minval=0, maxval=1)
         self.box_state.modify_Tn_data(0, enabled, uppart="enable")
         # CFS uses its custom head event while ordinary runout is disabled.
-        self.gcode.run_script_from_command(
-            "SET_FILAMENT_SENSOR SENSOR=filament_sensor_2 ENABLE=%d" % (1 - enabled)
-        )
+        self.set_head_runout_enabled(1 - enabled)
         if not self._data_command(gcmd, self.store.update, "enable", enable=enabled):
-            raise gcmd.error("cfs_box: could not save CFS-print enable")
+            raise gcmd.error("cfs: could not save CFS-print enable")
 
     def cmd_update_same_material_list(self, gcmd):
         self.box_state.update_same_material_list(
@@ -498,5 +577,5 @@ class Box:
 def load_config(config):
     """Reject activation before looking up or changing any printer objects."""
     raise config.error(
-        "cfs_box: development scaffold; printer operation is not implemented."
+        "cfs: development scaffold; printer operation is not implemented."
     )

@@ -3,8 +3,9 @@
 English | [Русский](architecture.ru.md)
 
 **Status:** state, configuration, storage, native-call integration, reply decoding
-and per-device versions are implemented with PC tests. The bootstrap still refuses
-activation; lifecycle integration and mechanical operations remain pending.
+and per-device versions are implemented with PC tests. Lifecycle, cooperative
+operation context and common errors are also PC-tested. The bootstrap still
+refuses activation; full mechanical and recovery procedures remain pending.
 
 ## Scope
 
@@ -19,28 +20,34 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | Path | Responsibility | Current state |
 | --- | --- | --- |
 | `klipper/box.py` | Thin Klipper entry point | Imports the bootstrap; refuses activation |
-| `src/cfs_box/box.py` | Shared data, endpoint, status, nine data and twelve native-command handlers | PC-tested with substitutes; bootstrap refuses activation |
-| `src/cfs_box/state.py` | Shared live state, snapshots, tool maps and grouping | Implemented; decoded observations share this state |
-| `src/cfs_box/configuration.py` | Loader, UI values and MODIFY/SAVE | Implemented with explicit preservation rules |
-| `src/cfs_box/storage.py` | Spool cache, recovery hints and read-only material database | Implemented; recovery lifecycle remains pending |
-| `src/cfs_box/native.py` | Request bodies, reply validation and borrowed native API | Exact bodies, timeouts, sender retries and admission filters PC-tested |
-| `src/cfs_box/protocol.py` | Command/status decoding and ordered effects | PC-tested; operation/error/event handlers required at integration |
-| `src/cfs_box/firmware.py` | Per-address identity, explicit family and exact version profiles | Mixed versions and identity invalidation PC-tested |
+| `src/cfs/box.py` | Shared data, endpoint, status, metadata hook and 23 functional handlers | PC-tested with substitutes; bootstrap refuses activation |
+| `src/cfs/state.py` | Shared live state, snapshots, tool maps and grouping | Implemented; decoded observations share this state |
+| `src/cfs/configuration.py` | Loader, UI values and MODIFY/SAVE | Implemented with explicit preservation rules |
+| `src/cfs/storage.py` | Spool cache, recovery hints and read-only material database | Implemented; recovery lifecycle remains pending |
+| `src/cfs/native.py` | Request bodies, reply validation and borrowed native API | Exact bodies, timeouts, sender retries and admission filters PC-tested |
+| `src/cfs/protocol.py` | Command/status decoding and ordered effects | Common errors are bound; slot/refill/drain executors remain pending |
+| `src/cfs/firmware.py` | Per-address identity, explicit family and exact version profiles | Mixed versions and identity invalidation PC-tested |
+| `src/cfs/lifecycle.py` | Ready/shutdown, configured dependencies, reconnect, heartbeat and pause wait | Own work is removed or invalidated; borrowed transport stays with stock serial |
+| `src/cfs/operations.py` | Source/target ownership, cooperative waits and head-result latch | Required phase callbacks, targeted heartbeat suspension and cancellation PC-tested |
+| `src/cfs/errors.py` | Client reports, pause/restore ordering and saved error context | Duplicate/special-key behavior and caught-error exits PC-tested |
 | `tests/test_box_contract.py` | Klipper layout and external contract checks | Bootstrap/layout check only |
 | `tests/test_contract_matrix.py` | Inventory completeness and verification bindings | Validates real test references and remaining work |
 | `tests/test_state.py`, `test_configuration.py`, `test_storage.py`, `test_box_data.py` | Component and data-command scenarios | Synthetic values, temporary files, bounded Klipper substitutes |
 | `tests/test_native.py`, `test_protocol.py`, `test_firmware.py`, `test_box_native.py` | Native boundary, decoding, identity and integration scenarios | Synthetic frames, borrowed API and reactor substitutes |
+| `tests/test_lifecycle.py`, `test_operations.py`, `test_errors.py` | Lifecycle, operation ownership and reporting | Controlled cooperative reactor, native replies, waits and callbacks |
 | `docs/contract-matrix.json` | Full implementation checklist and acceptance cases | Per-requirement and check-family implementation status |
 | `docs/` | Architecture, protocol and compatibility, in English and Russian | Draft specifications |
 
-Add operation modules when verified behavior needs a separate module, together
-with the tests and synthetic fixtures that exercise it. The diagram describes
-responsibilities; operation coordination remains pending.
+Add modules when implemented behavior needs them, together with its tests.
+The diagram describes responsibilities; full mechanical procedures remain pending.
 
 ```mermaid
 flowchart LR
     Entry[Klipper entry] --> Box[Box integration]
-    Box --> Operations[Box operations]
+    Box --> Operations[Operation context]
+    Box --> Lifecycle[Klipper lifecycle]
+    Lifecycle --> Native
+    Lifecycle --> Errors[Shared error handling]
     Box --> State[Observations and status]
     Box --> Native[Native serial calls]
     Box --> Versions[Per-device versions]
@@ -69,6 +76,14 @@ API calls and between effects. This cannot cancel retries already running inside
 the stock module. Error, event and operation effects require real handlers;
 missing handlers raise an error. See the [integration boundaries](protocol.md#native-integration).
 
+Lifecycle registration precedes connect-time macro aliases. Ready resolves
+configured dependencies, emits `box:ready`, then schedules an owned heartbeat.
+Shutdown removes its timers and pending data callbacks and cancels operation
+ownership. Stable printer event subscriptions remain gated while stopped.
+Per-address identity and external family context must be current before startup;
+later family/version confirmation forces initialization again. Read the
+[lifecycle policies and remaining phase bindings](protocol.md#lifecycle-integration).
+
 Operations coordinate host actions with separately observed CFS, buffer and
 toolhead state. An ACK, last T-command or cached material record cannot establish
 physical load completion. Unknown observations remain unknown.
@@ -85,13 +100,13 @@ values and transitions come from the target stock implementation.
 ## Klipper layout and Python
 
 The planned installed layout is `klippy/extras/box.py` plus
-`klippy/extras/cfs_box/`. A PC test checks this import arrangement and the explicit
+`klippy/extras/cfs/`. A PC test checks this import arrangement and the explicit
 refusal to activate the scaffold. No installer is provided yet.
 
-Source targets Python 3.8 or newer, matching the preserved
+The project defaults to Python 3.8 via [.python-version](../.python-version), matching the preserved
 native module's CPython 3.8 ABI baseline. Tests on newer PC Python versions do not
 establish native ABI or printer compatibility. Tests run directly from the
-checkout using standard-library `unittest`. CI runs them on Python 3.8 and 3.11
+checkout using standard-library `unittest`. CI reads the same version file and runs Python 3.8
 without installation or package builds. The extension is loaded by Klipper;
 its source and entry point will be deployed directly by a separately verified
 reversible installation procedure.

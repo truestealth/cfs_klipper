@@ -10,8 +10,8 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from cfs_box.box import Box, MissingProtocolEffect, StaleReplyError
-from cfs_box.native import build_request
+from cfs.box import Box, MissingProtocolEffect, StaleReplyError
+from cfs.native import build_request
 from test_box_data import Command, CommandError, Gcode, Webhooks
 from test_configuration import FakeConfig
 from test_native import reply

@@ -2,8 +2,9 @@
 
 English | [Русский](protocol.ru.md)
 
-**Status:** stage 3 implements borrowed-native calls, reply decoding and
-per-device version selection, tested with PC substitutes. The bootstrap still
+**Status:** borrowed-native calls, reply decoding, per-device version selection,
+and stage 4 lifecycle, error and operation-context components are tested with PC
+substitutes. The package is `cfs`; the Klipper object remains `box`. The bootstrap still
 refuses activation. These checks did not execute the retained `.so` or contact
 the printer; a complete K1C replacement cycle remains unverified.
 
@@ -62,9 +63,9 @@ context stops subsequent host processing; deferred callbacks also reject old
 context after detachment. These guards do not interrupt an API call already in
 progress or cancel its internal native retries.
 
-Error reporting, pause/recovery, slot-event operations and other operation hooks
-still need real lifecycle handlers. Their absence raises `MissingProtocolEffect`
-before effect execution; no silent empty handler establishes success. The sender
+The lifecycle supplies shared reporting, saved-error and timeout handlers, and
+retains slot events as diagnostics. Other required operation hooks remain unbound;
+their absence raises `MissingProtocolEffect` before effect execution. The sender
 retains contextual `True`/`False`/`None` outcomes. ACK, telemetry and cached labels
 do not establish completed loading or switching.
 
@@ -79,6 +80,58 @@ The [native](../tests/test_native.py), [decoder](../tests/test_protocol.py),
 [firmware](../tests/test_firmware.py) and [integration](../tests/test_box_native.py)
 tests use synthetic frames and substitutes. Real native admission, transmission
 counts, scheduling and mechanical completion remain hardware acceptance work.
+
+<a id="lifecycle-integration"></a>
+
+## Lifecycle, errors and operation context
+
+Explicit registration provides 23 functional handlers. On `klippy:ready`, the
+lifecycle resolves its dependencies, borrows serial, emits `box:ready` and then
+starts its own heartbeat timer. Presence uses the address manager's `online == 1`
+and the serial port's existence, independently of the native connection flag.
+On connection it deliberately reads identity before `0x0A`, so the latter uses
+the correct profile. Reconnection requires a fresh identity; a different serial
+number clears family confirmation. Initial saved slot metadata enters live state
+only after a fresh successful MATERIAL sensor response.
+Confirming a previously unknown family or changing a known version forces a
+fresh startup attempt before ordinary heartbeat polling resumes.
+
+Reported modes `0`–`5` mean IDLE, PRELOADING, PRINTING, WRAPPERING, ERROR and
+TEST respectively. They are not the action encoding sent by `SET_BOX_MODE`.
+The heartbeat polls one eligible address per pass; `None` reduces its counter
+from five, while `False` and event responses reset it. Startup waits at most ten
+half-second intervals for a `None` power-on preload setting; `False` ends the
+wait. A terminal heartbeat exception stops that timer without automatic restart.
+Shutdown removes extension-owned work and unbinds the borrowed object; it does
+not close the native transport. Binding, device and operation generations stop
+stale follow-up work after rebind or shutdown, including after G-code and waits.
+
+The configured head sensor is used consistently by aggregate state, CFS enable
+and filament-error handling. With no configured sensor, presence uses the
+stock `True` fallback and these paths emit no sensor G-code. Timeout reporting
+is suppressed if the saved address state is not `connect` and the native link
+is connected. Otherwise it reports; only a previously connected address is
+set to `disconnect`.
+
+Error messages preserve the client schema, duplicate suppression and special
+keys that report without pausing. Ordinary reporting exceptions are logged and
+the flag is cleared. `inside_error` is an observable processing flag, not a
+re-entry rejection. Printing errors can pause and restore saved state; checks
+after cooperative actions stop stale continuation. The operation context owns
+the target and temporarily disables heartbeat only for that address while the
+head phase is armed. It records the stage-6 result and status even when the
+result is `False`; neither the flag nor an ACK proves physical completion.
+Missing or raising phase actions cancel ownership and restore the previous
+heartbeat permission. The complete loading consumer is still pending. The
+retained sensor producer after disabled/debounced RunoutHelper is confirmed
+statically; these component tests inject its custom event directly.
+
+`slot_events` holds per-address diagnostics, not slot/refill processing.
+Power-on refresh, head motion and stage 6 require real supplied callbacks and
+fail explicitly when needed but absent. Later mechanical procedures are not
+exposed as completed operations. See [compatibility](compatibility.md) and the
+[lifecycle](../tests/test_lifecycle.py), [error](../tests/test_errors.py) and
+[operation](../tests/test_operations.py) component tests.
 
 <a id="firmware-versions"></a>
 

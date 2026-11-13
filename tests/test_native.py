@@ -9,7 +9,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from cfs_box.native import (
+from cfs.native import (
     COMMANDS, RESERVED_COMMANDS, FrameError, NativeSerial, UnsupportedRequest,
     build_request, crc8, diagnostic_request, slot_mask, validate_reply,
 )

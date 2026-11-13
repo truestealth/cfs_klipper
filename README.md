@@ -1,4 +1,4 @@
-# cfs_box
+# Creality Filament System (CFS) Box for Klipper — Open Source Edition
 
 English | [Русский](README.ru.md)
 
@@ -15,24 +15,27 @@ The baseline is CFS MCU firmware **1.1.3** on the reference K1C. The
 examined differences through 1.5.3 and their compatibility implications.
 
 **Status:** state, configuration, compatible storage, native-call integration,
-reply decoding and per-device version handling are implemented and PC-tested.
+reply decoding, per-device versions, lifecycle, operation context and common
+error handling are implemented and PC-tested.
 Mechanical CFS operations are pending. The entry point refuses activation before
 accessing printer objects. No installer or printer-ready release is provided.
 
 ## Project layout
 
 ```text
-src/cfs_box/     Extension implementation
+src/cfs/        Extension implementation
 klipper/box.py  Thin Klipper entry point
 tests/          PC tests
 docs/           Architecture, protocol and compatibility
 ```
 
 Stage 1 produced the full contract matrix. Stage 2 added state, configuration,
-storage and nine data-command handlers. Stage 3 adds calls through the retained
+storage and nine data-command handlers. Stage 3 added calls through the retained
 native API, validated replies, exact firmware profiles and twelve native-command
-handlers, tested through Klipper substitutes. Lifecycle and operation handling
-follow in later stages.
+handlers. Stage 4 adds explicit ready/shutdown wiring, reconnect, heartbeat,
+guarded operation waits and shared error reporting. There are 23 functional
+handlers tested through Klipper substitutes. Full mechanical and recovery
+procedures follow in later stages.
 
 - [Architecture](docs/architecture.md): responsibilities and Klipper layout.
 - [Protocol](docs/protocol.md): framing, native API boundary and open questions.
@@ -43,32 +46,42 @@ follow in later stages.
 ## Quick start
 
 Tests run directly from the checkout using standard-library `unittest`, without
-installing the extension or additional Python dependencies. Source targets Python
-3.8 or newer. Native MIPS/printer compatibility remains unverified.
+installing the extension or additional Python dependencies. **Python 3.8 is the
+project default**, recorded in [.python-version](.python-version). Create a local
+environment with CPython 3.8 before running the tests. Native MIPS/printer
+compatibility remains unverified.
 
 Windows / PowerShell:
 
 ```powershell
-python -m unittest discover -s tests -v
+py -3.8 -m venv .venv
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 Linux / macOS:
 
 ```sh
-python3 -m unittest discover -s tests -v
+python3.8 -m venv .venv
+.venv/bin/python -m unittest discover -s tests -v
 ```
+
+An existing Python 3.8 `.venv` can be reused. With `uv` installed, the environment
+creation command can instead be `uv venv --python 3.8 .venv`.
 
 Tests cover state snapshots and remapping, all 53 settings and 21 endpoint
 fields, data commands, temporary-file persistence, native requests and replies,
 mixed device versions and stale work, as well as bootstrap and matrix integrity.
+Lifecycle cases cover targeted heartbeat, shutdown/restart, pause/reporting and
+head-event re-entry while a native request is waiting.
 They do not execute the stock native binary or operate hardware. See the
 [coverage and deliberate storage differences](docs/compatibility.md#state-configuration-and-storage)
-and [native integration limits](docs/protocol.md#native-integration).
+and [lifecycle integration limits](docs/protocol.md#lifecycle-integration).
 
 ## Development
 
 The [CI workflow](.github/workflows/ci.yml) is configured to run the same tests
-on Python 3.8 and 3.11. Installation and distribution builds are not part of CI.
+on Python 3.8, using the same version file. Installation and distribution builds
+are not part of CI.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 For bug reports, include the commit, environment, relevant host/MCU versions and

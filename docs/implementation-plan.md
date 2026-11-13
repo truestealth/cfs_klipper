@@ -3,9 +3,11 @@
 English | [Русский](implementation-plan.ru.md)
 
 **Status:** stage 1 is complete. Stage 2 state/configuration/storage and stage 3
-native/decoder/version components are implemented and PC-tested. Shared contracts
-involving lifecycle, operations and recovery retain partial status in the matrix.
-Stages 4–10 remain pending. The bootstrap refuses activation; no installer,
+native/decoder/version components are implemented and PC-tested.
+Stage 4 adds lifecycle, operation-context and common-error components. Shared
+contracts involving full mechanical operations, sensor producers and recovery
+retain partial status in the matrix. Stages 5–10 remain pending. The bootstrap
+refuses activation; no installer,
 mechanical operations or printer changes have been introduced.
 
 ## Target and design
@@ -84,7 +86,7 @@ power-loss data cleanup without losing the material cache.
 **PC result:** exact request bodies, validated command/status replies, borrowed
 native API calls and per-address identities/profiles are implemented. Twelve
 native-command handlers join the nine data handlers in substitute-based tests.
-The current suite has 103 test methods. Real native ABI/wire behavior and
+The stage-3 suite had 103 test methods. Real native ABI/wire behavior and
 operation/error/event integration remain unverified; the bootstrap refuses
 activation. See the [native integration boundaries](protocol.md#native-integration)
 and runnable references in the [matrix](contract-matrix.md).
@@ -112,6 +114,15 @@ replies, mixed firmware versions and invalid/changed identities. These checks
 establish native API use; actual wire transmissions require target validation.
 
 ### 4. Implement Klipper lifecycle and the foundation for operations
+
+**PC result:** explicit ready/shutdown, configured dependencies, per-address
+reconnect/identity, round-robin heartbeat, owned scheduling, cooperative operation
+context and shared client reporting are implemented. There are 23 functional
+handlers. Targeted heartbeat ownership and failed stage6 results during a stage4
+native wait are tested. Full loading consumers, retained sensor-producer execution,
+power-on RUN/refresh and reason-specific recovery remain partial; unavailable
+phase callbacks fail explicitly. See [lifecycle integration](protocol.md#lifecycle-integration)
+and the [matrix](contract-matrix.md). The bootstrap still refuses activation.
 
 Implement command/event registration as the handlers become functional, dependency
 lookup, ready/shutdown behavior, connect/reconnect and per-address heartbeat.
@@ -190,7 +201,8 @@ Clearing host error state does not assert that the physical route has rolled bac
 Check the complete command/API matrix, registration order, optional configurations,
 settings and persisted formats against consumer scenarios. Exercise combined
 native, reactor, macro and file behavior using small substitutes and synthetic
-data. Keep the existing Python 3.8/3.11 CI checks focused on implemented behavior.
+data. Keep the Python 3.8 CI checks focused on implemented behavior, using the
+project's default version file.
 
 Prepare and test the direct Klipper file layout, backup/rollback procedure and
 installation documentation against temporary directories. Limit replacement to

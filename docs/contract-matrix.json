@@ -78,14 +78,14 @@
     "runtime_implementation": "partial",
     "hardware_acceptance": "pending",
     "implementations": {
-      "pending": 212,
-      "partial": 58,
-      "implemented": 151
+      "pending": 167,
+      "partial": 55,
+      "implemented": 199
     },
     "check_statuses": {
-      "partial": 17,
-      "planned": 63,
-      "implemented": 16
+      "partial": 24,
+      "planned": 54,
+      "implemented": 18
     }
   },
   "catalogue_validation": {
@@ -266,7 +266,7 @@
         "HW-CMD-NATIVE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -1466,7 +1466,7 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4314,7 +4314,7 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4329,8 +4329,9 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "All recovered saved reasons and truthy overwrite/context rules are implemented; reason-specific clear/retry remains stage 8."
     },
     {
       "id": "STATE-LAST-ERROR",
@@ -4344,7 +4345,7 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4359,7 +4360,7 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4374,7 +4375,7 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4389,7 +4390,7 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4404,7 +4405,7 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4550,13 +4551,13 @@
       "name": "inside_error",
       "parameters": "in-progress error guard",
       "when": "always",
-      "contract": "Preserve re-entry protection and specified reporting/exception semantics.",
+      "contract": "Expose reporting-in-progress state and preserve duplicate-report/caught-exception behavior. The original flag is set/cleared; its prior value is not a re-entry rejection gate.",
       "stage": 4,
       "checks": [
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4601,8 +4602,9 @@
         "PC-STATE-CALLBACK-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Permission, target ownership and cancellation are implemented. Wiring all loading/recovery consumers remains stages 6-8."
     },
     {
       "id": "STATE-HEARTBEAT-ENABLE",
@@ -4616,7 +4618,7 @@
         "PC-STATE-CALLBACK-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4631,7 +4633,7 @@
         "PC-STATE-CALLBACK-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4646,8 +4648,9 @@
         "PC-STATE-CALLBACK-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The owned latch and immutable saved return/status snapshot are PC-tested, including failed stage6 during a stage4 native wait. Full loading-phase consumption before success remains stage 6."
     },
     {
       "id": "STATE-STAGE7-RESULT",
@@ -4661,8 +4664,9 @@
         "PC-STATE-CALLBACK-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "The owned latch and immutable saved return/status snapshot are PC-tested, including failed stage6 during a stage4 native wait. Full loading-phase consumption before success remains stage 6."
     },
     {
       "id": "STATE-REPORTED-MODES",
@@ -4950,8 +4954,9 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Functional base commands are registered before connect and alias replacement is PC-tested. Remaining command names, mechanical aliases and full macro chain await later stages."
     },
     {
       "id": "DEPENDENCY-REACTOR",
@@ -4966,7 +4971,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4982,8 +4987,9 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Ready lookup and shared metadata/reporting context are implemented. Mechanical state save/restore and full resume/recovery remain stages 5-8."
     },
     {
       "id": "DEPENDENCY-GCODE-MOVE",
@@ -4998,8 +5004,9 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Ready lookup and shared metadata/reporting context are implemented. Mechanical state save/restore and full resume/recovery remain stages 5-8."
     },
     {
       "id": "DEPENDENCY-PRINT-STATS",
@@ -5014,7 +5021,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -5030,8 +5037,9 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Ready lookup and shared metadata/reporting context are implemented. Mechanical state save/restore and full resume/recovery remain stages 5-8."
     },
     {
       "id": "DEPENDENCY-WEBHOOKS",
@@ -5046,7 +5054,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -5062,7 +5070,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -5078,7 +5086,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-SERIAL-NAME"
       ]
@@ -5096,7 +5104,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-SERIAL-NAME"
       ]
@@ -5114,7 +5122,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-HEAD-SENSOR-NAME"
       ]
@@ -5132,7 +5140,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-HEAD-SENSOR-NAME"
       ]
@@ -5214,8 +5222,9 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Functional base commands are registered before connect and alias replacement is PC-tested. Remaining command names, mechanical aliases and full macro chain await later stages."
     },
     {
       "id": "DEPENDENCY-RESUME-TARGET",
@@ -5263,7 +5272,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -5279,7 +5288,7 @@
         "HW-DEPENDENCIES"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -5296,8 +5305,9 @@
         "PC-STATE-CALLBACK-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Target ownership, wire-stage4/6 re-entry and saved failure results are PC-tested. Actual head motion and phase executors remain required later-stage bindings."
     },
     {
       "id": "WIRE-CREATE_CONNECT",
@@ -5686,10 +5696,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 0,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-PARAMS_ERR",
@@ -5705,10 +5715,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 1,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-CRC_ERR",
@@ -5727,7 +5737,7 @@
       "implementation": "implemented",
       "blockers": [],
       "code": 2,
-      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-STATE_ERR",
@@ -5743,10 +5753,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 3,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-LENGTH_ERR",
@@ -5765,7 +5775,7 @@
       "implementation": "implemented",
       "blockers": [],
       "code": 4,
-      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR1",
@@ -5781,10 +5791,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 5,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR4",
@@ -5800,10 +5810,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 8,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR5",
@@ -5819,10 +5829,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 9,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR6",
@@ -5841,7 +5851,7 @@
       "implementation": "implemented",
       "blockers": [],
       "code": 10,
-      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR7",
@@ -5857,10 +5867,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 11,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR8",
@@ -5879,7 +5889,7 @@
       "implementation": "implemented",
       "blockers": [],
       "code": 12,
-      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR9",
@@ -5898,7 +5908,7 @@
       "implementation": "implemented",
       "blockers": [],
       "code": 14,
-      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR10",
@@ -5917,7 +5927,7 @@
       "implementation": "implemented",
       "blockers": [],
       "code": 13,
-      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR1",
@@ -5936,7 +5946,7 @@
       "implementation": "implemented",
       "blockers": [],
       "code": 19,
-      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR2",
@@ -5952,10 +5962,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 20,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR3",
@@ -5971,10 +5981,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 21,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR4",
@@ -5990,10 +6000,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 22,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR5",
@@ -6009,10 +6019,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 23,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR6",
@@ -6028,10 +6038,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 25,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR7",
@@ -6047,10 +6057,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 26,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-MOTOR_LOAD_ERR",
@@ -6066,10 +6076,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 34,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-UPDATE_STATE",
@@ -6088,7 +6098,7 @@
       "implementation": "partial",
       "blockers": [],
       "code": 48,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Four-byte events are retained as per-address diagnostics without ordinary telemetry refresh. Slot/preload/refill processing remains later-stage work."
     },
     {
       "id": "RESPONSE-FILAMENT_ERR",
@@ -6107,7 +6117,7 @@
       "implementation": "partial",
       "blockers": [],
       "code": 80,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "The contextual status and common formatter/bookkeeping are implemented. Tighten/refill/drain actions require their real later-stage executors; missing executors fail explicitly."
     },
     {
       "id": "RESPONSE-SPEED_ERR",
@@ -6123,10 +6133,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 81,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "RESPONSE-ENWIND_ERR",
@@ -6142,10 +6152,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
       "code": 82,
-      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
+      "implementation_note": "Primitive data/status outcomes and their required common reporting/bookkeeping are PC-tested with real lifecycle handlers. This is not mechanical-completion evidence."
     },
     {
       "id": "NATIVE-REQUEST-API",
@@ -6291,8 +6301,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Identity-first reconnect, mode/permission and heartbeat are implemented. POWER_ON requiring RUN/refresh fails without a real later-stage callback; unknown identities cannot proceed."
     },
     {
       "id": "OP-HEARTBEAT",
@@ -6308,7 +6319,7 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -6376,8 +6387,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Target ownership, wire-stage4/6 re-entry and saved failure results are PC-tested. Actual head motion and phase executors remain required later-stage bindings."
     },
     {
       "id": "OP-LOADING",
@@ -6733,7 +6745,7 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7107,7 +7119,7 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7124,7 +7136,7 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7141,7 +7153,7 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7158,7 +7170,7 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7175,7 +7187,7 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7192,7 +7204,7 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7209,7 +7221,7 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7226,7 +7238,7 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7243,7 +7255,7 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7358,7 +7370,7 @@
       "id": "INSTALL-BOX-SCOPE",
       "kind": "installation",
       "name": "Direct Klipper box installation and rollback",
-      "parameters": "extras/box.py and extras/cfs_box/; no wheel/sdist",
+      "parameters": "extras/box.py and extras/cfs/; no wheel/sdist",
       "when": "always",
       "contract": "Prepare a reversible, narrowly scoped replacement and preserve all other subsystems and user data.",
       "stage": 9,
@@ -7374,7 +7386,7 @@
       "id": "BUILD-PYTHON-TARGET",
       "kind": "build",
       "name": "Checkout-based Python compatibility",
-      "parameters": "Python3.8 target; existing CI3.8/3.11; standard-library unittest",
+      "parameters": "Python3.8 default in .python-version; CI3.8; standard-library unittest",
       "when": "always",
       "contract": "Keep the Klipper extension and its checks runnable without a new application packaging or test framework.",
       "stage": 9,
@@ -7395,11 +7407,13 @@
       "stage": 4,
       "checks": [
         "PC-MACRO-INCLUDE",
-        "PC-MACRO-RENDER"
+        "PC-MACRO-RENDER",
+        "PC-CMD-REGISTRATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Pre-connect functional registration preserves aliases on substitutes. Full active include/override fingerprints and remaining base commands are still required."
     },
     {
       "id": "MACRO-NEXT-FILAMENT",
@@ -7817,9 +7831,10 @@
       "status": "partial",
       "test": [
         "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions",
-        "tests/test_box_native.py::BoxNativeTests.test_binding_uses_configured_bus_without_connecting_or_projecting_presence"
+        "tests/test_box_native.py::BoxNativeTests.test_binding_uses_configured_bus_without_connecting_or_projecting_presence",
+        "tests/test_lifecycle.py::LifecycleTests.test_registration_aliases_ready_order_and_borrowed_transport"
       ],
-      "remaining": "Twenty-one names are registered and checked on substitutes: nine data and twelve native handlers. Remaining registrations, Hall conditions, mechanical aliases and live lifecycle belong to later stages."
+      "remaining": "Twenty-three functional names are registered before connect on substitutes: nine data, thirteen native and DO_AFTER_PAUSE. Full registration, Hall conditions and mechanical aliases remain later stages."
     },
     {
       "id": "PC-CMD-PARAMS",
@@ -7835,9 +7850,10 @@
         "tests/test_configuration.py::ConfigurationTests.test_modify_all_supported_keys_and_raw_falsey_rules",
         "tests/test_box_native.py::BoxNativeTests.test_cli_required_fields_enums_masks_and_cached_five_way_presentation",
         "tests/test_box_native.py::BoxNativeTests.test_raw_diagnostic_keeps_digit_encoding_and_explicit_missing_field_paths",
-        "tests/test_box_native.py::BoxNativeTests.test_communication_test_counts_messages_and_uses_cooperative_intervals"
+        "tests/test_box_native.py::BoxNativeTests.test_communication_test_counts_messages_and_uses_cooperative_intervals",
+        "tests/test_lifecycle.py::LifecycleTests.test_create_connect_command_print_gate_and_parameter_contract"
       ],
-      "remaining": "Stage-2 data and stage-3 native parameters are checked; remaining operation/diagnostic signatures await their stages."
+      "remaining": "Data/native signatures and the stage-4 connect command are checked. Remaining mechanical/recovery/diagnostic signatures await their stages."
     },
     {
       "id": "PC-CMD-RETURNS",
@@ -7854,9 +7870,12 @@
         "tests/test_box_data.py::BoxDataTests.test_config_command_messages_distinguish_empty_edits_and_failures",
         "tests/test_box_native.py::BoxNativeTests.test_registered_native_handlers_match_their_body_and_reply_contracts",
         "tests/test_box_native.py::BoxNativeTests.test_error_effects_require_handlers_and_preserve_snapshot_and_order",
-        "tests/test_box_native.py::BoxNativeTests.test_timeouts_events_and_communication_bytes_have_separate_outcomes"
+        "tests/test_box_native.py::BoxNativeTests.test_timeouts_events_and_communication_bytes_have_separate_outcomes",
+        "tests/test_lifecycle.py::LifecycleTests.test_create_connect_command_print_gate_and_parameter_contract",
+        "tests/test_lifecycle.py::LifecycleTests.test_missing_buffer_reply_returns_false_after_own_disconnect",
+        "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook"
       ],
-      "remaining": "Data and native sender/handler outcomes are covered on substitutes. Full mechanical phase outcomes and deferred operation execution remain pending."
+      "remaining": "Data/native/lifecycle outcomes and common errors are covered. Full mechanical and reason-specific recovery outcomes remain pending."
     },
     {
       "id": "PC-CMD-NATIVE",
@@ -7872,9 +7891,11 @@
         "tests/test_box_native.py::BoxNativeTests.test_registered_native_handlers_match_their_body_and_reply_contracts",
         "tests/test_box_native.py::BoxNativeTests.test_communication_test_counts_messages_and_uses_cooperative_intervals",
         "tests/test_box_native.py::BoxNativeTests.test_raw_diagnostic_keeps_digit_encoding_and_explicit_missing_field_paths",
-        "tests/test_box_native.py::BoxNativeTests.test_cli_required_fields_enums_masks_and_cached_five_way_presentation"
+        "tests/test_box_native.py::BoxNativeTests.test_cli_required_fields_enums_masks_and_cached_five_way_presentation",
+        "tests/test_lifecycle.py::LifecycleTests.test_create_connect_command_print_gate_and_parameter_contract",
+        "tests/test_lifecycle.py::LifecycleTests.test_missing_buffer_reply_returns_false_after_own_disconnect"
       ],
-      "remaining": "Twelve native handlers and their PC request/response paths are covered. Active error/event/operation handlers and hardware acceptance remain pending; unaddressed diagnostic transmission and unresolved legacy requests are deliberately gated."
+      "remaining": "Thirteen native handlers are PC-tested, with real common error and lifecycle handlers. Full slot/refill/mechanical routes, unaddressed diagnostics and unresolved legacy requests remain gated."
     },
     {
       "id": "PC-CMD-PRELOAD",
@@ -8015,8 +8036,12 @@
         "Verify macro queue capture/replay/clear, retained source/target context, pause/resume guards, cooling/RESUME decisions and interrupted callbacks.",
         "Restore power-loss enable/map/source hints without declaring physical filament position; error clear is not a mechanical rollback."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook",
+        "tests/test_lifecycle.py::LifecycleTests.test_operation_cancel_stops_error_followup_without_a_link_change"
+      ],
+      "remaining": "DO_AFTER_PAUSE and its cancellation/dispatch boundary are implemented. Error clear/retry, macro replay, resume and power-loss procedures remain stage 8."
     },
     {
       "id": "PC-CMD-MOTION",
@@ -8183,7 +8208,10 @@
         "tests/test_box_native.py::BoxNativeTests.test_command_data_updates_keep_buffers_banks_modes_and_source_distinct",
         "tests/test_box_native.py::BoxNativeTests.test_timeouts_events_and_communication_bytes_have_separate_outcomes",
         "tests/test_box_native.py::BoxNativeTests.test_malformed_frames_or_payloads_cannot_refresh_valid_observations",
-        "tests/test_box_native.py::BoxNativeTests.test_reconnect_replacement_and_late_replies_invalidate_only_their_address"
+        "tests/test_box_native.py::BoxNativeTests.test_reconnect_replacement_and_late_replies_invalidate_only_their_address",
+        "tests/test_lifecycle.py::LifecycleTests.test_event_reply_resets_counter_without_refreshing_ordinary_mode",
+        "tests/test_lifecycle.py::LifecycleTests.test_failed_presence_query_does_not_hydrate_saved_metadata",
+        "tests/test_lifecycle.py::LifecycleTests.test_offline_during_reply_does_not_decode_old_observation"
       ]
     },
     {
@@ -8225,8 +8253,15 @@
         "Clear host error state without asserting that sensors or filament location have rolled back.",
         "Exercise reason-specific clear/retry and resume suppression with False, None and exception outcomes."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_errors.py::ErrorsTest.test_record_guard_truthy_context_and_sensor",
+        "tests/test_errors.py::ErrorsTest.test_sensor_failure_propagates_after_record",
+        "tests/test_errors.py::ErrorsTest.test_format_and_duplicate",
+        "tests/test_operations.py::OperationTests.test_snapshots_and_error_cancel",
+        "tests/test_operations.py::OperationTests.test_head_owns_only_target_heartbeat_and_preserves_previous_source"
+      ],
+      "remaining": "Reason/overwrite/truthy fields, prior-source snapshots and display suppression are tested. Clear/retry/resume and macro replay remain stage 8."
     },
     {
       "id": "PC-STATE-CALLBACK-CONTEXT",
@@ -8237,8 +8272,20 @@
         "Exercise callbacks before polling, repeated/deferred callbacks, disconnect and shutdown.",
         "Deliver repeated truthy sensor events even when RunoutHelper returns early; the box callback must check its own operation context."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_operations.py::OperationTests.test_head_reenters_native_stage4_and_saves_failed_stage6",
+        "tests/test_operations.py::OperationTests.test_permission_retry_and_missing_actions",
+        "tests/test_operations.py::OperationTests.test_cancel_and_replacement_stop_wait_and_reentrant_effects",
+        "tests/test_operations.py::OperationTests.test_head_owns_only_target_heartbeat_and_preserves_previous_source",
+        "tests/test_operations.py::OperationTests.test_unbind_restores_target_heartbeat",
+        "tests/test_operations.py::OperationTests.test_stale_operation_restores_target_heartbeat",
+        "tests/test_operations.py::OperationTests.test_begin_requires_supported_identity_and_matching_physical_target",
+        "tests/test_lifecycle.py::LifecycleTests.test_head_reenters_stage4_native_wait_and_keeps_failed_stage6_snapshot",
+        "tests/test_lifecycle.py::LifecycleTests.test_explicit_poweron_hook_and_head_event_use_current_operation",
+        "tests/test_lifecycle.py::LifecycleTests.test_shutdown_clears_own_work_and_old_timer_cannot_restart"
+      ],
+      "remaining": "Direct custom-event delivery, native stage4/6 re-entry, duplicate/stale rejection and saved failure snapshots are tested. The retained sensor producer after disabled/debounced RunoutHelper is statically confirmed, not executed by these tests. Full loading-phase result consumption remains stage 6."
     },
     {
       "id": "PC-STATE-MOTION-CONTEXT",
@@ -8408,9 +8455,15 @@
         "tests/test_configuration.py::ConfigurationTests.test_supplied_values_limits_and_profile_validation",
         "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions",
         "tests/test_box_native.py::BoxNativeTests.test_binding_uses_configured_bus_without_connecting_or_projecting_presence",
-        "tests/test_box_native.py::BoxNativeTests.test_unknown_hardware_or_version_never_inherits_baseline_behavior"
+        "tests/test_box_native.py::BoxNativeTests.test_unknown_hardware_or_version_never_inherits_baseline_behavior",
+        "tests/test_lifecycle.py::LifecycleTests.test_registration_aliases_ready_order_and_borrowed_transport",
+        "tests/test_lifecycle.py::LifecycleTests.test_exact_online_values_port_and_unconfirmed_profile",
+        "tests/test_lifecycle.py::LifecycleTests.test_dependency_failure_and_ready_event_failure_do_not_leave_live_work",
+        "tests/test_lifecycle.py::LifecycleTests.test_poweron_requires_real_refresh_hook_and_optional_head_fallback",
+        "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook",
+        "tests/test_lifecycle.py::LifecycleTests.test_metadata_hook_catches_record_errors_but_not_dependency_lookup"
       ],
-      "remaining": "Configured native lookup, limits, data roots and borrowed ownership are covered. Active ready/shutdown hooks, head-sensor naming and operation dependencies await stage 4 and later."
+      "remaining": "Configured lookup, explicit ready/shutdown, actual retained-table shape, optional sensor policy and metadata are tested. Full mechanical registrations/aliases, target runtime data-root discovery and later motion/resume dependencies remain unverified."
     },
     {
       "id": "PC-INTEGRATION-EVENTS",
@@ -8420,8 +8473,13 @@
         "Exercise ready, reconnect-related observations and shutdown with pending work.",
         "Keep virtual-SD resume status distinct from paused print state and a queued tool target."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_lifecycle.py::LifecycleTests.test_registration_aliases_ready_order_and_borrowed_transport",
+        "tests/test_lifecycle.py::LifecycleTests.test_shutdown_clears_own_work_and_old_timer_cannot_restart",
+        "tests/test_lifecycle.py::LifecycleTests.test_shutdown_restart_during_startup_wait_stops_old_callback"
+      ],
+      "remaining": "Ready/shutdown/reconnect and owned-work cleanup are tested. Virtual-SD resume status and queued-tool execution remain stage 8."
     },
     {
       "id": "HW-STATE-CLIENTS",
@@ -8514,9 +8572,13 @@
         "tests/test_protocol.py::ProtocolTests.test_missing_reply_echo_zero_and_exhausted_crc_are_distinct",
         "tests/test_box_native.py::BoxNativeTests.test_error_effects_require_handlers_and_preserve_snapshot_and_order",
         "tests/test_box_native.py::BoxNativeTests.test_detach_inside_an_error_hook_stops_remaining_metadata_effects",
-        "tests/test_box_native.py::BoxNativeTests.test_failed_identity_reads_keep_timeout_and_error_outcomes_after_invalidation"
+        "tests/test_box_native.py::BoxNativeTests.test_failed_identity_reads_keep_timeout_and_error_outcomes_after_invalidation",
+        "tests/test_lifecycle.py::LifecycleTests.test_missing_buffer_reply_returns_false_after_own_disconnect",
+        "tests/test_lifecycle.py::LifecycleTests.test_timeout_report_restart_does_not_disconnect_new_identity",
+        "tests/test_lifecycle.py::LifecycleTests.test_head_reenters_stage4_native_wait_and_keeps_failed_stage6_snapshot",
+        "tests/test_lifecycle.py::LifecycleTests.test_native_status_table_uses_real_lifecycle_error_handlers"
       ],
-      "remaining": "All 25 semantic outcomes and ordered actions are tested. Actual report formatting, pause, event processing, refill and recovery handlers belong to stages 4-8 and must be bound before their routes execute."
+      "remaining": "All semantic outcomes, common reporting and guarded disconnect are tested. Slot/refill/tighten/drain/recovery actions still require their later-stage executors; slot-event diagnostics alone are not processed operations."
     },
     {
       "id": "PC-NATIVE-RETRY",
@@ -8543,14 +8605,16 @@
         "Use only the configured borrowed stock serial object; no independent UART open, native disconnect or borrowed descriptor close.",
         "Own timers and callbacks are released on shutdown without taking over the serial lifecycle."
       ],
-      "status": "partial",
+      "status": "implemented",
       "test": [
         "tests/test_native.py::NativeTests.test_borrowed_lookup_connection_and_callback_admission_boundaries",
         "tests/test_native.py::NativeTests.test_adapter_has_no_busy_guard_blocking_a_nested_callback_exchange",
         "tests/test_box_native.py::BoxNativeTests.test_binding_uses_configured_bus_without_connecting_or_projecting_presence",
-        "tests/test_box_native.py::BoxNativeTests.test_rfid_metadata_and_deferred_groups_are_cancelled_on_unbind"
-      ],
-      "remaining": "Configured borrowing, explicit unbind and invalidation of deferred data callbacks are tested. The Klipper shutdown hook, own lifecycle timers and callback-registration cleanup belong to stage 4."
+        "tests/test_box_native.py::BoxNativeTests.test_rfid_metadata_and_deferred_groups_are_cancelled_on_unbind",
+        "tests/test_lifecycle.py::LifecycleTests.test_registration_aliases_ready_order_and_borrowed_transport",
+        "tests/test_lifecycle.py::LifecycleTests.test_shutdown_clears_own_work_and_old_timer_cannot_restart",
+        "tests/test_lifecycle.py::LifecycleTests.test_shutdown_restart_during_startup_wait_stops_old_callback"
+      ]
     },
     {
       "id": "PC-REPLY-VALIDATION",
@@ -8581,9 +8645,12 @@
         "tests/test_native.py::NativeTests.test_borrowed_lookup_connection_and_callback_admission_boundaries",
         "tests/test_box_native.py::BoxNativeTests.test_reconnect_replacement_and_late_replies_invalidate_only_their_address",
         "tests/test_box_native.py::BoxNativeTests.test_retries_stop_before_sending_with_a_changed_device_context",
-        "tests/test_box_native.py::BoxNativeTests.test_detach_inside_an_error_hook_stops_remaining_metadata_effects"
+        "tests/test_box_native.py::BoxNativeTests.test_detach_inside_an_error_hook_stops_remaining_metadata_effects",
+        "tests/test_lifecycle.py::LifecycleTests.test_offline_during_reply_does_not_decode_old_observation",
+        "tests/test_lifecycle.py::LifecycleTests.test_shutdown_clears_own_work_and_old_timer_cannot_restart",
+        "tests/test_lifecycle.py::LifecycleTests.test_head_reenters_stage4_native_wait_and_keeps_failed_stage6_snapshot"
       ],
-      "remaining": "The delegated filter/admission boundary and stale request/effect guards are tested. Full operation callback ownership/admission and same-key late traffic remain lifecycle/hardware concerns; no complete unsolicited stream is assumed."
+      "remaining": "Native filter delegation, head-event ownership and stale host work are tested. Untagged same-key late bus traffic and actual receive admission remain hardware/later-operation concerns; no complete unsolicited stream is assumed."
     },
     {
       "id": "PC-IDENTITY-VERSIONS",
@@ -8606,7 +8673,12 @@
         "tests/test_box_native.py::BoxNativeTests.test_unknown_hardware_or_version_never_inherits_baseline_behavior",
         "tests/test_box_native.py::BoxNativeTests.test_rebinding_clears_public_identity_without_resetting_preferences",
         "tests/test_box_native.py::BoxNativeTests.test_reconnect_replacement_and_late_replies_invalidate_only_their_address",
-        "tests/test_box_native.py::BoxNativeTests.test_old_reply_failure_cannot_invalidate_a_new_binding_identity"
+        "tests/test_box_native.py::BoxNativeTests.test_old_reply_failure_cannot_invalidate_a_new_binding_identity",
+        "tests/test_lifecycle.py::LifecycleTests.test_reconnect_requires_fresh_identity_and_replacement_family",
+        "tests/test_lifecycle.py::LifecycleTests.test_shutdown_ready_replacement_keeps_family_revoked",
+        "tests/test_lifecycle.py::LifecycleTests.test_timeout_report_restart_does_not_disconnect_new_identity",
+        "tests/test_lifecycle.py::LifecycleTests.test_new_family_confirmation_reenters_initialization_before_polling",
+        "tests/test_lifecycle.py::LifecycleTests.test_live_version_change_cancels_operation_and_refreshes_layout"
       ]
     },
     {
@@ -8634,8 +8706,25 @@
         "A heartbeat exception terminates the recovered coroutine; do not invent an automatic restart while describing the original.",
         "A native connection is not a CFS presence observation; targeted heartbeat suspension leaves other addresses separate."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_lifecycle.py::LifecycleTests.test_identity_first_preserves_preloading_and_initial_metadata",
+        "tests/test_lifecycle.py::LifecycleTests.test_unknown_mode_and_missing_first_reply_retry_once",
+        "tests/test_lifecycle.py::LifecycleTests.test_nonpreloading_mode_idle_and_permission_print_guards",
+        "tests/test_lifecycle.py::LifecycleTests.test_exact_online_values_port_and_unconfirmed_profile",
+        "tests/test_lifecycle.py::LifecycleTests.test_round_robin_external_permissions_and_timeout_return_boundaries",
+        "tests/test_lifecycle.py::LifecycleTests.test_event_reply_resets_counter_without_refreshing_ordinary_mode",
+        "tests/test_lifecycle.py::LifecycleTests.test_offline_during_reply_does_not_decode_old_observation",
+        "tests/test_lifecycle.py::LifecycleTests.test_startup_wait_is_bounded_and_false_skips_it",
+        "tests/test_lifecycle.py::LifecycleTests.test_reconnect_requires_fresh_identity_and_replacement_family",
+        "tests/test_lifecycle.py::LifecycleTests.test_shutdown_ready_replacement_keeps_family_revoked",
+        "tests/test_lifecycle.py::LifecycleTests.test_native_exception_terminates_heartbeat_without_auto_restart",
+        "tests/test_lifecycle.py::LifecycleTests.test_poweron_requires_real_refresh_hook_and_optional_head_fallback",
+        "tests/test_lifecycle.py::LifecycleTests.test_explicit_poweron_hook_and_head_event_use_current_operation",
+        "tests/test_lifecycle.py::LifecycleTests.test_new_family_confirmation_reenters_initialization_before_polling",
+        "tests/test_lifecycle.py::LifecycleTests.test_live_version_change_cancels_operation_and_refreshes_layout"
+      ],
+      "remaining": "Connection/identity/permission/heartbeat behavior is implemented. The real power-on RUN/RFID/remainder procedure is a required later-stage callback; absence fails explicitly. Hardware scheduling/admission remains unverified."
     },
     {
       "id": "PC-OP-PRELOAD",
@@ -8657,8 +8746,17 @@
         "Waiting does not hold a blocking lock that prevents the callback or shutdown.",
         "A disabled/debounced ordinary runout helper does not suppress the custom head event; exercise unrelated-operation and duplicate event delivery."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_operations.py::OperationTests.test_head_reenters_native_stage4_and_saves_failed_stage6",
+        "tests/test_operations.py::OperationTests.test_permission_retry_and_missing_actions",
+        "tests/test_operations.py::OperationTests.test_cancel_and_replacement_stop_wait_and_reentrant_effects",
+        "tests/test_operations.py::OperationTests.test_wait_rejects_nonfinite_and_nonpositive_intervals",
+        "tests/test_lifecycle.py::LifecycleTests.test_head_reenters_stage4_native_wait_and_keeps_failed_stage6_snapshot",
+        "tests/test_lifecycle.py::LifecycleTests.test_explicit_poweron_hook_and_head_event_use_current_operation",
+        "tests/test_operations.py::OperationTests.test_action_and_wait_exceptions_release_ownership_without_rollback"
+      ],
+      "remaining": "Direct custom-event delivery, native stage4/6 re-entry, duplicate/stale rejection and saved failure snapshots are tested. The retained sensor producer after disabled/debounced RunoutHelper is statically confirmed, not executed by these tests. Full loading-phase result consumption remains stage 6."
     },
     {
       "id": "PC-OP-LOAD",
@@ -8751,8 +8849,13 @@
         "Exercise PAUSE POST_WORK=0 integration, after-pause hooks, guarded phase commands and same-content resume.",
         "A virtual-SD resume guard differs from print_stats paused; RESUME decisions use the required saved error context."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_errors.py::ErrorsTest.test_printing_pause_restore_and_order",
+        "tests/test_errors.py::ErrorsTest.test_wait_and_same_dispatch",
+        "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook"
+      ],
+      "remaining": "Common PAUSE POST_WORK=0, dispatch guard and WAIT_PAUSE invocation are tested. Same-content resume, error-selected RESUME and queued-tool replay remain stages 6-8."
     },
     {
       "id": "PC-OP-POWERLOSS",
@@ -8771,20 +8874,35 @@
         "Inject False, None and exceptions at significant phase boundaries and verify the documented handler/error/state result.",
         "Do not replace recorded branch behavior with a universal Boolean or unconditional finally rollback."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_operations.py::OperationTests.test_action_and_wait_exceptions_release_ownership_without_rollback",
+        "tests/test_lifecycle.py::LifecycleTests.test_head_reenters_stage4_native_wait_and_keeps_failed_stage6_snapshot",
+        "tests/test_lifecycle.py::LifecycleTests.test_missing_buffer_reply_returns_false_after_own_disconnect"
+      ],
+      "remaining": "Native/lifecycle/operation-context False, None and exception boundaries are tested. All configured motion, loading and recovery phase boundaries remain later stages."
     },
     {
       "id": "PC-ERROR-REPORT",
       "level": "pc",
       "assertions": [
         "Assert the retained client error line/schema !! {code,msg,values}, including field types and command/context-specific values.",
-        "Exercise duplicate-last-error suppression, the inside_error guard and special-key paths separately.",
+        "Exercise duplicate-last-error suppression, the inside_error in-progress flag and special-key paths separately; a true prior flag does not itself reject re-entry.",
         "During printing, assert the required PAUSE POST_WORK=0, pause wait, motion-state handling and after-pause effects without duplicate macro post-work.",
-        "The report helper is not modelled as an unconditional exception; test normal returns, caught errors and release of its re-entry guard."
+        "The report helper is not an unconditional exception; test normal returns, caught errors and release of its reporting flag."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_errors.py::ErrorsTest.test_format_and_duplicate",
+        "tests/test_errors.py::ErrorsTest.test_other_sender_and_timeout_formats",
+        "tests/test_errors.py::ErrorsTest.test_printing_pause_restore_and_order",
+        "tests/test_errors.py::ErrorsTest.test_special_key_and_exception_release_guard",
+        "tests/test_errors.py::ErrorsTest.test_wait_and_same_dispatch",
+        "tests/test_errors.py::ErrorsTest.test_shutdown_during_pause_wait_stops_remaining_work",
+        "tests/test_errors.py::ErrorsTest.test_existing_inside_error_does_not_suppress_report",
+        "tests/test_lifecycle.py::LifecycleTests.test_operation_cancel_stops_error_followup_without_a_link_change",
+        "tests/test_lifecycle.py::LifecycleTests.test_native_status_table_uses_real_lifecycle_error_handlers"
+      ]
     },
     {
       "id": "PC-RETAINED-BOX-API",
@@ -8802,9 +8920,14 @@
       "status": "partial",
       "test": [
         "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions",
-        "tests/test_box_data.py::BoxDataTests.test_cfs_enable_persists_and_controls_the_retained_runout_helper"
+        "tests/test_box_data.py::BoxDataTests.test_cfs_enable_persists_and_controls_the_retained_runout_helper",
+        "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook",
+        "tests/test_lifecycle.py::LifecycleTests.test_metadata_hook_catches_record_errors_but_not_dependency_lookup",
+        "tests/test_lifecycle.py::LifecycleTests.test_operation_cancel_stops_error_followup_without_a_link_change",
+        "tests/test_operations.py::OperationTests.test_head_owns_only_target_heartbeat_and_preserves_previous_source",
+        "tests/test_operations.py::OperationTests.test_unbind_restores_target_heartbeat"
       ],
-      "remaining": "The shared state aliases and enable path are exercised. Metadata forwarding, cancel/heartbeat coordination and virtual-SD resume integration remain pending."
+      "remaining": "Shared state, reporting guard, target heartbeat suspension and metadata forwarding are covered. BOX_ADD_TNN and virtual-SD resume queue/replay remain stage 8."
     },
     {
       "id": "PC-INSTALLATION-SCOPE",
@@ -9120,14 +9243,15 @@
     },
     {
       "id": "GAP-HEAD-SENSOR-NAME",
-      "status": "open",
+      "status": "resolved",
       "observation": "A configured head-sensor lookup coexists with fixed filament_sensor_2 enable/disable commands.",
       "close_when": "Check configured and alternate sensor names, plus the documented no-sensor fallback, before enabling affected mechanics.",
       "items": [
         "CONFIG-FILAMENT_SENSOR",
         "DEPENDENCY-HEAD-SENSOR",
         "DEPENDENCY-HEAD-SENSOR-FIXED-NAME"
-      ]
+      ],
+      "resolution": "Use the configured filament_switch_sensor name for lookup and every runout-enable path. With no configured sensor, retain the explicit True head fallback and emit no sensor-enable G-code. Baseline/alternate/missing cases are PC-tested; this fallback is not a measured head reading."
     },
     {
       "id": "GAP-RESERVED-WIRE",

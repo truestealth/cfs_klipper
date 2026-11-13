@@ -17,22 +17,18 @@ an implemented or hardware-verified one.
 | Native `serial_485` calls | Stage 3 primitives implemented | Borrowed-API substitutes, typed request bodies and retry tests; stock binary not executed |
 | Wire contract | Request bodies and reply validation implemented | Synthetic CRC, length, address and command checks; real exchange unverified |
 | Per-device firmware selection | Implemented for six exact cfs0 versions | Independent identities, profiles and four-/six-byte layouts tested on a PC |
+| Lifecycle, shared errors and operation context | Component implementation | Cooperative reactor and substitute tests; physical operations remain incomplete |
 | Filament loading | Pending | Operation sequencing and hardware acceptance pending |
 | Unload, change, pause/resume, recovery | Pending | No replacement validation |
-| Stock G-code and status interfaces | Partial | 21 registered commands: nine data and twelve native; endpoint and snapshots tested; full 103-name contract pending |
-| RFID, remaining length, saved materials | Partial | Normal replies, metadata/cache updates and deferred grouping tested; hardware observations and operational lifecycle pending |
+| Stock G-code and status interfaces | Partial | 23 functional handlers registered explicitly; endpoint and snapshots tested; full 103-name contract pending |
+| RFID, remaining length, saved materials | Partial | Normal replies, metadata/cache updates and deferred grouping tested; hardware observations and mechanical slot handling pending |
 | Reversible installation | Pending | No installer or rollback provided |
-| Python 3.8+ | Source target | CI configured for 3.8 and 3.11 directly from the checkout; native MIPS runtime unverified |
+| Python 3.8 | Project and CI default | 150 local tests passed on Python 3.8.20/Windows; native MIPS runtime unverified |
 
-The local suite passed **103 unittest methods on Windows with Python 3.11.18**.
-Hosted CI has not run for stage 3; its configured matrix is not evidence of a
-hosted result.
-
-The matrix records **151 implemented requirements, 58 partial and 212 pending**.
-Its 96 check families include 16 implemented, 17 partial and 63 planned cases
-(78 PC, 18 hardware); all hardware acceptance is pending. These family counts
-differ from individual unittest methods. See the [matrix](contract-matrix.md)
-for runnable references and the remaining assertions of each partial family.
+Coverage records local component checks. Hosted results for each commit are
+available in [GitHub Actions](https://github.com/truestealth/cfs_klipper/actions).
+See the [matrix](contract-matrix.md) for implementation status, runnable references
+and remaining acceptance cases. Hardware acceptance is pending.
 
 <a id="state-configuration-and-storage"></a>
 
@@ -41,12 +37,13 @@ for runnable references and the remaining assertions of each partial family.
 Stage 2 components are tested on a PC. Explicit `Box(config, base_dir)`
 construction uses the supplied data root without obtaining a printer or serial
 object. `load_config()` continues to refuse activation. The data-command subset
-is registered only in bounded tests; live Klipper lifecycle is a later stage.
+and lifecycle are registered explicitly in component tests; the bootstrap
+does not activate them on a printer.
 
 State preserves the four-box/sixteen-slot schema, raw value types and distinct
 sentinels. Client snapshots are deep copies. Saved labels load into a separate
-cache; an explicit presence-mask synchronization can apply them to live state.
-That synchronization does not establish sensor freshness or completed motion.
+cache; lifecycle initialization applies them only after a fresh successful
+MATERIAL presence response. That observation does not establish completed motion.
 Tool remapping saves the complete sixteen-entry map without selecting a source.
 Grouping uses type/colour and the read-only material catalogue; candidate sensor
 checks remain part of the later refill operation.
@@ -59,7 +56,7 @@ for position-disabled setups; their mechanical paths remain unverified.
 
 The nine data handlers cover remapping, public/inner data edits, diagnostic
 presentation, auto-refill permission, CFS-print enable, grouping and MODIFY/SAVE.
-CFS-print enable changes the retained head runout helper with the inverse flag
+CFS-print enable changes the configured head runout helper with the inverse flag
 and saves enable; tests only record that G-code, without operating a sensor.
 The inner-data public command still supplies no sensor subpart.
 
@@ -94,13 +91,15 @@ The PC suite uses substitutes; no stock binary ran and no printer connection was
 Checks cover all 25 named reply statuses and their contextual outcomes, normal
 data/cache updates, missing-response distinctions, communication-test byte zero
 and EXTRUDE_PROCESS snapshots before error effects. Deferred RFID grouping is
-guarded against a changed device or binding. Slot-event operations, error/pause
-handling, timeout processing, tighten-up, drain/refill and mechanics still need
-their lifecycle/operation handlers. A route requiring an unbound handler fails
-explicitly; an ACK does not establish completed motion.
+guarded against a changed device or binding. Lifecycle, shared reporting,
+timeout handling and operation ownership have component tests. Slot-event
+mechanics, tighten-up, drain/refill and other motion remain pending; a route
+requiring an unbound handler fails explicitly. An ACK does not establish
+completed motion.
 
 See [native integration and its execution limits](protocol.md#native-integration)
-for the implemented boundaries and remaining checks.
+and [lifecycle integration](protocol.md#lifecycle-integration) for the implemented
+boundaries and remaining checks.
 
 <a id="firmware-versions"></a>
 

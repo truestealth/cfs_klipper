@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from cfs_box.storage import CACHE_FIELDS, SpoolStore, TOOLS, new_base_data
+from cfs.storage import CACHE_FIELDS, SpoolStore, TOOLS, new_base_data
 
 
 class SpoolStoreTests(unittest.TestCase):
@@ -161,7 +161,7 @@ class SpoolStoreTests(unittest.TestCase):
         cache = deepcopy(self.store.base_data)
         for target in ("os.fsync", "os.replace"):
             with self.subTest(target=target):
-                with patch("cfs_box.storage." + target, side_effect=OSError("synthetic I/O failure")):
+                with patch("cfs.storage." + target, side_effect=OSError("synthetic I/O failure")):
                     with self.assertLogs(level="ERROR"):
                         self.assertFalse(self.store.update_metadata(1, "vender", "A", "new-value"))
                 self.assertEqual(self.store.path.read_bytes(), before)

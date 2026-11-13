@@ -4,9 +4,9 @@ English | [Русский](contract-matrix.ru.md)
 
 **Stage 1:** the inventory and verification bindings are complete. The
 [machine-readable matrix](contract-matrix.json) contains **421 requirements**
-and **96 check families**: 78 on a PC and 18 on hardware. Stage 2 data and stage 3
-native/decoder/version components are PC-tested: 16 families are implemented,
-17 partial and 63 planned. Mechanical operations and hardware acceptance remain
+and **96 check families**: 78 on a PC and 18 on hardware. Data, native/version and
+lifecycle/error/context components are PC-tested: 18 families are implemented,
+24 partial and 54 planned. Mechanical operations and hardware acceptance remain
 pending. Catalogue integrity alone does not establish functional compatibility.
 
 The baseline is CFS MCU **1.1.3**, with the retained stock `serial_485.so` and
@@ -67,13 +67,14 @@ that each reference resolves to an actual method; executing the suite establishe
 its local result. Do not create empty tests, mark a retained macro as newly
 implemented, or count registration as working mechanics.
 
-The matrix currently has 151 implemented requirements, 58 partial and 212 pending.
-Shared contracts that also require lifecycle, operations or recovery remain
+The matrix currently has 199 implemented requirements, 55 partial and 167 pending.
+Shared contracts that also require full mechanical operations or recovery remain
 partial. The [compatibility notes](compatibility.md#state-configuration-and-storage)
 describe cache/observation separation, error behavior and deliberate save rules;
 [native integration](protocol.md#native-integration) records the implemented
-boundary and execution gates. Handler registration alone does not complete these
-shared contracts: 21 handlers are currently exercised through substitutes.
+boundary and execution gates. The [lifecycle notes](protocol.md#lifecycle-integration)
+describe the new components and deliberate policies. Handler registration alone
+does not complete shared contracts: 23 handlers are exercised through substitutes.
 
 ## Macro integration found during the inventory
 
@@ -132,11 +133,11 @@ context-specific pause/after-pause effects.
 | `GAP-STAGES` | Verify public-to-wire conversion and legacy triggers; public STAGE bounds do not establish accepted wire-stage numbers |
 | `GAP-OPTIONAL-POSITIONS` | The empty endpoint fallback is recovered and PC-tested; check remaining movement/resume paths with positions enabled and disabled |
 | `GAP-SERIAL-NAME` | Resolved: use only the configured bus; omit the historical redundant fixed-name lookup. Baseline and alternate names are PC-tested |
-| `GAP-HEAD-SENSOR-NAME` | Resolve configured sensor lookup versus fixed enable/disable names and retain a distinct no-sensor fallback |
+| `GAP-HEAD-SENSOR-NAME` | Resolved: use the configured sensor for lookup and every enable path. Without a configured sensor, retain the distinct True fallback and emit no sensor-enable G-code |
 | `GAP-RESERVED-WIRE` | Keep three reserved identifiers separate from invented direct APIs; recover a required path before using it |
 | `GAP-MACRO-SNAPSHOT` | Identify the active include chain and configuration fingerprints before printer acceptance |
 
-Six gaps remain open; the serial lookup decision is resolved. Open gaps gate
+Five gaps remain open; serial and head-sensor lookup policies are resolved. Open gaps gate
 their affected paths. Recording a gap completes the inventory entry; it does not
 complete implementation or grant a mechanical path success.
 
@@ -184,7 +185,10 @@ keeps partial and planned cases separate from completed check families.
 State/configuration/storage and data-command suites execute synthetic scenarios
 and temporary-file operations. Native, protocol, firmware and box-integration
 suites cover request bytes, all decoded statuses, payloads, mixed identities and
-stale work through substitutes. The bootstrap check verifies refusal to access
+stale work through substitutes. Lifecycle/error/context tests add cooperative
+ready/shutdown, reconnect, heartbeat, reporting and re-entrant head-event cases.
+Retained sensor-producer behavior and full loading-result consumption remain
+separate from these component checks. The bootstrap check verifies refusal to access
 printer objects. None of these tests executes the stock binary or operates equipment.
 
 See [compatibility.md](compatibility.md) for implementation/validation status

@@ -13,7 +13,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from cfs_box.box import Box
+from cfs.box import Box
 from test_configuration import FakeConfig
 
 
@@ -179,6 +179,7 @@ class BoxDataTests(unittest.TestCase):
         self.assertEqual(self.gcode.scripts, [])
 
     def test_cfs_enable_persists_and_controls_the_retained_runout_helper(self):
+        self.box.boxcfg.filament_sensor = "filament_sensor_2"
         for enabled in (0, 1):
             with self.subTest(enabled=enabled):
                 self.assertIsNone(self.command("BOX_ENABLE_CFS_PRINT", ENABLE=str(enabled)))
@@ -189,7 +190,7 @@ class BoxDataTests(unittest.TestCase):
 
     def test_failed_command_writes_report_failure_and_preserve_existing_files(self):
         before = self.box.store.path.read_bytes()
-        with patch("cfs_box.storage.os.replace", side_effect=OSError("synthetic failure")):
+        with patch("cfs.storage.os.replace", side_effect=OSError("synthetic failure")):
             with self.assertLogs(level="ERROR"), self.assertRaises(CommandError):
                 self.command("BOX_ENABLE_CFS_PRINT", ENABLE="0")
         self.assertEqual(self.box.store.path.read_bytes(), before)
@@ -234,7 +235,7 @@ class BoxDataTests(unittest.TestCase):
             self.command("MODIFY_BOX_CFG", CUT_VELOCITY="unknown_name")
         self.command("MODIFY_BOX_CFG", CUT_VELOCITY="3000")
         before = self.config_path.read_bytes()
-        with patch("cfs_box.configuration.os.replace", side_effect=OSError("synthetic failure")):
+        with patch("cfs.configuration.os.replace", side_effect=OSError("synthetic failure")):
             with self.assertRaisesRegex(CommandError, "SAVE_BOX_CFG error"):
                 self.command("SAVE_BOX_CFG")
         self.assertEqual(self.config_path.read_bytes(), before)

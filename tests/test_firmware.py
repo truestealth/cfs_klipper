@@ -7,7 +7,7 @@ import unittest
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from cfs_box.firmware import BASELINE_VERSION, DeviceVersions, SLOT_EVENT_DATA_LENGTH, parse_identity
+from cfs.firmware import BASELINE_VERSION, DeviceVersions, SLOT_EVENT_DATA_LENGTH, parse_identity
 
 
 def payload(version="113", serial=b"SYNTHETIC-SERIAL-01"):

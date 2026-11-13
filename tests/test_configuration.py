@@ -11,7 +11,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from cfs_box.configuration import BoxConfiguration
+from cfs.configuration import BoxConfiguration
 
 
 class FakeConfig:
@@ -287,7 +287,7 @@ class ConfigurationTests(unittest.TestCase):
             path.write_text(original, encoding="utf-8")
             config = configuration()
             config.modify({"CUT_POS_X": "-3"})
-            with patch("cfs_box.configuration.os.replace", side_effect=OSError("blocked")):
+            with patch("cfs.configuration.os.replace", side_effect=OSError("blocked")):
                 with self.assertRaises(OSError):
                     config.save((path,), sync=lambda: None)
             self.assertEqual(path.read_text(encoding="utf-8"), original)
@@ -311,7 +311,7 @@ class ConfigurationTests(unittest.TestCase):
                         backup.write_bytes(b"previous backup")
                         config = configuration()
                         pending = config.modify({key: repr(value)})
-                        with patch("cfs_box.configuration.shutil.copy2") as copy:
+                        with patch("cfs.configuration.shutil.copy2") as copy:
                             with self.assertRaisesRegex(ValueError, "line breaks"):
                                 config.save((path,), sync=lambda: self.fail("must not sync"))
                             copy.assert_not_called()
