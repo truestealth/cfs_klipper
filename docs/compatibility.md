@@ -14,17 +14,25 @@ an implemented or hardware-verified one.
 | Refusal to activate the scaffold | Implemented | PC regression test before printer-object lookup |
 | Full contract inventory and check bindings | Stage 1 complete | Real test references, partial families and remaining acceptance cases are tracked |
 | State, configuration and compatible storage | Stage 2 components implemented | Synthetic state, all 53 options, 21 endpoint fields and temporary-file tests |
-| Native `serial_485` calls | Pending | Partial static review; target request paths unverified |
-| Wire framing | Documentation only | Offline reference checks; no target exchange by this package |
-| Filament loading | Pending | Stock loading branches and hardware acceptance pending |
+| Native `serial_485` calls | Stage 3 primitives implemented | Borrowed-API substitutes, typed request bodies and retry tests; stock binary not executed |
+| Wire contract | Request bodies and reply validation implemented | Synthetic CRC, length, address and command checks; real exchange unverified |
+| Per-device firmware selection | Implemented for six exact cfs0 versions | Independent identities, profiles and four-/six-byte layouts tested on a PC |
+| Filament loading | Pending | Operation sequencing and hardware acceptance pending |
 | Unload, change, pause/resume, recovery | Pending | No replacement validation |
-| Stock G-code and status interfaces | Partial | Nine data commands, endpoint and snapshot tests; other handlers and live updates pending |
-| RFID, remaining length, saved materials | Partial | Compatible metadata/cache storage tested; wire refresh and observations pending |
+| Stock G-code and status interfaces | Partial | 21 registered commands: nine data and twelve native; endpoint and snapshots tested; full 103-name contract pending |
+| RFID, remaining length, saved materials | Partial | Normal replies, metadata/cache updates and deferred grouping tested; hardware observations and operational lifecycle pending |
 | Reversible installation | Pending | No installer or rollback provided |
-| Python 3.8+ | Source target | CI tests 3.8 and 3.11 directly from the checkout; native MIPS runtime unverified |
+| Python 3.8+ | Source target | CI configured for 3.8 and 3.11 directly from the checkout; native MIPS runtime unverified |
 
-CI configuration is a proposed check matrix, not evidence that hosted checks
-have run. Record the actual Python/platform when reporting local results.
+The local suite passed **103 unittest methods on Windows with Python 3.11.18**.
+Hosted CI has not run for stage 3; its configured matrix is not evidence of a
+hosted result.
+
+The matrix records **151 implemented requirements, 58 partial and 212 pending**.
+Its 96 check families include 16 implemented, 17 partial and 63 planned cases
+(78 PC, 18 hardware); all hardware acceptance is pending. These family counts
+differ from individual unittest methods. See the [matrix](contract-matrix.md)
+for runnable references and the remaining assertions of each partial family.
 
 <a id="state-configuration-and-storage"></a>
 
@@ -75,11 +83,24 @@ The implementation makes these deliberate storage/configuration choices:
   data APIs; applying recovery in printer operations remains stage 8. Screen
   material files and address-manager data stay with their owners.
 
-The matrix records **112 implemented requirements, 26 partial and 283 pending**.
-Its 96 check families include 10 implemented, 14 partial and 72 planned cases;
-all hardware acceptance is pending. These family counts differ from individual
-unittest methods. See the [matrix](contract-matrix.md) for runnable references
-and the remaining assertions of each partial family.
+## Native integration
+
+Stage 3 implements request primitives through the configured stock `serial_485`
+object, command-specific reply decoding and per-address identity/profile selection.
+Explicit binding borrows the object without connecting or disconnecting it.
+The PC suite uses substitutes; no stock binary ran and no printer connection was made.
+`load_config()` still refuses activation.
+
+Checks cover all 25 named reply statuses and their contextual outcomes, normal
+data/cache updates, missing-response distinctions, communication-test byte zero
+and EXTRUDE_PROCESS snapshots before error effects. Deferred RFID grouping is
+guarded against a changed device or binding. Slot-event operations, error/pause
+handling, timeout processing, tighten-up, drain/refill and mechanics still need
+their lifecycle/operation handlers. A route requiring an unbound handler fails
+explicitly; an ACK does not establish completed motion.
+
+See [native integration and its execution limits](protocol.md#native-integration)
+for the implemented boundaries and remaining checks.
 
 <a id="firmware-versions"></a>
 
@@ -92,17 +113,20 @@ has not passed hardware acceptance.
 
 | CFS MCU firmware | Project target | Replacement validation |
 | --- | --- | --- |
-| 1.1.3 | Baseline; current reference CFS firmware | Static command/response/operation review; no replacement hardware acceptance |
-| 1.2.2, 1.4.2, 1.5.0 | Intermediate reference versions | Static comparison of the collected cfs0/G32 images; no replacement hardware acceptance |
-| 1.5.2 | Additional compatibility target | Static comparison completed for documented paths; target hardware validation pending |
-| 1.5.3 | Additional compatibility target | Same ordinary command paths as the examined 1.5.2 image; target hardware validation pending |
+| 1.1.3 | Baseline; current reference CFS firmware | Static contract review and PC profile/layout checks; no replacement hardware acceptance |
+| 1.2.2, 1.4.2, 1.5.0 | Intermediate reference versions | Static cfs0/G32 comparison and PC profile/layout checks; no replacement hardware acceptance |
+| 1.5.2 | Additional compatibility target | Static comparison and PC profile/layout checks; target hardware validation pending |
+| 1.5.3 | Additional compatibility target | Ordinary paths match examined 1.5.2; exact identity/profile tested on a PC; target hardware validation pending |
 
 Compatibility is recorded per CFS hardware variant, MCU firmware and retained
 host-library version. A successful check on one MCU version does not validate
-the others. Version selection is not implemented in the scaffold.
-The future implementation must identify each connected box's running firmware
-and select only verified command, response and operation behavior for it.
-An unknown version must not silently inherit the 1.1.3 mechanical behavior.
+the others. Selection is implemented inside shared code for exact versions
+**1.1.3, 1.2.2, 1.4.2, 1.5.0, 1.5.2 and 1.5.3**, independently for each address.
+It requires an observed version/SN and an explicitly confirmed `cfs0` family;
+the version reply does not identify the hardware family. Unknown versions or
+unconfirmed families cannot select a profile or inherit baseline operations.
+Identity invalidation and device replacement require renewed identification;
+different serial numbers also clear the previously confirmed family.
 
 Use shared implementation code with explicit, verified per-device differences.
 The comparison concerns collected cfs0/G32 applications; it does not establish

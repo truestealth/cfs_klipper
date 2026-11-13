@@ -2,17 +2,18 @@
 
 English | [Русский](protocol.ru.md)
 
-**Status:** draft reference, not a complete K1C protocol specification. Offline
-framing checks, static API review and target hardware validation are different
-levels of evidence. The current package performs no serial exchanges.
+**Status:** stage 3 implements borrowed-native calls, reply decoding and
+per-device version selection, tested with PC substitutes. The bootstrap still
+refuses activation. These checks did not execute the retained `.so` or contact
+the printer; a complete K1C replacement cycle remains unverified.
 
 Stable section anchors allow implementation and tests to reference this document.
 Add a verified target command here before using it in an operation.
 
 ## Boundaries and evidence
 
-Box operations will use the existing Klipper serial object through its verified
-API. The stock library performs transport work and framing. This
+The implemented pipeline borrows the configured Klipper serial object through
+the recovered API. The stock library performs transport work and framing. This
 document describes both that API boundary and the wire format; it does not
 introduce an independent transport implementation.
 
@@ -27,22 +28,85 @@ Matching an opcode alone is insufficient. Original binaries and private research
 remain outside public source. The [contract matrix](contract-matrix.md) links
 approved official factory references and binds the full host interface to checks.
 
+<a id="native-integration"></a>
+
+## Implemented native integration
+
+Explicit binding looks up `serial_485 <configured bus>` and borrows that object.
+It does not open UART, connect/disconnect native serial, or take over its queues
+and timers. Its transport connection flag does not establish CFS presence.
+`Request.body` contains `ADDR LEN REQUEST_STATE CMD DATA`; ordinary typed
+requests use state `0xFF`. The stock library adds F7/CRC for transmission.
+`Frame` retains the full reply and validated
+address, command, status and payload. Bad header, length, CRC or attribution is
+an error, distinct from `None` and a negative MCU status.
+
+Three retry layers remain separate:
+
+| Owner | Trigger and scope |
+| --- | --- |
+| Box sender | For ordinary requests, valid MCU CRC/LENGTH errors cause up to seven native API exchanges below timeout 3600, three at/above it |
+| Stock wrapper | Selected commands have their own outer attempts on `None`, up to five; `retries_en=False` does not remove this loop |
+| Stock serial handler | Its wait/retry path uses up to five attempts when retries are enabled and timeout is below 3600; otherwise one, with a lower wait of one second at/above 3600 |
+
+Ordinary calls supply exactly `(body, timeout)`; an explicit retry flag remains
+an optional third argument. Only the box-level exchanges are implemented here;
+the two retained native loops were reconstructed statically. One API call is
+not one UART transmission, and these counters are not an operation deadline.
+`COMMUNICATION_TEST` uses its separate response-byte path, including integer
+zero, and bypasses MCU-status retries.
+
+Binding and per-address generations are checked before every native API attempt,
+after waiting or failure, and before/after each ordered semantic effect. A stale
+context stops subsequent host processing; deferred callbacks also reject old
+context after detachment. These guards do not interrupt an API call already in
+progress or cancel its internal native retries.
+
+Error reporting, pause/recovery, slot-event operations and other operation hooks
+still need real lifecycle handlers. Their absence raises `MissingProtocolEffect`
+before effect execution; no silent empty handler establishes success. The sender
+retains contextual `True`/`False`/`None` outcomes. ACK, telemetry and cached labels
+do not establish completed loading or switching.
+
+Execution gates block all opcode `0x13` requests, typed legacy encoding-0
+`EXTRUDE_PROCESS`, typed stages above 7, and unaddressed diagnostics (`ADDR=0`).
+Confirmed wire stages are 0–7. Their mapping to public STAGE values, host/log
+phase names and full operations remains a separate open question. Raw diagnostics
+do not turn an unknown payload into a verified typed operation, and optional
+`0x12` is never selected automatically.
+
+The [native](../tests/test_native.py), [decoder](../tests/test_protocol.py),
+[firmware](../tests/test_firmware.py) and [integration](../tests/test_box_native.py)
+tests use synthetic frames and substitutes. Real native admission, transmission
+counts, scheduling and mechanical completion remain hardware acceptance work.
+
 <a id="firmware-versions"></a>
 
 ## Firmware version requirements
 
 The current baseline is CFS MCU 1.1.3; 1.5.2 and 1.5.3 are additional targets
 awaiting hardware validation. Static comparison also covers 1.2.2, 1.4.2 and
-1.5.0 cfs0/G32 images. Version detection and selection are not implemented.
+1.5.0 cfs0/G32 images. The code contains exact profiles for **1.1.3, 1.2.2,
+1.4.2, 1.5.0, 1.5.2 and 1.5.3**, with no fallback for an unknown version.
 
 Before relying on version-specific behavior, read the running firmware through
 the retained native API and keep its raw version/identity per box. A bundled
 image name or update manifest is not proof of what the MCU is running. Keep the
 MCU version distinct from the printer firmware and `[box] version` setting.
 
-The examined `0x14` reply carries three ASCII version digits and 19 serial-number
-bytes. It does not identify the product generation or hardware ID by itself.
-Record hardware identity separately and select behavior per connected device.
+The examined `0x14` reply has exactly 22 data bytes: three ASCII version digits
+and 19 serial-number bytes. Serial bytes use the stock byte-to-character Latin-1
+representation, including NUL and high bytes, without trimming. Raw reply bytes
+and the exact dotted version are retained separately for each address.
+This identity does not identify the product family or hardware ID. A supported
+profile requires separately confirmed `cfs0` context and an exact known version;
+`[box] version` is not that confirmation.
+
+Malformed or failed identity reads invalidate the current profile and public
+version/SN while retaining raw diagnostics. Disconnect/rebind invalidates current
+identity and requires a fresh read. After disconnect, the same serial can reuse
+its explicit family context; a replacement serial clears that confirmation.
+Unknown families or firmware never inherit baseline mechanical behavior.
 
 Offline comparison establishes four ordinary `0x0A` data bytes in 1.1.3/1.2.2
 and six in 1.4.2/1.5.0/1.5.2/1.5.3. Slot-event replies with status `0x30` retain
@@ -91,23 +155,23 @@ Synthetic framing example: `F7 01 03 00 A2 DA`. It contains no DATA;
 CRC over `03 00 A2` is `DA`. This example demonstrates geometry only and is
 not an instruction to send an addressing command to equipment.
 
-The command catalogue, slot encoding, payload units/endianness and response
-semantics must be verified for the target version before implementation. The
-catalogue is not populated with unverified mechanical commands.
+The matrix records all 19 host command identifiers and the 16 typed request
+schemas. Reserved identifiers are kept separate from implemented typed
+operations. Mechanical units and stage transitions require their own acceptance.
 
 <a id="native-api"></a>
 
 ## Native API
 
-**Evidence: partial, based on static review.** Recheck these details against
-the exact retained native library before implementing native calls.
+**Evidence:** recovered from the retained library and exercised through PC
+substitutes. Actual target ABI, admission and timing remain unverified.
 
 | Item | Reviewed boundary | Remaining verification |
 | --- | --- | --- |
 | Object | Existing Klipper object for the configured `serial_485` bus | Initialization order and availability on the target |
-| Request method | `cmd_send_data_with_response(data, timeout, retries_en=True)` | Exact behavior for each required command |
+| Request method | `cmd_send_data_with_response(data, timeout, retries_en=True)` | Target ABI and actual behavior for each required command |
 | Request bytes | ADDR, LEN, STATUS, CMD, DATA; native code adds SYNC/CRC | Validate target command and length handling |
-| Reply | Full framed bytes on response, `None` after exhaustion; exceptions may propagate | Late replies, negative status and disconnect paths |
+| Reply | Full framed bytes on response, `None` after exhaustion; exceptions may propagate | Late replies, negative status and disconnect paths on the target |
 | Retries | Native code may repeat selected commands even with `retries_en=False` | Actual transmission count and timeout budget per command |
 | Receive access | Native receive admission and callbacks are constrained | Which observations the supported request path exposes |
 
@@ -127,10 +191,9 @@ failure paths. The loading section below is one part of that full contract.
 
 ## Loading
 
-**Evidence: unknown for a complete replacement route.** Before implementation,
-fill in the exact commands, predicates, deadlines and failure exits below from
-the target original. The table describes required coverage, not a recovered
-wire sequence.
+**Evidence: unverified for a complete replacement route.** Use the matrix's
+recovered commands, predicates and failure exits when implementing the route.
+The table describes required operation coverage, not a successful runtime cycle.
 
 | Phase | Required information |
 | --- | --- |
@@ -142,8 +205,8 @@ wire sequence.
 | Completion | Fresh observations that establish success and the resulting state |
 | Failure | Stop/release behavior, reported error, retained uncertainty and permitted retry |
 
-Until that reconstruction is complete, do not invent stage timing or copy a
-sequence from a different printer/MCU. Keep the existing preload policy;
+Do not invent stage timing or copy a sequence from a different printer/MCU.
+Keep the existing preload policy;
 configuration such as OPEN and an action such as RUN are not interchangeable.
 RFID or slot refresh can involve mechanics and is not a passive status query.
 
@@ -153,8 +216,9 @@ RFID or slot refresh can involve mechanics and is not a passive status query.
 
 Record transaction timeout, possible native retransmissions, total operation
 deadline, expected reply hold and sensor wait separately. Use the reactor's
-monotonic clock and cooperative waits when implemented. Numerical budgets and
-recovery actions remain open until verified for the target route.
+monotonic clock and cooperative waits for operation coordination. Request
+timeouts are encoded and PC-tested; actual operation deadlines and recovery
+timing remain unverified for the target route.
 
 Unknown sensor state must not become a successful load. A configured material,
 cached active slot or ACK must not override contradictory physical observations.

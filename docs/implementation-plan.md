@@ -2,10 +2,10 @@
 
 English | [Русский](implementation-plan.ru.md)
 
-**Status:** stage 1 is complete. Stage 2 state, configuration and storage
-components are implemented and PC-tested; shared contracts involving later
-decoders, operations and recovery retain partial status in the matrix.
-Stages 3–10 remain pending. The bootstrap refuses activation; no installer,
+**Status:** stage 1 is complete. Stage 2 state/configuration/storage and stage 3
+native/decoder/version components are implemented and PC-tested. Shared contracts
+involving lifecycle, operations and recovery retain partial status in the matrix.
+Stages 4–10 remain pending. The bootstrap refuses activation; no installer,
 mechanical operations or printer changes have been introduced.
 
 ## Target and design
@@ -80,6 +80,14 @@ cover existing/missing data, failed writes, saved metadata for an empty slot and
 power-loss data cleanup without losing the material cache.
 
 ### 3. Integrate native calls, reply decoding and per-device versions
+
+**PC result:** exact request bodies, validated command/status replies, borrowed
+native API calls and per-address identities/profiles are implemented. Twelve
+native-command handlers join the nine data handlers in substitute-based tests.
+The current suite has 103 test methods. Real native ABI/wire behavior and
+operation/error/event integration remain unverified; the bootstrap refuses
+activation. See the [native integration boundaries](protocol.md#native-integration)
+and runnable references in the [matrix](contract-matrix.md).
 
 Obtain the configured stock Klipper serial object and use its supported request
 API. Implement the required host bodies, response validation and command-specific

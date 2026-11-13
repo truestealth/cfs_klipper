@@ -2,9 +2,9 @@
 
 English | [Русский](architecture.ru.md)
 
-**Status:** state, configuration and storage are implemented with PC tests.
-The bootstrap still refuses activation; native calls and mechanical operations
-remain pending.
+**Status:** state, configuration, storage, native-call integration, reply decoding
+and per-device versions are implemented with PC tests. The bootstrap still refuses
+activation; lifecycle integration and mechanical operations remain pending.
 
 ## Scope
 
@@ -19,28 +19,37 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | Path | Responsibility | Current state |
 | --- | --- | --- |
 | `klipper/box.py` | Thin Klipper entry point | Imports the bootstrap; refuses activation |
-| `src/cfs_box/box.py` | Data composition, nine data commands, endpoint and `get_status()` | PC-tested; bootstrap refuses activation |
-| `src/cfs_box/state.py` | Shared live state, snapshots, tool maps and grouping | Implemented; reply acquisition remains pending |
+| `src/cfs_box/box.py` | Shared data, endpoint, status, nine data and twelve native-command handlers | PC-tested with substitutes; bootstrap refuses activation |
+| `src/cfs_box/state.py` | Shared live state, snapshots, tool maps and grouping | Implemented; decoded observations share this state |
 | `src/cfs_box/configuration.py` | Loader, UI values and MODIFY/SAVE | Implemented with explicit preservation rules |
 | `src/cfs_box/storage.py` | Spool cache, recovery hints and read-only material database | Implemented; recovery lifecycle remains pending |
+| `src/cfs_box/native.py` | Request bodies, reply validation and borrowed native API | Exact bodies, timeouts, sender retries and admission filters PC-tested |
+| `src/cfs_box/protocol.py` | Command/status decoding and ordered effects | PC-tested; operation/error/event handlers required at integration |
+| `src/cfs_box/firmware.py` | Per-address identity, explicit family and exact version profiles | Mixed versions and identity invalidation PC-tested |
 | `tests/test_box_contract.py` | Klipper layout and external contract checks | Bootstrap/layout check only |
 | `tests/test_contract_matrix.py` | Inventory completeness and verification bindings | Validates real test references and remaining work |
 | `tests/test_state.py`, `test_configuration.py`, `test_storage.py`, `test_box_data.py` | Component and data-command scenarios | Synthetic values, temporary files, bounded Klipper substitutes |
+| `tests/test_native.py`, `test_protocol.py`, `test_firmware.py`, `test_box_native.py` | Native boundary, decoding, identity and integration scenarios | Synthetic frames, borrowed API and reactor substitutes |
 | `docs/contract-matrix.json` | Full implementation checklist and acceptance cases | Per-requirement and check-family implementation status |
 | `docs/` | Architecture, protocol and compatibility, in English and Russian | Draft specifications |
 
-Add operation and native-call modules when verified behavior needs a
-separate module, together with the tests and synthetic fixtures that exercise it.
-The diagram below describes logical responsibilities, not existing source files.
+Add operation modules when verified behavior needs a separate module, together
+with the tests and synthetic fixtures that exercise it. The diagram describes
+responsibilities; operation coordination remains pending.
 
 ```mermaid
 flowchart LR
     Entry[Klipper entry] --> Box[Box integration]
     Box --> Operations[Box operations]
     Box --> State[Observations and status]
+    Box --> Native[Native serial calls]
+    Box --> Versions[Per-device versions]
     Operations --> State
-    Operations --> Native[Native serial calls]
+    Operations --> Native
     Native --> Stock[Existing serial_485]
+    Native --> Decoder[Reply decoding]
+    Versions --> Decoder
+    Decoder --> State
 ```
 
 ## Ownership and dependencies
@@ -48,8 +57,17 @@ flowchart LR
 The stock serial object owns the UART, connection lifecycle, receive path and
 its internal retry behavior. The extension borrows that object through
 Klipper. It must not open the port, replace native receive processing, close the
-borrowed connection or introduce another transport retry loop. The available
-API and its limits are tracked in the [protocol document](protocol.md#native-api).
+borrowed connection or introduce another transport retry loop. The adapter
+preserves the recovered box-level CRC/length-status retries through that API.
+The available API and its limits are tracked in the
+[protocol document](protocol.md#native-api).
+
+Native binding uses only the configured bus. Each address has its own identity
+and known firmware profile; a version reply alone does not identify the hardware
+family. Binding/device generations reject stale work before subsequent native
+API calls and between effects. This cannot cancel retries already running inside
+the stock module. Error, event and operation effects require real handlers;
+missing handlers raise an error. See the [integration boundaries](protocol.md#native-integration).
 
 Operations coordinate host actions with separately observed CFS, buffer and
 toolhead state. An ACK, last T-command or cached material record cannot establish

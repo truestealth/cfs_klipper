@@ -4,10 +4,10 @@ English | [Русский](contract-matrix.ru.md)
 
 **Stage 1:** the inventory and verification bindings are complete. The
 [machine-readable matrix](contract-matrix.json) contains **421 requirements**
-and **96 check families**: 78 on a PC and 18 on hardware. Stage 2 data components
-are PC-tested: 10 families are implemented, 14 partial and 72 planned. Mechanical
-operations and hardware acceptance remain pending. Catalogue integrity alone
-does not establish functional compatibility.
+and **96 check families**: 78 on a PC and 18 on hardware. Stage 2 data and stage 3
+native/decoder/version components are PC-tested: 16 families are implemented,
+17 partial and 63 planned. Mechanical operations and hardware acceptance remain
+pending. Catalogue integrity alone does not establish functional compatibility.
 
 The baseline is CFS MCU **1.1.3**, with the retained stock `serial_485.so` and
 the reference K1C CFS Upgrade configuration. Differences between known MCU
@@ -67,10 +67,13 @@ that each reference resolves to an actual method; executing the suite establishe
 its local result. Do not create empty tests, mark a retained macro as newly
 implemented, or count registration as working mechanics.
 
-The matrix currently has 112 implemented requirements, 26 partial and 283 pending.
-Some stage-2-owned schemas also require later wire updates, operations or recovery;
-those rows remain partial. The [compatibility notes](compatibility.md#state-configuration-and-storage)
-describe cache/observation separation, error behavior and deliberate save rules.
+The matrix currently has 151 implemented requirements, 58 partial and 212 pending.
+Shared contracts that also require lifecycle, operations or recovery remain
+partial. The [compatibility notes](compatibility.md#state-configuration-and-storage)
+describe cache/observation separation, error behavior and deliberate save rules;
+[native integration](protocol.md#native-integration) records the implemented
+boundary and execution gates. Handler registration alone does not complete these
+shared contracts: 21 handlers are currently exercised through substitutes.
 
 ## Macro integration found during the inventory
 
@@ -121,20 +124,21 @@ Client-facing errors have a separate `ERROR-REPORT-API` requirement: retain
 `!! {code,msg,values}`, duplicate/special-key handling, the error guard and the
 context-specific pause/after-pause effects.
 
-## Open execution questions
+## Execution decisions and open questions
 
 | Gap | Required resolution |
 | --- | --- |
 | `GAP-LEGACY-13` | Establish callers and behavior for the host two-byte request versus the MCU one-byte request; make the compatibility decision before executing that route |
 | `GAP-STAGES` | Verify public-to-wire conversion and legacy triggers; public STAGE bounds do not establish accepted wire-stage numbers |
 | `GAP-OPTIONAL-POSITIONS` | The empty endpoint fallback is recovered and PC-tested; check remaining movement/resume paths with positions enabled and disabled |
-| `GAP-SERIAL-NAME` | Resolve the historical fixed serial lookup versus the configured bus for alternate section names |
+| `GAP-SERIAL-NAME` | Resolved: use only the configured bus; omit the historical redundant fixed-name lookup. Baseline and alternate names are PC-tested |
 | `GAP-HEAD-SENSOR-NAME` | Resolve configured sensor lookup versus fixed enable/disable names and retain a distinct no-sensor fallback |
 | `GAP-RESERVED-WIRE` | Keep three reserved identifiers separate from invented direct APIs; recover a required path before using it |
 | `GAP-MACRO-SNAPSHOT` | Identify the active include chain and configuration fingerprints before printer acceptance |
 
-These gaps gate their affected paths. Recording a gap completes the inventory
-entry; it does not complete implementation or grant a mechanical path success.
+Six gaps remain open; the serial lookup decision is resolved. Open gaps gate
+their affected paths. Recording a gap completes the inventory entry; it does not
+complete implementation or grant a mechanical path success.
 
 ## Factory reference and target evidence
 
@@ -178,8 +182,10 @@ python -m unittest discover -s tests -v
 references, aliases, conditional registrations, gaps and coverage counts. It
 keeps partial and planned cases separate from completed check families.
 State/configuration/storage and data-command suites execute synthetic scenarios
-and temporary-file operations. The bootstrap check verifies refusal to access
-printer objects. None of these tests operates equipment.
+and temporary-file operations. Native, protocol, firmware and box-integration
+suites cover request bytes, all decoded statuses, payloads, mixed identities and
+stale work through substitutes. The bootstrap check verifies refusal to access
+printer objects. None of these tests executes the stock binary or operates equipment.
 
 See [compatibility.md](compatibility.md) for implementation/validation status
 and [protocol.md](protocol.md) for the native API boundary.

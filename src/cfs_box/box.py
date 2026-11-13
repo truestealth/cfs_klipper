@@ -1,4 +1,4 @@
-"""Data-only box integration; the Klipper bootstrap still refuses activation.
+"""Data and borrowed-native integration; the bootstrap still refuses activation.
 
 Explicit construction supports PC checks of state, settings and storage. It
 does not obtain a printer or a serial object, start timers, or run mechanics.
@@ -8,6 +8,9 @@ from copy import deepcopy
 import logging
 
 from .configuration import BoxConfiguration, _field_name
+from .firmware import DeviceVersions
+from .native import NativeSerial, Request, UnsupportedRequest, build_request, diagnostic_request, slot_mask
+from .protocol import DecodeContext, decode_reply
 from .state import BoxState
 from .storage import SpoolStore
 
@@ -23,12 +26,20 @@ COLOR_NAMES = {
 }
 
 
+class MissingProtocolEffect(RuntimeError):
+    """A decoded action needs an operation/lifecycle handler not yet bound."""
+
+
+class StaleReplyError(ValueError):
+    """Identity or binding changed while the borrowed API was waiting."""
+
+
 class Box:
     """Compose implemented data behavior without activating an unfinished box.
 
     ``base_dir`` is supplied by the caller; PC tests always use a temporary
-    directory. Only the data commands are registered explicitly, on substitutes
-    until lifecycle and mechanical operations have been implemented.
+    directory. Data and native command groups are registered explicitly on
+    substitutes until lifecycle and mechanical operations have been implemented.
     """
 
     def __init__(self, config, base_dir, config_paths=None):
@@ -51,6 +62,315 @@ class Box:
         self.preloading_poweron = None
         self.inside_error = False
         self.heart_process_enable = [True] * 4
+        self.native = None
+        self.device_versions = DeviceVersions()
+        self._reactor = None
+        self._binding_generation = 0
+        self._effect_handlers = {}
+        self.last_replies = {}
+        self.state_extensions = {}
+        self.extrude_process_state = None
+        self.error = None
+        self.error_tnn = {}
+        self.box_filament_err = False
+        self.is_use_ending_material = False
+        self.inside_extrusion_all_materials = False
+        self.print_state = ""
+        self.filament_error_message = None
+
+    def bind_native(self, printer, families=None, effect_handlers=None):
+        """Borrow the configured object explicitly, without connecting it.
+
+        Hardware families are externally confirmed context, not inferred from
+        the version/SN reply. This method is used with substitutes until the
+        Klipper lifecycle is implemented; load_config does not call it.
+        """
+        adapter = NativeSerial.from_printer(printer, self.boxcfg.bus)
+        reactor = printer.get_reactor()
+        handlers = dict(effect_handlers or {})
+        if any(not isinstance(name, str) or not callable(function)
+               for name, function in handlers.items()):
+            raise ValueError("protocol effect handlers must be named callables")
+        if set(handlers) & set(self._data_effect_handlers(None)):
+            raise ValueError("protocol data handlers cannot be overridden")
+        versions = DeviceVersions(families)
+        self._binding_generation += 1
+        self.native, self._reactor = adapter, reactor
+        self.device_versions = versions
+        self._effect_handlers = handlers
+        self.last_replies.clear()
+        self.state_extensions.clear()
+        for address in range(1, 5):
+            self.box_state.modify_Tn_data(address, "-1", "version")
+            self.box_state.modify_Tn_data(address, "-1", "sn")
+
+    def unbind_native(self):
+        """Invalidate own pending work without closing the borrowed transport."""
+        self._binding_generation += 1
+        for address in range(1, 5):
+            self.invalidate_device(address)
+        self.native = None
+        self._reactor = None
+        self._effect_handlers.clear()
+        self.last_replies.clear()
+        self.state_extensions.clear()
+
+    def invalidate_device(self, address, raw_reply=None):
+        self.device_versions.invalidate(address, raw_reply=raw_reply)
+        self.state_extensions.pop(address, None)
+        self.box_state.modify_Tn_data(address, "-1", "version")
+        self.box_state.modify_Tn_data(address, "-1", "sn")
+
+    def _accept_identity(self, address, data, raw):
+        previous = self.device_versions.generation(address)
+        try:
+            identity = self.device_versions.update(address, data, raw_reply=raw)
+        except ValueError:
+            self.state_extensions.pop(address, None)
+            raise
+        if self.device_versions.generation(address) != previous:
+            self.state_extensions.pop(address, None)
+        self.box_state.modify_Tn_data(address, identity.version, "version")
+        self.box_state.modify_Tn_data(address, identity.sn, "sn")
+
+    def _schedule_groups(self, request):
+        binding = self._binding_generation
+        generation = self.device_versions.generation(request.address)
+
+        def update(eventtime):
+            if (self.native is None or binding != self._binding_generation
+                    or generation != self.device_versions.generation(request.address)):
+                return
+            self.box_state.update_same_material_list(self.store.get_material_name)
+
+        self._reactor.register_callback(update)
+
+    def _data_effect_handlers(self, request):
+        return {
+            "identity": self._accept_identity,
+            "set_context": lambda name, value: setattr(self, name, value),
+            "set_global": lambda field, value: self.box_state.modify_Tn_data(0, value, uppart=field),
+            "set_slot": lambda address, slot, part, value: self.box_state.modify_Tn_data(address, value, part, slot),
+            "error_address": lambda address: self.error_tnn.update(addr=address),
+            "snapshot_extrude_status": lambda value: setattr(self, "extrude_process_state", value),
+            "state_extension": lambda address, connections, tags: self.state_extensions.update({
+                address: {"connection_mask": connections, "tag_predicate_mask": tags}}),
+            "warning": lambda text: logging.warning("%s", text),
+            "schedule_groups": lambda: self._schedule_groups(request),
+        }
+
+    def send_native(self, request, context=None, retries_en=None):
+        """Execute one checked request and apply its ordered semantic effects.
+
+        Contextual pause/error/refill actions must have real handlers. Missing
+        handlers gate that route instead of silently accepting an ACK as a
+        completed procedure. Normal observations are updated by the decoder.
+        """
+        if self.native is None:
+            raise RuntimeError("the stock native object is not bound")
+        if not isinstance(request, Request):
+            raise ValueError("native calls require a built Request")
+        if request.address not in range(1, 5):
+            raise UnsupportedRequest("unaddressed diagnostics have no confirmed CFS context")
+        address = request.address
+        profile = self.device_versions.profile(address)
+        if request.command not in (0x01, 0x14, 0x55):
+            profile = self.device_versions.require_supported(address)
+        binding = self._binding_generation
+        generation = self.device_versions.generation(address)
+
+        def check_context():
+            if (binding != self._binding_generation
+                    or generation != self.device_versions.generation(address)):
+                raise StaleReplyError("CFS context changed while awaiting a native reply")
+
+        try:
+            frame = self.native.exchange(request, retries_en=retries_en, check_context=check_context)
+        except StaleReplyError:
+            raise
+        except (OSError, ValueError):
+            # An old failure must not invalidate a device installed by a
+            # callback while the retained native API was waiting.
+            check_context()
+            if request.command == 0x14:
+                self.invalidate_device(address)
+            raise
+        check_context()
+        self.last_replies[address] = frame
+        if request.command == 0x14 and (frame is None or frame.status != 0):
+            self.invalidate_device(address, raw_reply=frame.raw if frame else None)
+            generation = self.device_versions.generation(address)
+        if context is None:
+            context = DecodeContext(
+                last_cmd=self.last_cmd, error=self.error, last_err=self.last_err,
+                print_state=self.print_state,
+                box_filament_err=self.box_filament_err,
+                is_use_ending_material=self.is_use_ending_material,
+                filament_error_message=self.filament_error_message,
+            )
+        try:
+            result = decode_reply(self.box_state, frame, request, profile=profile, context=context)
+        except ValueError:
+            check_context()
+            if request.command == 0x14:
+                self.invalidate_device(address, raw_reply=frame.raw if frame else None)
+            raise
+        handlers = self._data_effect_handlers(request)
+        handlers.update(self._effect_handlers)
+        missing = {effect.name for effect in result.effects} - handlers.keys()
+        if missing:
+            raise MissingProtocolEffect("unbound protocol effects: " + ", ".join(sorted(missing)))
+        for effect in result.effects:
+            check_context()
+            handlers[effect.name](*effect.args)
+            if effect.name == "identity" and binding == self._binding_generation:
+                # Accepting this request's own new identity legitimately
+                # advances its generation; external changes never do.
+                generation = self.device_versions.generation(address)
+            check_context()
+        return result.value
+
+    def register_native_commands(self, gcode):
+        self.gcode = gcode
+        for name, handler in (
+            ("BOX_SEND_DATA", self.cmd_send_data),
+            ("BOX_COMMUNICATION_TEST", self.cmd_communication_test),
+            ("BOX_CTRL_CONNECTION_MOTOR_ACTION", self.cmd_ctrl_connection_motor_action),
+            ("BOX_GET_FILAMENT_SENSOR_STATE", self.cmd_get_filament_sensor_state),
+            ("BOX_SET_BOX_MODE", self.cmd_set_box_mode),
+            ("BOX_GET_BUFFER_STATE", self.cmd_get_buffer_state),
+            ("BOX_GET_RFID", self.cmd_get_rfid),
+            ("BOX_GET_REMAIN_LEN", self.cmd_get_remain_len),
+            ("BOX_GET_BOX_STATE", self.cmd_get_box_state),
+            ("BOX_MEASURING_WHEEL", self.cmd_measuring_wheel),
+            ("BOX_GET_VERSION_SN", self.cmd_get_version_sn),
+            ("BOX_GET_FIVE_WAY_STATE", self.cmd_get_five_way_state),
+        ):
+            gcode.register_command(name, handler)
+
+    def _native_command(self, gcmd, command, data=b"", timeout=None, address=None):
+        if address is None:
+            address = gcmd.get_int("ADDR", minval=1, maxval=4)
+        try:
+            request = build_request(address, command, data, timeout=timeout, encoding=self.boxcfg.version)
+            return self.send_native(request)
+        except (OSError, ValueError, RuntimeError) as error:
+            raise gcmd.error("cfs_box: %s" % error) from error
+
+    def cmd_send_data(self, gcmd):
+        address = gcmd.get_int("ADDR", None, minval=1, maxval=4)
+        state = gcmd.get_int("STATE", None, minval=0, maxval=255)
+        command = gcmd.get_int("CMD", 10, minval=0, maxval=32)
+        timeout = gcmd.get_int("TIMEOUT", 5, minval=1, maxval=120)
+        raw = gcmd.get_command_parameters().get("DATA", "")
+        if address is None:
+            logging.info("addr is None")
+            address = 0
+        if state is None:
+            self.gcode.respond_info("state is None")
+            state = 0
+        try:
+            data = bytes(int(character) for character in raw)
+            self.send_native(diagnostic_request(address, state, command, data, timeout))
+        except (OSError, ValueError, RuntimeError) as error:
+            raise gcmd.error("cfs_box: %s" % error) from error
+
+    def cmd_communication_test(self, gcmd):
+        count = gcmd.get_int("COUNT", 10, minval=0, maxval=1000000)
+        timeout = gcmd.get_float("TIMEOUT", 0.1, minval=0, maxval=1)
+        interval = gcmd.get_float("INTERVAL", 0.1, minval=0.01, maxval=1)
+        address = gcmd.get_int("ADDR", minval=1, maxval=4)
+        number = gcmd.get_int("NUM", minval=0, maxval=255)
+        expected = (number + 1) & 255
+        mismatches = timeouts = 0
+        for index in range(count):
+            self.gcode.respond_info("%d. addr[%d] test start" % (index, address))
+            result = self._native_command(gcmd, "COMMUNICATION_TEST", bytes((number,)), timeout, address)
+            if result is None:
+                timeouts += 1
+                self.gcode.respond_info("%d.timeout, TIMEOUT=%.2f, send data: 0x%x" % (timeouts, timeout, number))
+            elif result != expected:
+                mismatches += 1
+                self.gcode.respond_info("%d.get return data(0x%x) error, send data: 0x%x" % (mismatches, result, number))
+            self._reactor.pause(self._reactor.monotonic() + interval)
+            self.gcode.respond_info("%d. addr[%d] test finish" % (index, address))
+
+    def cmd_ctrl_connection_motor_action(self, gcmd):
+        address = gcmd.get_int("ADDR", minval=1, maxval=4)
+        actions = {"STOP": 0, "EXTRUDE": 1, "RETRUDE": 2}
+        action = gcmd.get_command_parameters().get("ACTION")
+        if action not in actions:
+            logging.warning("param is error, ACTION only with 'STOP', 'EXTRUDE' and 'RETRUDE'")
+            return
+        self._native_command(gcmd, "CTRL_CONNECTION_MOTOR_ACTION", bytes((actions[action],)), address=address)
+
+    def cmd_get_filament_sensor_state(self, gcmd):
+        address = gcmd.get_int("ADDR", minval=1, maxval=4)
+        positions = {"MATERIAL": 0, "CONNECTIONS": 1}
+        position = gcmd.get_command_parameters().get("POSITION")
+        if position not in positions:
+            logging.warning("param is error, POSITION only with 'MATERIAL' and 'CONNECTIONS'")
+            return
+        self._native_command(gcmd, "GET_FILAMENT_SENSOR_STATE", bytes((positions[position],)), address=address)
+        value = self.box_state.get_Tn_inner_data(address, "filament_sensor", subpart=position.lower())
+        self.gcode.respond_info("[box] filament sensor state: %x" % value)
+
+    def cmd_set_box_mode(self, gcmd):
+        address = gcmd.get_int("ADDR", minval=1, maxval=4)
+        modes = {"PRINT": 0, "IDLE": 1}
+        parameters = gcmd.get_command_parameters()
+        mode = parameters.get("MODE")
+        if mode not in modes:
+            logging.warning("param is error, MODE only with 'PRINT' and 'IDLE'")
+            return
+        try:
+            mask = slot_mask(parameters.get("NUM", "0"), allow_zero=True)
+        except ValueError as error:
+            logging.warning("%s", error)
+            return
+        self._native_command(gcmd, "SET_BOX_MODE", bytes((mask, modes[mode])), address=address)
+
+    def cmd_get_buffer_state(self, gcmd):
+        self._native_command(gcmd, "GET_BUFFER_STATE")
+
+    def cmd_get_rfid(self, gcmd):
+        address = gcmd.get_int("ADDR", minval=1, maxval=4)
+        mask = gcmd.get_int("NUM", minval=0, maxval=15)
+        self._native_command(gcmd, "GET_RFID", bytes((mask,)), address=address)
+
+    def cmd_get_remain_len(self, gcmd):
+        address = gcmd.get_int("ADDR", minval=1, maxval=4)
+        mask = gcmd.get_int("NUM", minval=0, maxval=15)
+        self._native_command(gcmd, "GET_REMAIN_LEN", bytes((mask,)), address=address)
+
+    def cmd_get_box_state(self, gcmd):
+        self._native_command(gcmd, "GET_BOX_STATE")
+
+    def cmd_measuring_wheel(self, gcmd):
+        address = gcmd.get_int("ADDR", minval=1, maxval=4)
+        actions = {"CLEAN": 0, "GET": 1}
+        action = gcmd.get_command_parameters().get("ACTION")
+        if action not in actions:
+            logging.warning("param is error, ACTION only with 'GET' and 'CLEAN'")
+            return
+        self._native_command(gcmd, "MEASURING_WHEEL", bytes((actions[action],)), address=address)
+
+    def cmd_get_version_sn(self, gcmd):
+        self._native_command(gcmd, "GET_VERSION_SN")
+
+    def cmd_get_five_way_state(self, gcmd):
+        for address in range(1, 5):
+            name = "T%d" % address
+            if self.box_state.Tn_data[name]["state"] != "connect":
+                continue
+            self._native_command(gcmd, "GET_FILAMENT_SENSOR_STATE", b"\x01", address=address)
+            mask = self.box_state.get_Tn_inner_data(address, "filament_sensor", subpart="connections")
+            self.gcode.respond_info("cmd_get_five_way_state= %d" % mask)
+            # The legacy diagnostic also presents the cache after a failed
+            # query. This assignment does not establish a fresh observation.
+            self.box_state.Tn_data[name]["filament"] = next(
+                (slot for index, slot in enumerate("ABCD") if mask & (1 << index)), "None"
+            )
 
     def register_data_commands(self, gcode, webhooks):
         self.gcode = gcode

@@ -14,9 +14,10 @@ The baseline is CFS MCU firmware **1.1.3** on the reference K1C. The
 [firmware change history](docs/compatibility.md#firmware-history) records the
 examined differences through 1.5.3 and their compatibility implications.
 
-**Status:** state, configuration and compatible storage are implemented and
-tested on a PC. Mechanical CFS operations are pending. The entry point refuses activation before accessing
-printer objects. No installer or printer-ready release is provided.
+**Status:** state, configuration, compatible storage, native-call integration,
+reply decoding and per-device version handling are implemented and PC-tested.
+Mechanical CFS operations are pending. The entry point refuses activation before
+accessing printer objects. No installer or printer-ready release is provided.
 
 ## Project layout
 
@@ -27,10 +28,11 @@ tests/          PC tests
 docs/           Architecture, protocol and compatibility
 ```
 
-Stage 1 produced the full contract matrix. Stage 2 adds the state, configuration
-and storage components, with nine data-command handlers and the configuration
-endpoint tested through Klipper substitutes. Native calls and operations follow
-in later stages.
+Stage 1 produced the full contract matrix. Stage 2 added state, configuration,
+storage and nine data-command handlers. Stage 3 adds calls through the retained
+native API, validated replies, exact firmware profiles and twelve native-command
+handlers, tested through Klipper substitutes. Lifecycle and operation handling
+follow in later stages.
 
 - [Architecture](docs/architecture.md): responsibilities and Klipper layout.
 - [Protocol](docs/protocol.md): framing, native API boundary and open questions.
@@ -57,9 +59,11 @@ python3 -m unittest discover -s tests -v
 ```
 
 Tests cover state snapshots and remapping, all 53 settings and 21 endpoint
-fields, data commands and temporary-file persistence, as well as bootstrap and
-matrix integrity. They do not operate hardware. See the [coverage and deliberate
-storage differences](docs/compatibility.md#state-configuration-and-storage).
+fields, data commands, temporary-file persistence, native requests and replies,
+mixed device versions and stale work, as well as bootstrap and matrix integrity.
+They do not execute the stock native binary or operate hardware. See the
+[coverage and deliberate storage differences](docs/compatibility.md#state-configuration-and-storage)
+and [native integration limits](docs/protocol.md#native-integration).
 
 ## Development
 

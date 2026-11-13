@@ -78,14 +78,14 @@
     "runtime_implementation": "partial",
     "hardware_acceptance": "pending",
     "implementations": {
-      "pending": 283,
-      "implemented": 112,
-      "partial": 26
+      "pending": 212,
+      "partial": 58,
+      "implemented": 151
     },
     "check_statuses": {
-      "partial": 14,
-      "planned": 72,
-      "implemented": 10
+      "partial": 17,
+      "planned": 63,
+      "implemented": 16
     }
   },
   "catalogue_validation": {
@@ -168,8 +168,9 @@
         "HW-CMD-NATIVE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Decimal digits become separate bytes. Legacy omitted ADDR/STATE encode zero after their warning paths; unaddressed execution is blocked instead of broadcasting without confirmed hardware context. No typed opcode-13 bypass is provided."
     },
     {
       "id": "CMD-BOX_COMMUNICATION_TEST",
@@ -188,7 +189,7 @@
         "HW-CMD-NATIVE"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -328,8 +329,9 @@
         "HW-CMD-NATIVE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "CMD-BOX_GET_FILAMENT_SENSOR_STATE",
@@ -349,8 +351,9 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "CMD-BOX_SET_BOX_MODE",
@@ -368,8 +371,9 @@
         "HW-CMD-NATIVE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "CMD-BOX_GET_BUFFER_STATE",
@@ -387,8 +391,9 @@
         "HW-CMD-NATIVE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "CMD-BOX_GET_RFID",
@@ -408,8 +413,9 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "CMD-BOX_GET_REMAIN_LEN",
@@ -429,8 +435,9 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "CMD-BOX_GET_BOX_STATE",
@@ -450,8 +457,9 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "CMD-BOX_SET_PRE_LOADING",
@@ -490,8 +498,9 @@
         "HW-CMD-NATIVE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "CMD-BOX_TIGHTEN_UP_ENABLE",
@@ -980,8 +989,9 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "CMD-BOX_GENERATE_FLUSH_ARRAY",
@@ -1436,8 +1446,9 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "CONNECTIONS is queried only for cached connected boxes. The lowest cached set bit selects A-D, or literal None; the legacy presentation still uses that cache after a normal False/None result and does not establish freshness."
     },
     {
       "id": "CMD-DO_AFTER_PAUSE",
@@ -2647,9 +2658,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
+      "implementation_note": "Validated per-address replies update these fields; mode ACK alone does not. Identity invalidation exposes -1 while raw diagnostics remain separate."
     },
     {
       "id": "STATUS-TN-DRY_AND_HUMIDITY",
@@ -2665,9 +2676,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
+      "implementation_note": "Validated per-address replies update these fields; mode ACK alone does not. Identity invalidation exposes -1 while raw diagnostics remain separate."
     },
     {
       "id": "STATUS-TN-FILAMENT_DETECTED",
@@ -2691,7 +2702,7 @@
       "id": "STATUS-TN-MEASURING_WHEEL",
       "kind": "status",
       "name": "Tn.measuring_wheel",
-      "parameters": "initially \"None\"",
+      "parameters": "initial string None; GET float32 decoded in big-endian bit order; CLEAN integer 0",
       "when": "each Tn in T1..T4; slot arrays ordered A,B,C,D",
       "contract": "Publish parsed odometer observations with their established semantics.",
       "stage": 2,
@@ -2701,9 +2712,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
+      "implementation_note": "Validated per-address replies update these fields; mode ACK alone does not. Identity invalidation exposes -1 while raw diagnostics remain separate."
     },
     {
       "id": "STATUS-TN-VERSION",
@@ -2720,9 +2731,9 @@
         "PC-STATE-ORDER"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
+      "implementation_note": "Validated per-address replies update these fields; mode ACK alone does not. Identity invalidation exposes -1 while raw diagnostics remain separate."
     },
     {
       "id": "STATUS-TN-SN",
@@ -2738,9 +2749,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
+      "implementation_note": "Validated per-address replies update these fields; mode ACK alone does not. Identity invalidation exposes -1 while raw diagnostics remain separate."
     },
     {
       "id": "STATUS-TN-MODE",
@@ -2756,9 +2767,9 @@
         "HW-STATE-CLIENTS"
       ],
       "evidence": "static",
-      "implementation": "partial",
+      "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "The schema, initial value, raw setters and isolated snapshots are implemented. Source-specific decoder, lifecycle or mechanical updates remain pending."
+      "implementation_note": "Validated per-address replies update these fields; mode ACK alone does not. Identity invalidation exposes -1 while raw diagnostics remain separate."
     },
     {
       "id": "STATUS-TN-VENDER",
@@ -4665,7 +4676,7 @@
         "PC-STATE-OBSERVATIONS"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -5303,7 +5314,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 1
     },
@@ -5322,7 +5333,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 2
     },
@@ -5341,7 +5352,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 3
     },
@@ -5360,7 +5371,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 4
     },
@@ -5379,7 +5390,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 5
     },
@@ -5398,7 +5409,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-RESERVED-WIRE"
       ],
@@ -5419,7 +5430,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 7
     },
@@ -5438,7 +5449,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 8
     },
@@ -5457,7 +5468,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-RESERVED-WIRE"
       ],
@@ -5478,7 +5489,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 10
     },
@@ -5497,7 +5508,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 13
     },
@@ -5516,7 +5527,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 14
     },
@@ -5535,7 +5546,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 15
     },
@@ -5554,11 +5565,12 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [
         "GAP-STAGES"
       ],
-      "code": 16
+      "code": 16,
+      "implementation_note": "Recovered bytes/timeouts are represented and tested. Opcode 13, encoding-0 feed and unsupported wire stages are blocked before native execution until their operation route is resolved."
     },
     {
       "id": "WIRE-RETRUDE_PROCESS",
@@ -5575,7 +5587,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 17
     },
@@ -5594,11 +5606,12 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [
         "GAP-LEGACY-13"
       ],
-      "code": 19
+      "code": 19,
+      "implementation_note": "The historical two-data-byte request is retained for offline comparison. All execution of opcode 13 is gated because the examined MCU expects a different length."
     },
     {
       "id": "WIRE-GET_VERSION_SN",
@@ -5615,7 +5628,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 20
     },
@@ -5634,7 +5647,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [
         "GAP-RESERVED-WIRE"
       ],
@@ -5655,7 +5668,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
       "code": 85
     },
@@ -5673,9 +5686,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 0
+      "code": 0,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-PARAMS_ERR",
@@ -5691,9 +5705,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 1
+      "code": 1,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-CRC_ERR",
@@ -5709,9 +5724,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
-      "code": 2
+      "code": 2,
+      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
     },
     {
       "id": "RESPONSE-STATE_ERR",
@@ -5727,9 +5743,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 3
+      "code": 3,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-LENGTH_ERR",
@@ -5745,9 +5762,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
-      "code": 4
+      "code": 4,
+      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR1",
@@ -5763,9 +5781,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 5
+      "code": 5,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR4",
@@ -5781,9 +5800,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 8
+      "code": 8,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR5",
@@ -5799,9 +5819,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 9
+      "code": 9,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR6",
@@ -5817,9 +5838,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
-      "code": 10
+      "code": 10,
+      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR7",
@@ -5835,9 +5857,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 11
+      "code": 11,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR8",
@@ -5853,9 +5876,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
-      "code": 12
+      "code": 12,
+      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR9",
@@ -5871,9 +5895,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
-      "code": 14
+      "code": 14,
+      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
     },
     {
       "id": "RESPONSE-EXTRUDE_ERR10",
@@ -5889,9 +5914,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
-      "code": 13
+      "code": 13,
+      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR1",
@@ -5907,9 +5933,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": [],
-      "code": 19
+      "code": 19,
+      "implementation_note": "The sender outcome/boundary is implemented; caller-specific physical recovery remains a separate operation."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR2",
@@ -5925,9 +5952,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 20
+      "code": 20,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR3",
@@ -5943,9 +5971,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 21
+      "code": 21,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR4",
@@ -5961,9 +5990,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 22
+      "code": 22,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR5",
@@ -5979,9 +6009,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 23
+      "code": 23,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR6",
@@ -5997,9 +6028,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 25
+      "code": 25,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-RETRUDE_ERR7",
@@ -6015,9 +6047,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 26
+      "code": 26,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-MOTOR_LOAD_ERR",
@@ -6033,9 +6066,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 34
+      "code": 34,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-UPDATE_STATE",
@@ -6051,9 +6085,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 48
+      "code": 48,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-FILAMENT_ERR",
@@ -6069,9 +6104,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 80
+      "code": 80,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-SPEED_ERR",
@@ -6087,9 +6123,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 81
+      "code": 81,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "RESPONSE-ENWIND_ERR",
@@ -6105,9 +6142,10 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [],
-      "code": 82
+      "code": 82,
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "NATIVE-REQUEST-API",
@@ -6122,7 +6160,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -6138,7 +6176,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -6154,8 +6192,9 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Filter delegation is implemented. Complete operation callback routing and physical receive admission are not established by PC substitutes."
     },
     {
       "id": "NATIVE-RAW-SEND",
@@ -6170,7 +6209,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -6186,7 +6225,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -6202,7 +6241,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -6214,11 +6253,12 @@
       "contract": "Do not project one native connection flag onto all four boxes.",
       "stage": 3,
       "checks": [
+        "PC-NATIVE-OWNERSHIP",
         "PC-OP-CONNECTION",
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -6234,7 +6274,7 @@
         "HW-NATIVE-BOUNDARY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -7220,8 +7260,9 @@
         "HW-VERSION-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "FW-1.2.2",
@@ -7237,8 +7278,9 @@
         "HW-VERSION-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "FW-1.4.2",
@@ -7254,8 +7296,9 @@
         "HW-VERSION-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "FW-1.5.0",
@@ -7271,8 +7314,9 @@
         "HW-VERSION-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "FW-1.5.2",
@@ -7288,8 +7332,9 @@
         "HW-VERSION-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "FW-1.5.3",
@@ -7305,8 +7350,9 @@
         "HW-VERSION-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Wire/schema/semantic behavior is implemented and PC-tested. Error/event/operation execution requires the explicit handlers implemented in later stages; hardware acceptance remains pending."
     },
     {
       "id": "INSTALL-BOX-SCOPE",
@@ -7770,9 +7816,10 @@
       ],
       "status": "partial",
       "test": [
-        "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions"
+        "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions",
+        "tests/test_box_native.py::BoxNativeTests.test_binding_uses_configured_bus_without_connecting_or_projecting_presence"
       ],
-      "remaining": "Nine data commands and the endpoint are exercised. Remaining registrations, Hall conditions and renamed mechanical aliases belong to later stages."
+      "remaining": "Twenty-one names are registered and checked on substitutes: nine data and twelve native handlers. Remaining registrations, Hall conditions, mechanical aliases and live lifecycle belong to later stages."
     },
     {
       "id": "PC-CMD-PARAMS",
@@ -7785,9 +7832,12 @@
       "status": "partial",
       "test": [
         "tests/test_box_data.py::BoxDataTests.test_public_parameters_keep_command_specific_bounds_and_defaults",
-        "tests/test_configuration.py::ConfigurationTests.test_modify_all_supported_keys_and_raw_falsey_rules"
+        "tests/test_configuration.py::ConfigurationTests.test_modify_all_supported_keys_and_raw_falsey_rules",
+        "tests/test_box_native.py::BoxNativeTests.test_cli_required_fields_enums_masks_and_cached_five_way_presentation",
+        "tests/test_box_native.py::BoxNativeTests.test_raw_diagnostic_keeps_digit_encoding_and_explicit_missing_field_paths",
+        "tests/test_box_native.py::BoxNativeTests.test_communication_test_counts_messages_and_uses_cooperative_intervals"
       ],
-      "remaining": "Stage-2 parameters are tested; other command signatures remain pending."
+      "remaining": "Stage-2 data and stage-3 native parameters are checked; remaining operation/diagnostic signatures await their stages."
     },
     {
       "id": "PC-CMD-RETURNS",
@@ -7801,9 +7851,12 @@
       "test": [
         "tests/test_box_data.py::BoxDataTests.test_metadata_roundtrip_keeps_cached_labels_when_live_slot_is_empty",
         "tests/test_box_data.py::BoxDataTests.test_failed_command_writes_report_failure_and_preserve_existing_files",
-        "tests/test_box_data.py::BoxDataTests.test_config_command_messages_distinguish_empty_edits_and_failures"
+        "tests/test_box_data.py::BoxDataTests.test_config_command_messages_distinguish_empty_edits_and_failures",
+        "tests/test_box_native.py::BoxNativeTests.test_registered_native_handlers_match_their_body_and_reply_contracts",
+        "tests/test_box_native.py::BoxNativeTests.test_error_effects_require_handlers_and_preserve_snapshot_and_order",
+        "tests/test_box_native.py::BoxNativeTests.test_timeouts_events_and_communication_bytes_have_separate_outcomes"
       ],
-      "remaining": "Data-command returns and I/O errors are covered. Native response, operation failure and deferred-work outcomes remain pending."
+      "remaining": "Data and native sender/handler outcomes are covered on substitutes. Full mechanical phase outcomes and deferred operation execution remain pending."
     },
     {
       "id": "PC-CMD-NATIVE",
@@ -7814,8 +7867,14 @@
         "Verify BOX_SEND_DATA encodes DATA=15 as bytes 01 05 and does not accept a preframed packet.",
         "Verify communication test success byte wraps 255 to 0 and separately counts mismatches/timeouts."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_box_native.py::BoxNativeTests.test_registered_native_handlers_match_their_body_and_reply_contracts",
+        "tests/test_box_native.py::BoxNativeTests.test_communication_test_counts_messages_and_uses_cooperative_intervals",
+        "tests/test_box_native.py::BoxNativeTests.test_raw_diagnostic_keeps_digit_encoding_and_explicit_missing_field_paths",
+        "tests/test_box_native.py::BoxNativeTests.test_cli_required_fields_enums_masks_and_cached_five_way_presentation"
+      ],
+      "remaining": "Twelve native handlers and their PC request/response paths are covered. Active error/event/operation handlers and hardware acceptance remain pending; unaddressed diagnostic transmission and unresolved legacy requests are deliberately gated."
     },
     {
       "id": "PC-CMD-PRELOAD",
@@ -7858,7 +7917,10 @@
         "tests/test_state.py::StateTests.test_shared_buffer_and_independent_sensor_banks",
         "tests/test_box_data.py::BoxDataTests.test_metadata_roundtrip_keeps_cached_labels_when_live_slot_is_empty",
         "tests/test_box_data.py::BoxDataTests.test_diagnostic_presentation_and_inner_command_do_not_replace_live_values",
-        "tests/test_box_data.py::BoxDataTests.test_grouping_uses_metadata_and_never_substitutes_for_live_sensors"
+        "tests/test_box_data.py::BoxDataTests.test_grouping_uses_metadata_and_never_substitutes_for_live_sensors",
+        "tests/test_protocol.py::ProtocolTests.test_rfid_complete_records_cached_unknowns_and_empty_identity",
+        "tests/test_protocol.py::ProtocolTests.test_busy_rfid_is_an_error_and_not_an_empty_slot",
+        "tests/test_box_native.py::BoxNativeTests.test_command_data_updates_keep_buffers_banks_modes_and_source_distinct"
       ]
     },
     {
@@ -7870,9 +7932,12 @@
       ],
       "status": "partial",
       "test": [
-        "tests/test_box_data.py::BoxDataTests.test_diagnostic_presentation_and_inner_command_do_not_replace_live_values"
+        "tests/test_box_data.py::BoxDataTests.test_diagnostic_presentation_and_inner_command_do_not_replace_live_values",
+        "tests/test_box_native.py::BoxNativeTests.test_communication_test_counts_messages_and_uses_cooperative_intervals",
+        "tests/test_box_native.py::BoxNativeTests.test_raw_diagnostic_keeps_digit_encoding_and_explicit_missing_field_paths",
+        "tests/test_box_native.py::BoxNativeTests.test_cli_required_fields_enums_masks_and_cached_five_way_presentation"
       ],
-      "remaining": "The data presentation command is covered. Other diagnostic calculations and sensor commands remain pending."
+      "remaining": "Data presentation, raw-body diagnostics, communication tests and cached five-way presentation are covered. Other diagnostics/calibration commands remain pending."
     },
     {
       "id": "PC-CMD-LOAD",
@@ -8107,13 +8172,19 @@
         "Keep one shared buffer observation and independent material/connection masks for every address.",
         "Do not infer physical filament position from startup markers, reported mode, last T-command or cached material."
       ],
-      "status": "partial",
+      "status": "implemented",
       "test": [
         "tests/test_state.py::StateTests.test_shared_buffer_and_independent_sensor_banks",
         "tests/test_state.py::StateTests.test_saved_cache_is_loaded_separately_and_needs_presence_observation",
-        "tests/test_box_data.py::BoxDataTests.test_metadata_roundtrip_keeps_cached_labels_when_live_slot_is_empty"
-      ],
-      "remaining": "Cache/presence separation and independent raw observations are covered. Reply-specific acquisition and freshness belong to the decoder/lifecycle stages."
+        "tests/test_box_data.py::BoxDataTests.test_metadata_roundtrip_keeps_cached_labels_when_live_slot_is_empty",
+        "tests/test_protocol.py::ProtocolTests.test_buffer_sensor_remaining_and_wheel_use_command_specific_types",
+        "tests/test_protocol.py::ProtocolTests.test_positive_mode_ack_does_not_fabricate_an_observed_mode_or_connection",
+        "tests/test_protocol.py::ProtocolTests.test_state_layouts_by_exact_version_and_slot_events_do_not_refresh_telemetry",
+        "tests/test_box_native.py::BoxNativeTests.test_command_data_updates_keep_buffers_banks_modes_and_source_distinct",
+        "tests/test_box_native.py::BoxNativeTests.test_timeouts_events_and_communication_bytes_have_separate_outcomes",
+        "tests/test_box_native.py::BoxNativeTests.test_malformed_frames_or_payloads_cannot_refresh_valid_observations",
+        "tests/test_box_native.py::BoxNativeTests.test_reconnect_replacement_and_late_replies_invalidate_only_their_address"
+      ]
     },
     {
       "id": "PC-STATE-MAPPING",
@@ -8335,9 +8406,11 @@
       "status": "partial",
       "test": [
         "tests/test_configuration.py::ConfigurationTests.test_supplied_values_limits_and_profile_validation",
-        "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions"
+        "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions",
+        "tests/test_box_native.py::BoxNativeTests.test_binding_uses_configured_bus_without_connecting_or_projecting_presence",
+        "tests/test_box_native.py::BoxNativeTests.test_unknown_hardware_or_version_never_inherits_baseline_behavior"
       ],
-      "remaining": "Configured limits and caller-supplied data roots are covered without printer lookup. Live Klipper/native lifecycle and alternate dependency names remain pending."
+      "remaining": "Configured native lookup, limits, data roots and borrowed ownership are covered. Active ready/shutdown hooks, head-sensor naming and operation dependencies await stage 4 and later."
     },
     {
       "id": "PC-INTEGRATION-EVENTS",
@@ -8411,8 +8484,14 @@
         "The native body excludes sync and CRC; the retained object adds transport framing.",
         "A reserved identifier never becomes an invented direct G-code command."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_native.py::NativeTests.test_all_host_identifiers_and_sixteen_typed_bodies",
+        "tests/test_native.py::NativeTests.test_preload_masks_timeouts_and_letter_selectors",
+        "tests/test_native.py::NativeTests.test_default_omits_retry_argument_and_explicit_false_is_not_a_wire_count",
+        "tests/test_native.py::NativeTests.test_unresolved_routes_are_representable_but_cannot_execute",
+        "tests/test_box_native.py::BoxNativeTests.test_registered_native_handlers_match_their_body_and_reply_contracts"
+      ]
     },
     {
       "id": "PC-NATIVE-RESULT",
@@ -8423,8 +8502,21 @@
         "A normal G-code handler return does not prove physical completion.",
         "An unknown parsed status returns False; raw None on ordinary commands other than state polling/test invokes timeout processing and returns False."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_protocol.py::ProtocolTests.test_all_25_host_statuses_have_exact_default_sender_outcomes",
+        "tests/test_protocol.py::ProtocolTests.test_state_error_and_parameters_ignore_the_generic_report_suppression",
+        "tests/test_protocol.py::ProtocolTests.test_report_guards_are_command_specific_and_not_a_blanket_nonzero_rule",
+        "tests/test_protocol.py::ProtocolTests.test_retraction_errors_distinguish_missing_source_and_preserve_false_report_guard",
+        "tests/test_protocol.py::ProtocolTests.test_filament_error_bookkeeping_and_exact_false_guards",
+        "tests/test_protocol.py::ProtocolTests.test_direct_filament_error_duplicate_check_and_drain_effect_order",
+        "tests/test_protocol.py::ProtocolTests.test_speed_and_enwind_error_order_and_raw_none_source_guard",
+        "tests/test_protocol.py::ProtocolTests.test_missing_reply_echo_zero_and_exhausted_crc_are_distinct",
+        "tests/test_box_native.py::BoxNativeTests.test_error_effects_require_handlers_and_preserve_snapshot_and_order",
+        "tests/test_box_native.py::BoxNativeTests.test_detach_inside_an_error_hook_stops_remaining_metadata_effects",
+        "tests/test_box_native.py::BoxNativeTests.test_failed_identity_reads_keep_timeout_and_error_outcomes_after_invalidation"
+      ],
+      "remaining": "All 25 semantic outcomes and ordered actions are tested. Actual report formatting, pause, event processing, refill and recovery handlers belong to stages 4-8 and must be bound before their routes execute."
     },
     {
       "id": "PC-NATIVE-RETRY",
@@ -8435,8 +8527,14 @@
         "Preserve the 3600 argument and distinguish its documented native lower one-second wait from an operation deadline.",
         "A False retry flag does not assert a single wire transmission; PC substitutes cannot validate the stock native implementation."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_native.py::NativeTests.test_sender_retry_count_and_stop_conditions_are_api_exchanges",
+        "tests/test_native.py::NativeTests.test_communication_test_bypasses_status_retry_and_keeps_falsey_none_path",
+        "tests/test_native.py::NativeTests.test_generation_guard_runs_before_every_native_attempt",
+        "tests/test_box_native.py::BoxNativeTests.test_retries_stop_before_sending_with_a_changed_device_context",
+        "tests/test_box_native.py::BoxNativeTests.test_mixed_addresses_select_four_and_six_byte_layouts_independently"
+      ]
     },
     {
       "id": "PC-NATIVE-OWNERSHIP",
@@ -8445,8 +8543,14 @@
         "Use only the configured borrowed stock serial object; no independent UART open, native disconnect or borrowed descriptor close.",
         "Own timers and callbacks are released on shutdown without taking over the serial lifecycle."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_native.py::NativeTests.test_borrowed_lookup_connection_and_callback_admission_boundaries",
+        "tests/test_native.py::NativeTests.test_adapter_has_no_busy_guard_blocking_a_nested_callback_exchange",
+        "tests/test_box_native.py::BoxNativeTests.test_binding_uses_configured_bus_without_connecting_or_projecting_presence",
+        "tests/test_box_native.py::BoxNativeTests.test_rfid_metadata_and_deferred_groups_are_cancelled_on_unbind"
+      ],
+      "remaining": "Configured borrowing, explicit unbind and invalidation of deferred data callbacks are tested. The Klipper shutdown hook, own lifecycle timers and callback-registration cleanup belong to stage 4."
     },
     {
       "id": "PC-REPLY-VALIDATION",
@@ -8455,8 +8559,15 @@
         "Reject malformed length, CRC, address, command and truncated payload fixtures without updating valid observations.",
         "Keep an ordinary state reply, a four-byte event reply, a fault and no reply as distinct results."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_native.py::NativeTests.test_frame_geometry_crc_and_matching_context",
+        "tests/test_native.py::NativeTests.test_malformed_or_unrelated_replies_are_rejected_without_retry",
+        "tests/test_protocol.py::ProtocolTests.test_malformed_payloads_never_partially_update_state_or_cache",
+        "tests/test_box_native.py::BoxNativeTests.test_malformed_frames_or_payloads_cannot_refresh_valid_observations",
+        "tests/test_protocol.py::ProtocolTests.test_state_layouts_by_exact_version_and_slot_events_do_not_refresh_telemetry",
+        "tests/test_box_native.py::BoxNativeTests.test_timeouts_events_and_communication_bytes_have_separate_outcomes"
+      ]
     },
     {
       "id": "PC-RECEIVE-ADMISSION",
@@ -8465,8 +8576,14 @@
         "Simulate absent and admitted callbacks; no operation requires a complete unsolicited receive stream.",
         "Late or duplicate callbacks cannot complete an unrelated operation or refresh unrelated telemetry."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_native.py::NativeTests.test_borrowed_lookup_connection_and_callback_admission_boundaries",
+        "tests/test_box_native.py::BoxNativeTests.test_reconnect_replacement_and_late_replies_invalidate_only_their_address",
+        "tests/test_box_native.py::BoxNativeTests.test_retries_stop_before_sending_with_a_changed_device_context",
+        "tests/test_box_native.py::BoxNativeTests.test_detach_inside_an_error_hook_stops_remaining_metadata_effects"
+      ],
+      "remaining": "The delegated filter/admission boundary and stale request/effect guards are tested. Full operation callback ownership/admission and same-key late traffic remain lifecycle/hardware concerns; no complete unsolicited stream is assumed."
     },
     {
       "id": "PC-IDENTITY-VERSIONS",
@@ -8476,8 +8593,21 @@
         "The 22-byte identity response is three ASCII version digits and nineteen serial bytes; it does not identify hardware family.",
         "Unknown hardware/firmware combinations do not silently select baseline mechanical behavior or start preload RUN."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_firmware.py::FirmwareTests.test_all_six_exact_profiles_and_layout_boundaries",
+        "tests/test_firmware.py::FirmwareTests.test_four_addresses_keep_independent_identity_layout_and_raw_frames",
+        "tests/test_firmware.py::FirmwareTests.test_identity_does_not_infer_family_or_fall_back_for_unknown_versions",
+        "tests/test_firmware.py::FirmwareTests.test_malformed_payload_invalidates_old_identity_and_retains_raw_diagnostics",
+        "tests/test_firmware.py::FirmwareTests.test_serial_conversion_preserves_all_nineteen_bytes_and_immutable_copies",
+        "tests/test_firmware.py::FirmwareTests.test_reconnect_requires_new_identity_and_replacement_clears_family_confirmation",
+        "tests/test_firmware.py::FirmwareTests.test_generation_tracks_only_the_affected_identity_or_family_context",
+        "tests/test_firmware.py::FirmwareTests.test_invalidation_can_retain_a_failed_raw_frame_without_updating_identity",
+        "tests/test_box_native.py::BoxNativeTests.test_unknown_hardware_or_version_never_inherits_baseline_behavior",
+        "tests/test_box_native.py::BoxNativeTests.test_rebinding_clears_public_identity_without_resetting_preferences",
+        "tests/test_box_native.py::BoxNativeTests.test_reconnect_replacement_and_late_replies_invalidate_only_their_address",
+        "tests/test_box_native.py::BoxNativeTests.test_old_reply_failure_cannot_invalidate_a_new_binding_identity"
+      ]
     },
     {
       "id": "PC-STATE-LAYOUTS",
@@ -8487,8 +8617,12 @@
         "Status 0x30 always selects four slot-event bytes and does not refresh the ordinary mode.",
         "Additional tag flags retain their unresolved interpretation; absent data is not fabricated."
       ],
-      "status": "planned",
-      "test": null
+      "status": "implemented",
+      "test": [
+        "tests/test_protocol.py::ProtocolTests.test_state_layouts_by_exact_version_and_slot_events_do_not_refresh_telemetry",
+        "tests/test_box_native.py::BoxNativeTests.test_mixed_addresses_select_four_and_six_byte_layouts_independently",
+        "tests/test_box_native.py::BoxNativeTests.test_timeouts_events_and_communication_bytes_have_separate_outcomes"
+      ]
     },
     {
       "id": "PC-OP-CONNECTION",
@@ -8974,14 +9108,15 @@
     },
     {
       "id": "GAP-SERIAL-NAME",
-      "status": "open",
+      "status": "resolved",
       "observation": "The historical fixed serial485 lookup coexists with use of the configured native bus.",
       "close_when": "Test the baseline section and alternate names, then explicitly choose compatible dependency lookup without altering the native library.",
       "items": [
         "CONFIG-BUS",
         "DEPENDENCY-SERIAL-BUS",
         "DEPENDENCY-SERIAL-FIXED-NAME"
-      ]
+      ],
+      "resolution": "Use only the configured serial_485 bus lookup; remove the historical redundant hard-coded serial485 probe. Baseline/alternate names and borrowed ownership are verified with substitutes."
     },
     {
       "id": "GAP-HEAD-SENSOR-NAME",
