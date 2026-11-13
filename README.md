@@ -19,7 +19,7 @@ reply decoding, per-device versions, lifecycle, operation context and common
 error handling are implemented and PC-tested.
 Configured motion, heating, cutting, cleaning, preload, loading and unloading
 components and tool-change/print lifecycle routes have synthetic PC checks.
-Ending-material drain, recovery and hardware acceptance remain pending. The entry point refuses activation before accessing
+Stage 8 adds runout, refill, recovery, resume and power-loss paths with synthetic PC checks; hardware acceptance remains pending. The entry point refuses activation before accessing
 printer objects. No installer or printer-ready release is provided.
 
 ## Project layout
@@ -38,9 +38,10 @@ handlers. Stage 4 adds explicit ready/shutdown wiring, reconnect, heartbeat,
 guarded operation waits and shared error reporting. Stage 5 adds configured
 host motion, fans, heating, extrusion, cutting, cleaning and calibration
 handlers. Stage 6 adds preload, loading and unloading phases. Stage 7 adds tool
-changes and print lifecycle routes. Explicit registration contains 93 commands,
-including the deliberately blocked legacy feed command; two Hall commands are
-added when a cut switch is configured. Recovery and hardware acceptance remain pending.
+changes and print lifecycle routes. Stage 8 adds runout, recovery and resume paths.
+All 103 command names are registered: 101 unconditional and two conditional Hall
+commands. The legacy feed command remains deliberately blocked. Retained macro
+rendering and hardware acceptance remain pending.
 
 - [Architecture](docs/architecture.md): responsibilities and Klipper layout.
 - [Protocol](docs/protocol.md): framing, native API boundary and open questions.

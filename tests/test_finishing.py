@@ -71,10 +71,12 @@ class FinishingTests(unittest.TestCase):
         self.assertIs(finishing.material_change_flush("T1A", "T1B"), True)
         self.assertEqual(calls[-1], "M104 S220")
 
-    def test_ending_material_drain_is_explicitly_unavailable(self):
-        from cfs.box import MissingProtocolEffect
-        with self.assertRaises(MissingProtocolEffect):
-            Finishing(SimpleNamespace()).is_use_ending_material_flush(err="err", vtnn="T0")
+    def test_ending_material_delegate_preserves_context_and_return(self):
+        seen = []
+        box = SimpleNamespace(runout=SimpleNamespace(is_use_ending_material_flush=
+            lambda **kw: seen.append(kw) or False))
+        self.assertIs(Finishing(box).is_use_ending_material_flush(err="err", vtnn="T0"), False)
+        self.assertEqual(seen, [{"err": "err", "vtnn": "T0"}])
 
     def test_nozzle_clear_uses_first_nonzero_connection_bank(self):
         calls = []
@@ -207,8 +209,7 @@ class FinishingTests(unittest.TestCase):
             Finishing(box).material_flush(10, [100], 200)
         self.assertEqual(calls, [])
 
-    def test_end_drain_gate_precedes_motion_only_on_drain_branch(self):
-        from cfs.box import MissingProtocolEffect
+    def test_end_drains_after_z_and_ignores_normal_false(self):
         calls = []
         box = SimpleNamespace(
             host_guard=lambda *args: lambda: None, last_err=None, last_cmd="T1A",
@@ -217,10 +218,15 @@ class FinishingTests(unittest.TestCase):
                                       get_Tnn_content=lambda tnn: {"addr": 1}),
             motion=SimpleNamespace(z_down=lambda **kw: calls.append("z"),
                                    move_to_safe_pos=lambda: calls.append("safe")),
+            set_head_runout_enabled=lambda enabled: calls.append(("head", enabled)),
+            extrusion_all_materials=lambda: calls.append("drain") or False,
+            get_filament_sensor_detect=lambda: False,
+            box_retrude_material=lambda **kw: calls.append("retract") or True,
         )
-        with self.assertRaises(MissingProtocolEffect):
-            Finishing(box).box_end()
-        self.assertEqual(calls, [])
+        self.assertIsNone(Finishing(box).box_end())
+        self.assertEqual(calls, ["z", ("head", False), "drain", "retract"])
+        self.assertFalse(box.is_use_ending_material)
+        calls.clear()
         box.box_state.Tn_data["enable"] = 0
         self.assertIsNone(Finishing(box).box_end())
         self.assertEqual(calls, ["z", "safe"])
@@ -287,8 +293,7 @@ class FinishingTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "device changed"):
             finishing.cmd_box_end(None)
 
-    def test_end_late_ending_flag_stops_before_cut_and_retract(self):
-        from cfs.box import MissingProtocolEffect
+    def test_end_late_ending_flag_runs_drain_before_cut_and_retract(self):
         calls = []
         box = SimpleNamespace(
             host_guard=lambda *args: lambda: None, last_err=None, last_cmd="T1A",
@@ -298,15 +303,16 @@ class FinishingTests(unittest.TestCase):
             get_filament_sensor_detect=lambda: calls.append("head") or True,
             move_to_cut=lambda **kw: calls.append("cut"),
             box_retrude_material=lambda **kw: calls.append("retract"),
+            set_head_runout_enabled=lambda enabled: calls.append(("enable", enabled)),
+            extrusion_all_materials=lambda: calls.append("drain"),
         )
         def z_down(**kwargs):
             calls.append("z")
             box.is_use_ending_material = True
         box.motion = SimpleNamespace(z_down=z_down)
-        with self.assertRaises(MissingProtocolEffect):
-            Finishing(box).box_end()
-        self.assertEqual(calls, ["z"])
-        self.assertEqual(box.last_cmd, "T1A")
+        Finishing(box).box_end()
+        self.assertEqual(calls, ["z", ("enable", False), "drain", "head", "cut", "retract"])
+        self.assertIsNone(box.last_cmd)
 
     def test_change_flush_device_replacement_during_metadata_or_heat_stops(self):
         for changed_at in ("metadata", "heat"):

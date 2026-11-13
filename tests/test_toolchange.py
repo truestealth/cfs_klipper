@@ -8,7 +8,6 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cfs.firmware import DeviceVersions
-from cfs.box import MissingProtocolEffect
 from cfs.lifecycle import Lifecycle, LifecycleStopped
 from cfs.operations import OperationContext, OperationCancelled
 from cfs.state import BoxState
@@ -201,14 +200,18 @@ class ToolChangeTests(unittest.TestCase):
         self.assertNotIn("move_to_cut", self.names())
         self.assertIn("box_retrude_material", self.names())
 
-    def test_ending_material_stops_before_any_physical_effect(self):
+    def test_ending_material_calls_keep_source_order_and_ignore_normal_false(self):
         self.box.is_use_ending_material = True
-        with self.assertRaisesRegex(MissingProtocolEffect, "ending-material drain"):
-            self.change.Tn_action("T1B")
-        self.assertEqual(self.names(), ["record_tn_cur_tnn", "tower"])
+        self.results["is_use_ending_material_flush"] = False
+        self.assertTrue(self.change.Tn_action("T1B"))
+        self.assertEqual(self.calls("is_use_ending_material_flush"), [
+            ((), {"err": "z_err_extrusion_all_materials_err", "vtnn": "T1B"})] * 2)
+        self.assertLess(self.names().index("z_down"), self.names().index("is_use_ending_material_flush"))
+        self.assertNotIn("box_retrude_material", self.names())
+        self.assertIn("box_extrude_material", self.names())
         self.assertFalse(self.box.operations.active)
 
-    def test_ending_material_preflight_preserves_supported_same_content_paths(self):
+    def test_ending_material_flag_preserves_same_content_shortcuts(self):
         self.box.is_use_ending_material = True
         self.results["head"] = True
         self.assertTrue(self.change.Tn_action("T1A"))

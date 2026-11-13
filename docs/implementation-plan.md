@@ -7,8 +7,9 @@ native/decoder/version components are implemented and PC-tested.
 Stage 4 adds lifecycle, operation-context and common-error components. Stage 5
 implements configured host mechanical primitives with synthetic PC checks. Stage 6
 adds preload, loading and unloading phases with PC checks. Stage 7 adds tool-change
-and print lifecycle routes with substitute checks. Ending-material drain, retained
-sensor-producer execution, recovery and hardware acceptance remain incomplete. The bootstrap refuses activation; no installer or printer
+and print lifecycle routes with substitute checks. Stage 8 adds drain, refill,
+recovery and resume paths. Retained sensor-producer execution, macro rendering
+and hardware acceptance remain incomplete. The bootstrap refuses activation; no installer or printer
 changes have been introduced.
 
 ## Target and design
@@ -203,6 +204,9 @@ print, with failures at significant boundaries. Screen/status and Creality Print
 inputs retain their required meanings throughout the operation.
 
 ### 8. Complete runout, recovery, pause/resume and power-loss behavior
+
+The host paths below have synthetic component and composed PC checks. Retained
+producer and macro execution, plus physical behavior, remain unverified.
 
 Implement runout/draining, same-material replacement selection, candidate sensor
 checks, alias remapping and deferred tool changes. Complete reason-specific

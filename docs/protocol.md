@@ -127,10 +127,10 @@ heartbeat permission. The loading phase consumes this saved result. The
 retained sensor producer after disabled/debounced RunoutHelper is confirmed
 statically; these component tests inject its custom event directly.
 
-`slot_events` holds per-address diagnostics, not slot/refill processing.
-Power-on refresh, head motion and stage 6 use real supplied actions and
-fail explicitly when needed but absent. Complete tool changes and recovery
-remain later work. See [compatibility](compatibility.md) and the
+`slot_events` holds per-address diagnostics; the slot event executor separately
+updates metadata and schedules guarded refreshes. Power-on refresh, head motion
+and stage 6 use real supplied actions and fail explicitly when needed but absent.
+Tool changes and recovery have synthetic PC checks, not hardware acceptance. See [compatibility](compatibility.md) and the
 [lifecycle](../tests/test_lifecycle.py), [error](../tests/test_errors.py) and
 [operation](../tests/test_operations.py) component tests.
 

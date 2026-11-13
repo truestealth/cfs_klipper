@@ -173,7 +173,7 @@ class LifecycleTests(unittest.TestCase):
 
     def test_registration_aliases_ready_order_and_borrowed_transport(self):
         self.make_box()
-        self.assertEqual(len(self.printer.gcode.commands), 93)
+        self.assertEqual(len(self.printer.gcode.commands), 101)
         original = self.printer.gcode.register_command("BOX_GET_BOX_STATE", None)
         self.printer.gcode.register_command("BOX_GET_BOX_STATE_OLD", original)
         wrapper = lambda gcmd: None
@@ -591,9 +591,10 @@ class LifecycleTests(unittest.TestCase):
                             data=b"\x01\x02\x03\x04" if status == 0x30 else b"")
                 self.native.responses[(1, 0x10)] = [raw] * (7 if status in (2, 4) else 1)
                 if status == 0x50:
-                    with self.assertRaisesRegex(MissingProtocolEffect, "schedule_tighten_up"):
-                        self.box.send_native(request)
-                    self.assertFalse(self.box.box_filament_err)
+                    self.assertIs(self.box.send_native(request), False)
+                    self.assertTrue(self.box.box_filament_err)
+                    self.assertIn("BOX_EXTRUSION_ALL_MATERIALS", self.printer.gcode.scripts)
+                    self.assertTrue(self.lifecycle._callbacks)
                 else:
                     if status in (3, 0x13):
                         with self.assertLogs(level="WARNING"):

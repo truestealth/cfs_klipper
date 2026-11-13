@@ -145,10 +145,7 @@ class Finishing:
         box.error_next_macro.append(gcmd.get_commandline())
 
     def is_use_ending_material_flush(self, **kwargs):
-        # The drain operation is implemented by a later stage; fail before
-        # changing the sensor or claiming that residual material was consumed.
-        from .box import MissingProtocolEffect
-        raise MissingProtocolEffect("ending-material drain is not implemented")
+        return self.box.runout.is_use_ending_material_flush(**kwargs)
 
     def cmd_set_box_mode_print_when_nozzle_clear(self, gcmd):
         """Restore PRINT for the first address with a connection sensor bit."""
@@ -174,14 +171,9 @@ class Finishing:
         guard = box.host_guard()
         if box.last_err:
             return
-        # The stock route drains before cutting; this operation is not yet
-        # available, so reject it before changing the physical position.
         if box.box_state.Tn_data["enable"] != 0 and box.last_cmd is not None:
             address = box.box_state.get_Tnn_content(box.last_cmd)["addr"]
             guard = box.host_guard(address)
-            if box.is_use_ending_material:
-                from .box import MissingProtocolEffect
-                raise MissingProtocolEffect("ending-material drain is not implemented")
         box.motion.z_down(distance=0.8)
         guard()
         if box.box_state.Tn_data["enable"] == 0:
@@ -191,8 +183,13 @@ class Finishing:
         if box.last_cmd is None:
             return
         if box.is_use_ending_material:
-            from .box import MissingProtocolEffect
-            raise MissingProtocolEffect("ending-material drain is not implemented")
+            box.is_use_ending_material = False
+            box.set_head_runout_enabled(False)
+            guard()
+            # This route discards even a normal False from the drain and then
+            # follows its own cut/unload result branches.
+            box.extrusion_all_materials()
+            guard()
         if box.get_filament_sensor_detect():
             guard()
             result = box.move_to_cut(report_error=False)

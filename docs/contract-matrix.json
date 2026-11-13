@@ -78,14 +78,14 @@
     "runtime_implementation": "partial",
     "hardware_acceptance": "pending",
     "implementations": {
-      "implemented": 243,
-      "partial": 112,
-      "pending": 68
+      "implemented": 253,
+      "partial": 143,
+      "pending": 27
     },
     "check_statuses": {
-      "partial": 38,
+      "partial": 41,
       "implemented": 22,
-      "planned": 36
+      "planned": 33
     }
   },
   "catalogue_validation": {
@@ -1093,8 +1093,9 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "CMD-BOX_TNN_RETRY_PROCESS",
@@ -1113,8 +1114,9 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "CMD-BOX_ERROR_CLEAR",
@@ -1134,8 +1136,9 @@
         "HW-CMD-NATIVE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "CMD-BOX_START_PRINT",
@@ -1223,7 +1226,7 @@
         "HW-CMD-DATA"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -1263,8 +1266,9 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "CMD-BOX_CUT_HALL_ZERO",
@@ -1543,8 +1547,9 @@
         "PC-RETAINED-BOX-API"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Only known virtual tool names are accepted; shutdown cancels our unchanged queued target."
     },
     {
       "id": "CMD-BOX_SAVE_EXTRUDE_POS",
@@ -1613,7 +1618,7 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -1636,8 +1641,9 @@
         "HW-CMD-MOTION"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "CMD-SET_BOX_MODE_PRINT_WHEN_NOZZLE_CLEAR",
@@ -4507,7 +4513,7 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4618,7 +4624,7 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4633,7 +4639,7 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4663,7 +4669,7 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4678,7 +4684,7 @@
         "PC-STATE-ERROR-CONTEXT"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -4900,7 +4906,7 @@
         "HW-DATA-PRESERVATION"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -5332,7 +5338,7 @@
         "PC-RETAINED-BOX-API"
       ],
       "evidence": "static",
-      "implementation": "pending",
+      "implementation": "implemented",
       "blockers": []
     },
     {
@@ -5350,7 +5356,7 @@
       "evidence": "static",
       "implementation": "partial",
       "blockers": [],
-      "implementation_note": "The raw retained attribute guards four implemented host handlers independently from paused print state; later phase/retry/resume consumers remain pending."
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "EVENT-READY",
@@ -6769,8 +6775,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "OP-REFILL",
@@ -6786,8 +6793,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "OP-ERROR-CLEAR",
@@ -6803,8 +6811,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "OP-ERROR-RETRY",
@@ -6820,8 +6829,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "OP-MACRO-REPLAY",
@@ -6837,8 +6847,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "OP-PAUSE",
@@ -6871,8 +6882,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "OP-POWERLOSS",
@@ -6888,8 +6900,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-CUT_ERR",
@@ -6905,8 +6918,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-RETRUDE_ERR",
@@ -6922,8 +6936,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-BOX_EXTRUDE_ERR",
@@ -6939,8 +6954,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-EXTRUDER_EXTRUDE_ERR",
@@ -6956,8 +6972,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-STATE_ERR",
@@ -6973,8 +6990,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-FILAMENT_ERR",
@@ -6990,8 +7008,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-EMPTY_PRINT",
@@ -7007,8 +7026,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-FLUSH_ERR",
@@ -7024,8 +7044,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-PRINT_END_ERR",
@@ -7041,8 +7062,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-E_ERR_CUT_ERR",
@@ -7058,8 +7080,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-Z_ERR_EXTRUSION_ALL_MATERIALS_ERR",
@@ -7075,8 +7098,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-MACRO_EXTRUSION_ALL_MATERIALS_ERR",
@@ -7092,8 +7116,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-PRINT_END_MOVE_TO_CUT_ERR",
@@ -7109,8 +7134,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-E_ERR_TN_EXTRUDE_ERR",
@@ -7126,8 +7152,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-MACRO_CUT_ERR",
@@ -7143,8 +7170,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-MACRO_RETRUDE_ERR",
@@ -7160,8 +7188,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-MACRO_BOX_EXTRUDE_ERR",
@@ -7177,8 +7206,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-MACRO_EXTRUDER_EXTRUDE_ERR",
@@ -7194,8 +7224,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-MACRO_FLUSH_ERR",
@@ -7211,8 +7242,9 @@
         "HW-RECOVERY-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Stage 8 host paths have synthetic PC checks; retained producer integration and physical outcomes remain unverified."
     },
     {
       "id": "ERROR-REPORT-API",
@@ -7964,7 +7996,8 @@
         "tests/test_host_actions.py::HostActionTests.test_stage5_registration_alias_and_truthy_hall_condition_before_ready",
         "tests/test_phase_actions.py::PhaseActionTests.test_raw_target_is_not_remapped_twice_and_pickup_accepts_none",
         "tests/test_phase_actions.py::PhaseActionTests.test_direct_feed_keeps_stage_binding_and_legacy_execution_gates",
-        "tests/test_tool_actions.py::ToolActionTests.test_all_generated_bindings_keep_raw_request_and_single_logical_lookup"
+        "tests/test_tool_actions.py::ToolActionTests.test_all_generated_bindings_keep_raw_request_and_single_logical_lookup",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_all_unconditional_contract_commands_are_registered"
       ],
       "remaining": "All 32 generated bindings dispatch the expected logical name in an isolated registration check; 93 commands plus two conditional Hall commands are registered. Later commands and retained macro rename_existing execution remain incomplete."
     },
@@ -8009,9 +8042,13 @@
         "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook",
         "tests/test_host_actions.py::HostActionTests.test_blocked_nozzle_and_missing_wheel_have_distinct_results",
         "tests/test_toolchange.py::ToolChangeTests.test_none_phase_results_are_not_normalized_to_failure",
-        "tests/test_printing.py::PrintingIntegrationTests.test_failed_cleanup_preserves_disk_after_live_map_reset"
+        "tests/test_printing.py::PrintingIntegrationTests.test_failed_cleanup_preserves_disk_after_live_map_reset",
+        "tests/test_resume.py::ResumeTests.test_exact_false_records_error_without_normal_tail",
+        "tests/test_resume.py::ResumeTests.test_file_metadata_fallback_and_none_result",
+        "tests/test_recovery.py::RecoveryTests.test_command_wrappers_discard_normal_false",
+        "tests/test_runout.py::RunoutTests.test_drain_none_extrusion_result_continues"
       ],
-      "remaining": "Composed mechanical, ending-material and reason-specific recovery outcomes remain pending."
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "PC-CMD-NATIVE",
@@ -8065,9 +8102,16 @@
         "tests/test_toolchange.py::ToolChangeTests.test_remapping_is_applied_once",
         "tests/test_printing.py::PrintingTests.test_start_and_end_connected_units_and_cleanup",
         "tests/test_tool_actions.py::ToolActionTests.test_all_generated_bindings_keep_raw_request_and_single_logical_lookup",
-        "tests/test_tool_actions.py::ToolActionTests.test_alias_of_same_source_skips_cut_unload_and_load"
+        "tests/test_tool_actions.py::ToolActionTests.test_alias_of_same_source_skips_cut_unload_and_load",
+        "tests/test_runout.py::RunoutTests.test_refill_selects_first_available_and_updates_every_source_mapping",
+        "tests/test_resume.py::ResumeTests.test_queue_and_shutdown_preserve_replacement",
+        "tests/test_resume.py::ResumeTests.test_restore_hints_and_enable",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_native_runout_schedules_refill_then_completes_real_mapped_tool",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_powerloss_restores_hints_and_enable_without_loading",
+        "tests/test_runout.py::RunoutTests.test_update_map_source_change_during_candidate_query_prevents_alias_write",
+        "tests/test_runout.py::RunoutTests.test_refill_source_change_during_alias_write_prevents_child_load"
       ],
-      "remaining": "Tool-change remapping and end reset are covered; refill alias replacement and physical-source transitions remain pending."
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "PC-CMD-DATA",
@@ -8159,9 +8203,10 @@
       "test": [
         "tests/test_motion.py::MotionTests.test_calibration_and_resume_guard",
         "tests/test_extrusion.py::MaterialFlushTests.test_resume_skips_flush",
-        "tests/test_host_actions.py::HostActionTests.test_resume_guards_precede_parameter_access_and_all_effects"
+        "tests/test_host_actions.py::HostActionTests.test_resume_guards_precede_parameter_access_and_all_effects",
+        "tests/test_recovery.py::RecoveryTests.test_dispatch_resume_guard_preserves_flags_and_queue"
       ],
-      "remaining": "Motion and standalone flush guards are checked; callbacks, retries and other resume-specific procedures remain incomplete."
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "PC-CMD-FLUSH",
@@ -8206,10 +8251,11 @@
         "tests/test_tool_actions.py::ToolActionTests.test_first_tool_metadata_dispatch_allows_owned_child_and_consumes_retraction",
         "tests/test_tool_actions.py::ToolActionTests.test_print_end_resets_mapping_and_hints_but_preserves_cache_and_source",
         "tests/test_tool_actions.py::ToolActionTests.test_nozzle_clear_service_reads_banks_and_selects_highest_connection_bit",
-        "tests/test_tool_actions.py::ToolActionTests.test_late_ending_latch_reaches_the_explicit_gate",
-        "tests/test_finishing.py::FinishingTests.test_end_late_ending_flag_stops_before_cut_and_retract"
+        "tests/test_tool_actions.py::ToolActionTests.test_late_ending_latch_runs_drain_then_tool_loading",
+        "tests/test_finishing.py::FinishingTests.test_end_late_ending_flag_runs_drain_before_cut_and_retract",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_box_end_drains_residue_then_runs_actual_unload"
       ],
-      "remaining": "Print bookkeeping and service paths have PC checks; retained macro rendering, ending-material drain and physical behavior remain pending."
+      "remaining": "Composed PC checks cover the implemented routes, including drain; retained macro execution and physical behavior remain unverified."
     },
     {
       "id": "PC-CMD-REFILL",
@@ -8219,8 +8265,20 @@
         "Verify WAIT_EXTRUSION_ALL_MATERIALS only waits and does not start draining/refill.",
         "Keep commanded E, cached material identity and sensor availability separate from measured completion; verify selected source/error transitions on each exit."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_runout.py::RunoutTests.test_drain_command_failure_and_success_have_different_bookkeeping",
+        "tests/test_runout.py::RunoutTests.test_refill_check_clears_error_idles_and_schedules_once",
+        "tests/test_runout.py::RunoutTests.test_refill_selects_first_available_and_updates_every_source_mapping",
+        "tests/test_runout.py::RunoutTests.test_refill_unavailable_candidates_report_distinct_failure",
+        "tests/test_runout.py::RunoutTests.test_wait_command_allows_nested_operation_but_stops_on_binding_change",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_native_runout_schedules_refill_then_completes_real_mapped_tool",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_refill_without_candidate_records_error_and_preserves_saved_labels",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_unavailable_refill_sensor_cannot_remap_or_load",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_tightening_waits_for_commanded_e_then_observes_material",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_native_runout_without_auto_refill_pauses_and_runs_plain_drain"
+      ],
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "PC-CMD-RECOVERY",
@@ -8233,9 +8291,20 @@
       "status": "partial",
       "test": [
         "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook",
-        "tests/test_lifecycle.py::LifecycleTests.test_operation_cancel_stops_error_followup_without_a_link_change"
+        "tests/test_lifecycle.py::LifecycleTests.test_operation_cancel_stops_error_followup_without_a_link_change",
+        "tests/test_recovery.py::RecoveryTests.test_clear_every_recognized_reason_uses_its_device_policy",
+        "tests/test_recovery.py::RecoveryTests.test_dispatch_each_leaf_ignores_its_false_result",
+        "tests/test_recovery.py::RecoveryTests.test_macro_snapshot_replays_all_commands_even_when_error_reappears",
+        "tests/test_recovery.py::RecoveryTests.test_dispatch_resume_guard_preserves_flags_and_queue",
+        "tests/test_resume.py::ResumeTests.test_restore_hints_and_enable",
+        "tests/test_resume.py::ResumeTests.test_resume_requires_fresh_head_and_completes_normal_tail",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_error_clear_retraction_false_preserves_reason_and_queue",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_retry_box_loading_runs_real_phases_and_resumes_from_error_state",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_powerloss_restores_hints_and_enable_without_loading",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_resume_same_content_composes_real_purge_and_restores_speed",
+        "tests/test_resume.py::ResumeTests.test_falsey_target_falls_back_and_missing_fan_is_allowed"
       ],
-      "remaining": "DO_AFTER_PAUSE and its cancellation/dispatch boundary are implemented. Error clear/retry, macro replay, resume and power-loss procedures remain stage 8."
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "PC-CMD-MOTION",
@@ -8494,9 +8563,11 @@
         "tests/test_errors.py::ErrorsTest.test_sensor_failure_propagates_after_record",
         "tests/test_errors.py::ErrorsTest.test_format_and_duplicate",
         "tests/test_operations.py::OperationTests.test_snapshots_and_error_cancel",
-        "tests/test_operations.py::OperationTests.test_head_owns_only_target_heartbeat_and_preserves_previous_source"
+        "tests/test_operations.py::OperationTests.test_head_owns_only_target_heartbeat_and_preserves_previous_source",
+        "tests/test_recovery.py::RecoveryTests.test_clear_bookkeeping_preserves_context_identity_and_unrelated_flags",
+        "tests/test_runout.py::RunoutTests.test_refill_exception_retains_original_inside_flag_tail"
       ],
-      "remaining": "Reason/overwrite/truthy fields, prior-source snapshots and display suppression are tested. Clear/retry/resume and macro replay remain stage 8."
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "PC-STATE-CALLBACK-CONTEXT",
@@ -8733,9 +8804,13 @@
       "test": [
         "tests/test_lifecycle.py::LifecycleTests.test_registration_aliases_ready_order_and_borrowed_transport",
         "tests/test_lifecycle.py::LifecycleTests.test_shutdown_clears_own_work_and_old_timer_cannot_restart",
-        "tests/test_lifecycle.py::LifecycleTests.test_shutdown_restart_during_startup_wait_stops_old_callback"
+        "tests/test_lifecycle.py::LifecycleTests.test_shutdown_restart_during_startup_wait_stops_old_callback",
+        "tests/test_slot_events.py::SlotEventTests.test_wire_event_is_separate_from_mode_and_rebuilds_groups",
+        "tests/test_slot_events.py::SlotEventTests.test_queued_refresh_cannot_follow_replacement_or_shutdown",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_native_runout_schedules_refill_then_completes_real_mapped_tool",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_queued_runout_callback_does_not_attach_to_replacement"
       ],
-      "remaining": "Ready/shutdown/reconnect and owned-work cleanup are tested. Virtual-SD resume status and queued-tool execution remain stage 8."
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "HW-STATE-CLIENTS",
@@ -9112,9 +9187,9 @@
         "tests/test_tool_actions.py::ToolActionTests.test_alias_of_same_source_skips_cut_unload_and_load",
         "tests/test_tool_actions.py::ToolActionTests.test_retained_continue_flag_uses_its_distinct_route",
         "tests/test_tool_actions.py::ToolActionTests.test_source_replacement_during_nested_load_stops_the_next_phase",
-        "tests/test_tool_actions.py::ToolActionTests.test_late_ending_latch_reaches_the_explicit_gate"
+        "tests/test_tool_actions.py::ToolActionTests.test_late_ending_latch_runs_drain_then_tool_loading"
       ],
-      "remaining": "Real Box phases run together with synthetic native replies, including cross-box identities, continuation, late ending latch and source replacement. Ending-material drain, replay/recovery and physical execution remain pending."
+      "remaining": "Composed PC checks cover the implemented routes, including drain; retained macro execution and physical behavior remain unverified."
     },
     {
       "id": "PC-OP-PURGE-TOWER",
@@ -9145,16 +9220,17 @@
         "tests/test_printing.py::PrintingTests.test_start_and_end_connected_units_and_cleanup",
         "tests/test_printing.py::PrintingTests.test_first_tool_and_metadata",
         "tests/test_printing.py::PrintingIntegrationTests.test_start_and_end_printing_state_preload_policy",
-        "tests/test_finishing.py::FinishingTests.test_ending_material_drain_is_explicitly_unavailable",
+        "tests/test_finishing.py::FinishingTests.test_ending_material_delegate_preserves_context_and_return",
         "tests/test_printing.py::PrintingIntegrationTests.test_end_uses_configured_head_and_omits_absent_sensor",
         "tests/test_tool_actions.py::ToolActionTests.test_first_tool_metadata_dispatch_allows_owned_child_and_consumes_retraction",
         "tests/test_tool_actions.py::ToolActionTests.test_print_end_resets_mapping_and_hints_but_preserves_cache_and_source",
         "tests/test_tool_actions.py::ToolActionTests.test_box_end_runs_actual_cut_unload_and_safe_position",
-        "tests/test_tool_actions.py::ToolActionTests.test_ending_material_gate_precedes_unfinished_mechanical_route",
+        "tests/test_tool_actions.py::ToolActionTests.test_ending_material_drains_before_composed_tool_loading",
         "tests/test_tool_actions.py::ToolActionTests.test_box_end_source_replacement_cannot_unload_the_replacement",
-        "tests/test_finishing.py::FinishingTests.test_end_late_ending_flag_stops_before_cut_and_retract"
+        "tests/test_finishing.py::FinishingTests.test_end_late_ending_flag_runs_drain_before_cut_and_retract",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_box_end_drains_residue_then_runs_actual_unload"
       ],
-      "remaining": "Real Box phases exercise print metadata, end cleanup and BOX_END, including source replacement and late ending latch; ending-material drain remains gated and hardware is unverified."
+      "remaining": "Composed PC checks cover the implemented routes, including drain; retained macro execution and physical behavior remain unverified."
     },
     {
       "id": "PC-OP-REFILL",
@@ -9163,8 +9239,25 @@
         "Exercise runout, drain, refill guards, candidate grouping plus fresh sensor checks, absent candidates and several aliases.",
         "Deferred tool changes and exceptions in callbacks do not report completed replacement merely because a target was queued."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_runout.py::RunoutTests.test_drain_adds_one_segment_after_exact_false_and_uses_default_speed",
+        "tests/test_runout.py::RunoutTests.test_drain_queries_connected_addresses_before_exact_false_tail",
+        "tests/test_runout.py::RunoutTests.test_refill_missing_match_reports_and_records_recoverable_context",
+        "tests/test_runout.py::RunoutTests.test_refill_selects_first_available_and_updates_every_source_mapping",
+        "tests/test_runout.py::RunoutTests.test_refill_does_not_mutate_metadata_after_unavailable_observation",
+        "tests/test_runout.py::RunoutTests.test_deferred_refill_drops_changed_source",
+        "tests/test_runout.py::RunoutTests.test_refill_permits_legitimate_child_operation_serial_changes",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_native_runout_schedules_refill_then_completes_real_mapped_tool",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_queued_runout_callback_does_not_attach_to_replacement",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_wait_for_owned_work_stops_at_shutdown",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_native_runout_without_auto_refill_pauses_and_runs_plain_drain",
+        "tests/test_runout.py::RunoutTests.test_refill_source_change_during_candidate_query_stops_before_remapping",
+        "tests/test_runout.py::RunoutTests.test_refill_source_change_during_alias_write_prevents_child_load",
+        "tests/test_runout.py::RunoutTests.test_refill_child_can_commit_selected_source_after_handoff",
+        "tests/test_runout.py::RunoutTests.test_update_map_keeps_earlier_device_guards_during_later_candidate_query"
+      ],
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "PC-OP-RECOVERY",
@@ -9174,8 +9267,18 @@
         "Distinguish exact False from None/exception; preserve first-error/cover rules, report suppression and resume guards.",
         "Clearing host state does not assert physical rollback or reset unrelated runout flags."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_recovery.py::RecoveryTests.test_clear_every_recognized_reason_uses_its_device_policy",
+        "tests/test_recovery.py::RecoveryTests.test_clear_exact_false_only_stops_retract_and_print_end",
+        "tests/test_recovery.py::RecoveryTests.test_every_material_stage_failure_records_exact_phase_and_stops_tail",
+        "tests/test_recovery.py::RecoveryTests.test_material_leaf_sequences_and_normal_none_completion",
+        "tests/test_recovery.py::RecoveryTests.test_macro_exception_stops_without_final_barrier",
+        "tests/test_recovery.py::RecoveryTests.test_recovery_stops_after_source_or_target_identity_change",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_retry_failure_preserves_first_nested_reason_and_cools_without_resume",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_macro_retry_replays_recorded_commands_through_registered_actions"
+      ],
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "PC-OP-PAUSE-RESUME",
@@ -9188,9 +9291,16 @@
       "test": [
         "tests/test_errors.py::ErrorsTest.test_printing_pause_restore_and_order",
         "tests/test_errors.py::ErrorsTest.test_wait_and_same_dispatch",
-        "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook"
+        "tests/test_lifecycle.py::LifecycleTests.test_aggregate_sensor_policy_and_after_pause_metadata_hook",
+        "tests/test_recovery.py::RecoveryTests.test_dispatch_resume_guard_preserves_flags_and_queue",
+        "tests/test_recovery.py::RecoveryTests.test_dispatch_initial_none_still_restores_and_resumes",
+        "tests/test_resume.py::ResumeTests.test_resume_requires_fresh_head_and_completes_normal_tail",
+        "tests/test_resume.py::ResumeTests.test_queue_and_shutdown_preserve_replacement",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_retry_box_loading_runs_real_phases_and_resumes_from_error_state",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_resume_same_content_composes_real_purge_and_restores_speed",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_queued_resume_target_clears_on_shutdown_but_does_not_execute_early"
       ],
-      "remaining": "Common PAUSE POST_WORK=0, dispatch guard and WAIT_PAUSE invocation are tested. Same-content resume, error-selected RESUME and queued-tool replay remain stages 6-8."
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "PC-OP-POWERLOSS",
@@ -9225,9 +9335,12 @@
         "tests/test_tool_actions.py::ToolActionTests.test_standalone_purge_replacement_during_heating_stops_before_feed",
         "tests/test_tool_actions.py::ToolActionTests.test_box_end_source_replacement_cannot_unload_the_replacement",
         "tests/test_finishing.py::FinishingTests.test_outer_end_guard_covers_safe_move",
-        "tests/test_finishing.py::FinishingTests.test_material_flush_checks_target_after_extrusion"
+        "tests/test_finishing.py::FinishingTests.test_material_flush_checks_target_after_extrusion",
+        "tests/test_recovery.py::RecoveryTests.test_stage_exception_propagates_with_cleared_error_and_no_final_motion",
+        "tests/test_resume.py::ResumeTests.test_real_lifecycle_guard_rejects_replacement_and_shutdown",
+        "tests/test_runout.py::RunoutTests.test_refill_target_replacement_stops_before_bookkeeping"
       ],
-      "remaining": "Several composed return paths are covered; reason-specific recovery and real hardware remain pending."
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "PC-ERROR-REPORT",
@@ -9272,9 +9385,11 @@
         "tests/test_lifecycle.py::LifecycleTests.test_metadata_hook_catches_record_errors_but_not_dependency_lookup",
         "tests/test_lifecycle.py::LifecycleTests.test_operation_cancel_stops_error_followup_without_a_link_change",
         "tests/test_operations.py::OperationTests.test_head_owns_only_target_heartbeat_and_preserves_previous_source",
-        "tests/test_operations.py::OperationTests.test_unbind_restores_target_heartbeat"
+        "tests/test_operations.py::OperationTests.test_unbind_restores_target_heartbeat",
+        "tests/test_resume.py::ResumeTests.test_queue_and_shutdown_preserve_replacement",
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_queued_resume_target_clears_on_shutdown_but_does_not_execute_early"
       ],
-      "remaining": "Shared state, reporting guard, target heartbeat suspension and metadata forwarding are covered. BOX_ADD_TNN and virtual-SD resume queue/replay remain stage 8."
+      "remaining": "PC substitutes cover the listed branches; retained producer and macro execution and physical behavior remain separate checks."
     },
     {
       "id": "PC-INSTALLATION-SCOPE",

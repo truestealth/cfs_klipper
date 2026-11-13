@@ -20,6 +20,10 @@ from .retraction import Retraction
 from .toolchange import ToolChange
 from .printing import Printing
 from .finishing import Finishing
+from .events import SlotEvents
+from .runout import Runout
+from .recovery import Recovery
+from .resume import Resume
 from .errors import format_error
 from .lifecycle import Lifecycle
 from .motion import Motion
@@ -87,7 +91,7 @@ class Box:
         self.state_extensions = {}
         self.extrude_process_state = None
         self.error = None
-        self.error_tnn = {}
+        self.error_tnn = dict.fromkeys(("last_tnn", "tnn", "addr", "vtnn"))
         self.box_filament_err = False
         self.is_use_ending_material = False
         self.inside_extrusion_all_materials = False
@@ -111,8 +115,13 @@ class Box:
         self.toolchange = ToolChange(self)
         self.printing = Printing(self)
         self.finishing = Finishing(self)
+        self.events = SlotEvents(self)
+        self.runout = Runout(self)
+        self.recovery = Recovery(self)
+        self.resume = Resume(self)
         self.flushing_sign = str(self.store.path.parent.parent / "config" / "flushing_sign")
         self.material_auto_refill_flag = False
+        self.inside_auto_refill = False
 
     def host_guard(self, address=None):
         """Capture ownership once for a host action's cooperative calls."""
@@ -231,10 +240,12 @@ class Box:
         content = self.box_state.get_Tnn_content(tnn)
         address, slot = content["addr"], content["num"]
         guard = self.host_guard(address)
+        previous = self.last_replies.get(address)
         result = self.send_native(build_request(address, "GET_FILAMENT_SENSOR_STATE", b"\x00"))
         guard()
         frame = self.last_replies.get(address)
-        if result is not True or frame is None or frame.status != 0 or frame.command != 8:
+        if (result is not True or frame is None or frame is previous
+                or frame.status != 0 or frame.command != 8 or len(frame.data) != 1):
             raise RuntimeError("fresh ordinary material-sensor observation required")
         mask = self.box_state.get_Tn_inner_data(address, "filament_sensor", subpart="material")
         return bool(mask & slot_mask(slot))
@@ -322,6 +333,36 @@ class Box:
     def has_flushing_sign(self):
         return self.printing.has_flushing_sign()
 
+    def clear_err(self):
+        self.recovery.clear_err()
+
+    def error_clear(self):
+        return self.recovery.error_clear()
+
+    def Tnn_retry_process(self):
+        return self.recovery.Tnn_retry_process()
+
+    def extrusion_all_materials(self):
+        return self.runout.extrusion_all_materials()
+
+    def check_material_refill(self):
+        return self.runout.check_material_refill()
+
+    def check_connect(self, address):
+        return self.runout.check_connect(address)
+
+    def communication_get_box_state(self, address):
+        return self.runout.communication_get_box_state(address)
+
+    def update_Tnn_map(self):
+        return self.runout.update_Tnn_map()
+
+    def set_cool_temp(self):
+        return self.runout.set_cool_temp()
+
+    def power_loss_restore(self):
+        return self.resume.power_loss_restore()
+
     def startup_refresh(self, address):
         guard = self.host_guard(address)
         self.communication_set_pre_loading(address, 2)
@@ -394,6 +435,14 @@ class Box:
             ("BOX_END", self.finishing.cmd_box_end),
             ("BOX_MATERIAL_CHANGE_FLUSH", self.finishing.cmd_material_change_flush),
             ("SET_BOX_MODE_PRINT_WHEN_NOZZLE_CLEAR", self.finishing.cmd_set_box_mode_print_when_nozzle_clear),
+            ("BOX_CHECK_MATERIAL_REFILL", self.runout.cmd_check_material_refill),
+            ("BOX_EXTRUSION_ALL_MATERIALS", self.runout.cmd_extrusion_all_materials),
+            ("WAIT_EXTRUSION_ALL_MATERIALS", self.runout.cmd_wait_extrusion_all_materials),
+            ("BOX_ERROR_CLEAR", self.recovery.cmd_error_clear),
+            ("BOX_TNN_RETRY_PROCESS", self.recovery.cmd_Tnn_retry_process),
+            ("BOX_ADD_TNN", self.resume.cmd_add_tnn),
+            ("BOX_POWER_LOSS_RESTORE", self.resume.cmd_power_loss_restore),
+            ("BOX_RESUME_EXTRUDE", self.resume.cmd_box_resume_extrude),
         ):
             self.gcode.register_command(name, handler)
         for name in self.box_state.Tnn_map:

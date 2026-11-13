@@ -20,12 +20,12 @@ an implemented or hardware-verified one.
 | Lifecycle, shared errors and operation context | Component implementation | Cooperative reactor and substitute tests; physical operations remain incomplete |
 | Configured motion, heating, cutting and cleaning | Stage 5 components implemented | Synthetic G-code, fan, heater and sensor checks; hardware acceptance pending |
 | Preload, loading and unloading | Stage 6 components implemented | Synthetic phase checks; hardware acceptance pending |
-| Tool change and print lifecycle | Stage 7 partial | PC substitutes; ending-material drain, recovery and hardware acceptance pending |
-| Pause/resume and recovery | Pending | Full replacement validation remains pending |
-| Stock G-code and status interfaces | Partial | 93 commands registered explicitly, including one blocked legacy command, plus two conditional Hall handlers; endpoint and snapshots tested; full 103-name contract pending |
+| Tool change and print lifecycle | Partial | PC substitutes cover tool changes and ending-material drain; hardware acceptance pending |
+| Pause/resume and recovery | Stage 8 components | PC substitutes cover recovery, refill, resume and persisted hints; retained macros and hardware remain unverified |
+| Stock G-code and status interfaces | Partial | All 103 names registered, including two conditional Hall commands and one blocked legacy feed command; endpoint and snapshots tested |
 | RFID, remaining length, saved materials | Partial | Normal replies, metadata/cache updates and deferred grouping tested; hardware observations and mechanical slot handling pending |
 | Reversible installation | Pending | No installer or rollback provided |
-| Python 3.8 | Project and CI default | 380 local tests passed on Python 3.8.20/Windows; native MIPS runtime unverified |
+| Python 3.8 | Project and CI default | 499 local tests passed on Python 3.8.20/Windows; native MIPS runtime unverified |
 
 Coverage records local component checks. Hosted results for each commit are
 available in [GitHub Actions](https://github.com/truestealth/cfs_klipper/actions).
@@ -80,7 +80,7 @@ The implementation makes these deliberate storage/configuration choices:
   described as rolled back. A slot edit merges the current file before writing.
 - The compatible JSON keys and material database remain unchanged. Unknown
   fields survive. Recovery hints and cache-preserving cleanup are available as
-  data APIs; applying recovery in printer operations remains stage 8. Screen
+  data APIs; stage 8 restores validated hints in host operations. Screen
   material files and address-manager data stay with their owners.
 
 ## Native integration
@@ -95,8 +95,8 @@ Checks cover all 25 named reply statuses and their contextual outcomes, normal
 data/cache updates, missing-response distinctions, communication-test byte zero
 and EXTRUDE_PROCESS snapshots before error effects. Deferred RFID grouping is
 guarded against a changed device or binding. Lifecycle, shared reporting,
-timeout handling and operation ownership have component tests. Slot-event
-mechanics and drain/refill remain pending; a route
+timeout handling and operation ownership have component tests. Slot events
+and drain/refill have synthetic PC checks; a route
 requiring an unbound handler fails explicitly. An ACK does not establish
 completed motion.
 
@@ -110,8 +110,8 @@ boundaries and remaining checks.
 
 Stage 5 implements configured positioning, Z and acceleration context, fan
 save/restore, heating, extrusion, cutting, cleaning and calibration. Registration
-before retained macro aliases provides 93 commands, including one blocked legacy
-command, plus two Hall commands when `switch_pin` is truthy. Cleaning uses four fixed strokes; `clean_run_count` is
+before retained macro aliases provides 101 unconditional commands, including
+one blocked legacy command, plus two Hall commands when `switch_pin` is truthy. Cleaning uses four fixed strokes; `clean_run_count` is
 retained as configuration without changing that routine. Cutter current state
 and the sticky observed event remain separate; blind motion is not a measured cut.
 
@@ -136,8 +136,28 @@ The implemented host policies are:
 
 Tests compose native wheel replies with segmented extrusion and actual Python
 cleaning, shared error restoration, macro alias dispatch and temporary-file
-configuration saves. Retained Jinja rendering and producer execution, recovery
-and hardware acceptance remain separate checks. The bootstrap still refuses activation.
+configuration saves. Retained Jinja rendering, producer execution and hardware
+acceptance remain separate checks. The bootstrap still refuses activation.
+
+## Runout, recovery and resume
+
+Stage 8 adds ending-material drain, candidate selection and remapping, deferred
+refill, reason-specific error clearing and retry, macro replay, same-material
+resume extrusion and power-loss hint restoration. PC tests use synthetic native
+replies and controlled callbacks. A saved source is a host hint, not proof of
+physical filament position; refill decisions require fresh successful sensor
+replies. The existing no-head-sensor True fallback is retained and is not a
+measurement. Errors and return values follow their specific paths; clearing a
+host error does not establish mechanical rollback.
+
+`BOX_ADD_TNN` queues a known virtual tool on `virtual_sdcard.resume_tnn`; it
+does not execute the later tool change. The replacement rejects unknown queued
+tool strings and cancels its unchanged queued target on shutdown. The retained
+virtual-SD replay and macro templates have not been executed by these PC tests.
+Cooperative guards stop stale work after shutdown, rebinding or relevant device
+replacement. Shutdown clears the extension-owned refill and draining in-progress
+flags while preserving source and error context. Hardware acceptance and printer
+installation remain pending.
 
 ## Preload, loading and unloading
 
@@ -167,8 +187,8 @@ The version-1 public `BOX_EXTRUDE_PROCESS` passes STAGE in the recovered call's
 remain distinct. Encoding 0, typed wire stages above 7 and legacy opcode `0x13`
 are explicitly blocked pending resolution; `BOX_EXTRUDE_2_PROCESS` is registered
 but cannot send. Execution requires a confirmed CFS address 1..4, even though the
-recovered direct-feed parser accepts addresses through 9. Retained Jinja rendering, actual sensor-producer execution, full
-ending-material drain and reason-specific replay remain separate work.
+recovered direct-feed parser accepts addresses through 9. Retained Jinja rendering, actual sensor-producer execution and hardware
+acceptance remain separate work.
 
 
 ## Tool changes and print lifecycle
@@ -180,9 +200,8 @@ with default `-2.5` and no loader bounds. Composed PC tests run real Box phases
 with synthetic native replies, including a cross-box change, tray and tower paths,
 continuation, end cleanup and purge failure. They also check that source or target
 replacement stops subsequent effects and that a late ending-material latch reaches
-the drain gate. These checks do not establish physical completion. Ending-material
-drain is explicitly unavailable pending stage 8; reason-specific recovery, retained Jinja and producer execution remain
-unverified.
+the drain route. These checks do not establish physical completion. Stage 8 adds
+reason-specific recovery; retained Jinja and producer execution remain unverified.
 
 `BOX_END_PRINT` resets the live map, clears saved recovery hints and sets global
 `enable` to `1`. It disables the configured head runout sensor, or omits the

@@ -80,11 +80,6 @@ class ToolChange:
                     call(box.quickly_wait_heating, temperature)
                     return True
 
-            if box.is_use_ending_material:
-                from .box import MissingProtocolEffect
-
-                # Reject this unfinished route before saving fans or moving E/Z.
-                raise MissingProtocolEffect("ending-material drain requires the stage-8 executor")
             if box.box_state.is_continue_print:
                 box.box_state.is_continue_print = False
             call(box.motion.save_printer_accel, box.toolhead.max_velocity, box.toolhead.max_accel)

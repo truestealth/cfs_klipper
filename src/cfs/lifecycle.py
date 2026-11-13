@@ -78,6 +78,8 @@ class Lifecycle:
             "record_error": self.record_error,
             "timeout_process": self.timeout_process,
             "state_events": self.observe_state_event,
+            "schedule_tighten_up": box.runout.schedule_tighten_up,
+            "run_gcode": self.run_gcode,
         })
         if self._versions is not None:
             # Keep replacement fingerprints/family revocations across ready cycles.
@@ -114,6 +116,11 @@ class Lifecycle:
 
     def shutdown(self):
         self.running, self.is_shutdown = False, True
+        self.box.resume.shutdown()
+        # These describe extension-owned work, which cannot survive shutdown.
+        # Error/source hints remain available for explicit recovery after ready.
+        self.box.inside_auto_refill = False
+        self.box.inside_extrusion_all_materials = False
         if self.box.cut_sensor is not None:
             self.box.cut_sensor.invalidate()
         self._generation += 1
@@ -312,16 +319,23 @@ class Lifecycle:
         self.errors.report_error(key, facts, check_context=self._report_guard(facts.get("address")))
 
     def observe_state_event(self, address, data):
-        """Retain an event separately; slot/refill operations remain gated."""
+        """Retain slot events separately from ordinary state observations."""
         self.check()
         self.box.slot_events[address] = {
             "data": bytes(data), "generation": self.box.device_versions.generation(address),
         }
+        self.box.events.process(address, data)
 
     def record_error(self, reason, context):
         guard = self._report_guard(context.get("addr"))
         guard()
         self.errors.record_error(reason, context)
+        guard()
+
+    def run_gcode(self, script):
+        guard = self._report_guard(operation=False)
+        guard()
+        self.box.gcode.run_script_from_command(script)
         guard()
 
     def timeout_process(self, address):

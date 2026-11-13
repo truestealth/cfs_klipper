@@ -8,7 +8,6 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from cfs.box import MissingProtocolEffect
 from cfs.lifecycle import LifecycleStopped
 from cfs.operations import OperationCancelled
 import test_phase_actions
@@ -206,16 +205,17 @@ class ToolActionTests(unittest.TestCase):
         self.assertIn((1, 0x11, b"\x01\x01"), self.native.commands())
         self.assertIn("G0 Y350.00 F20000.00", self.gcode.scripts)
 
-    def test_ending_material_gate_precedes_unfinished_mechanical_route(self):
+    def test_ending_material_drains_before_composed_tool_loading(self):
         self.make_box()
         self.box.is_use_ending_material = True
-        with self.assertRaises(MissingProtocolEffect):
-            self.command("T0")
-        self.assertEqual(self.gcode.scripts, [])
-        self.assertEqual(self.native.calls, [])
+        self.command("T0")
+        # Two drain segments and one segment in the later normal purge.
+        self.assertEqual(self.gcode.scripts.count("G0 E80.00 F360.00"), 3)
+        self.assertFalse(self.box.is_use_ending_material)
+        self.assertEqual(self.box.last_cmd, "T1A")
         self.assertFalse(self.box.operations.active)
 
-    def test_late_ending_latch_reaches_the_explicit_gate(self):
+    def test_late_ending_latch_runs_drain_then_tool_loading(self):
         self.make_box()
         previous = self.gcode.on_script
         def latch(script):
@@ -223,9 +223,10 @@ class ToolActionTests(unittest.TestCase):
             if "G1 E-4 F4800" in script:
                 self.box.is_use_ending_material = True
         self.gcode.on_script = latch
-        with self.assertRaisesRegex(MissingProtocolEffect, "ending-material"):
-            self.command("T0")
-        self.assertEqual(self.native.calls, [])
+        self.command("T0")
+        self.assertEqual(self.gcode.scripts.count("G0 E80.00 F360.00"), 3)
+        self.assertFalse(self.box.is_use_ending_material)
+        self.assertEqual(self.box.last_cmd, "T1A")
         self.assertFalse(self.box.operations.active)
 
     def test_box_end_source_replacement_cannot_unload_the_replacement(self):

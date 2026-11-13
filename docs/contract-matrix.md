@@ -6,8 +6,8 @@ English | [Русский](contract-matrix.ru.md)
 [machine-readable matrix](contract-matrix.json) contains **423 requirements**
 and **96 check families**: 78 on a PC and 18 on hardware. Data, native/version and
 lifecycle/error/context components and selected mechanical primitives are
-PC-tested: 22 families are implemented, 38 partial and 36 planned. Ending-material
-drain, recovery and hardware acceptance remain pending. Catalogue integrity
+PC-tested: 22 families are implemented, 41 partial and 33 planned. Retained
+producer and macro execution and hardware acceptance remain pending. Catalogue integrity
 alone does not establish functional compatibility.
 
 The baseline is CFS MCU **1.1.3**, with the retained stock `serial_485.so` and
@@ -68,14 +68,14 @@ that each reference resolves to an actual method; executing the suite establishe
 its local result. Do not create empty tests, mark a retained macro as newly
 implemented, or count registration as working mechanics.
 
-The matrix currently has 243 implemented requirements, 112 partial and 68 pending.
+The matrix currently has 253 implemented requirements, 143 partial and 27 pending.
 Shared contracts that also require full mechanical operations or recovery remain
 partial. The [compatibility notes](compatibility.md#state-configuration-and-storage)
 describe cache/observation separation, error behavior and deliberate save rules;
 [native integration](protocol.md#native-integration) records the implemented
 boundary and execution gates. The [lifecycle notes](protocol.md#lifecycle-integration)
 describe the new components and deliberate policies. Handler registration alone
-does not complete shared contracts: 93 commands are explicitly registered,
+does not complete shared contracts: 101 commands are explicitly registered,
 including one blocked legacy command, plus two conditional Hall handlers. The 32
 generated bindings have an isolated dispatch check. Separate composed PC tests
 exercise real Box phases with synthetic native replies, including cross-box

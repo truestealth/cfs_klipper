@@ -123,7 +123,7 @@ class HostActionTests(unittest.TestCase):
                 self.make_box(switch=switch)
                 expected = required if switch else required - hall
                 self.assertEqual(set(self.gcode.commands) & required, expected)
-                self.assertEqual(len(self.gcode.commands), 95 if switch else 93)
+                self.assertEqual(len(self.gcode.commands), 103 if switch else 101)
                 self.assertIs(self.gcode.commands["BOX_NOZZLE_CLEAN"], self.gcode.commands["TEST_BOX_CLEAN"])
                 self.assertEqual(len(self.printer.buttons), int(bool(switch)))
                 self.assertIn("BOX_EXTRUDER_EXTRUDE", self.gcode.commands)

@@ -5,8 +5,8 @@ English | [Русский](architecture.ru.md)
 **Status:** state, configuration, storage, native-call integration, reply decoding
 and per-device versions are implemented with PC tests. Lifecycle, cooperative
 operation context, common errors and configured mechanical primitives are also
-PC-tested. The bootstrap still refuses activation; full mechanical and recovery
-procedures remain pending.
+PC-tested, as are stage 8 drain, refill, recovery and resume components. The
+bootstrap still refuses activation; hardware acceptance remains pending.
 
 ## Scope
 
@@ -24,9 +24,10 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | `src/cfs/box.py` | Shared data, endpoint, status, metadata hook and handler integration | PC-tested with substitutes; bootstrap refuses activation |
 | `src/cfs/state.py` | Shared live state, snapshots, tool maps and grouping | Implemented; decoded observations share this state |
 | `src/cfs/configuration.py` | Loader, UI values and MODIFY/SAVE | Implemented with explicit preservation rules |
-| `src/cfs/storage.py` | Spool cache, recovery hints and read-only material database | Implemented; recovery lifecycle remains pending |
+| `src/cfs/storage.py` | Spool cache, recovery hints and read-only material database | Implemented; recovery uses validated hints |
 | `src/cfs/native.py` | Request bodies, reply validation and borrowed native API | Exact bodies, timeouts, sender retries and admission filters PC-tested |
-| `src/cfs/protocol.py` | Command/status decoding and ordered effects | Common errors are bound; slot/refill/drain executors remain pending |
+| `src/cfs/protocol.py` | Command/status decoding and ordered effects | Common errors and slot/refill/drain effects are bound; PC substitutes only |
+| `src/cfs/events.py`, `runout.py`, `recovery.py`, `resume.py` | Slot events, drain/refill, recovery and resume | PC substitute checks; physical behavior unverified |
 | `src/cfs/firmware.py` | Per-address identity, explicit family and exact version profiles | Mixed versions and identity invalidation PC-tested |
 | `src/cfs/lifecycle.py` | Ready/shutdown, configured dependencies, reconnect, heartbeat and pause wait | Own work is removed or invalidated; borrowed transport stays with stock serial |
 | `src/cfs/operations.py` | Source/target ownership, cooperative waits and head-result latch | Required phase callbacks, targeted heartbeat suspension and cancellation PC-tested |
