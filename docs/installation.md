@@ -12,7 +12,9 @@ Run from this checkout with Python 3.8 or later. Both paths must be explicit;
 the extras directory and backup parent must exist. The backup path itself must
 not exist and must be separate from the extras directory. `extras/box.py` must
 be an existing regular file, and `extras/cfs` must be absent. Links, reparse
-points and parent traversal are rejected. The default action is a read-only
+points and parent traversal are rejected. Native `box.so`, `box.*.so`, `box.pyd`
+and `box.*.pyd` entry points are rejected because they can shadow `box.py`;
+`box_wrapper.so` is retained. The default action is a read-only
 preview:
 
 ```sh

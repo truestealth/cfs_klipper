@@ -24,7 +24,7 @@ class InstallationTests(unittest.TestCase):
         self.original = b"\x00\xffstock\r\n"
         self.box.write_bytes(self.original)
         self.backup = self.root / "backup"
-        (self.extras / "box.so").write_bytes(b"native")
+        (self.extras / "box_wrapper.so").write_bytes(b"native")
         (self.extras / "serial_485.so").write_bytes(b"serial")
         (self.root / "printer.cfg").write_bytes(b"config")
 
@@ -41,7 +41,7 @@ class InstallationTests(unittest.TestCase):
         self.assertEqual(restored.st_mode, original_stat.st_mode)
         self.assertEqual(restored.st_mtime_ns, original_stat.st_mtime_ns)
         self.assertFalse((self.extras / "cfs").exists())
-        self.assertEqual((self.extras / "box.so").read_bytes(), b"native")
+        self.assertEqual((self.extras / "box_wrapper.so").read_bytes(), b"native")
         self.assertEqual((self.extras / "serial_485.so").read_bytes(), b"serial")
         self.assertEqual((self.root / "printer.cfg").read_bytes(), b"config")
         self.assertTrue(self.backup.exists())
@@ -217,6 +217,16 @@ class InstallationTests(unittest.TestCase):
             installer.restore(self.extras, self.backup)
 
     def test_collisions_and_nested_backup_rejected(self):
+        for name in ("box.so", "box.cpython-38-x86_64-linux-gnu.so", "box.pyd", "box.cp38-win_amd64.pyd"):
+            with self.subTest(name=name):
+                native = self.extras / name
+                native.write_bytes(b"stock")
+                with self.assertRaisesRegex(ValueError, "shadows"):
+                    installer.install(self.extras, self.backup)
+                self.assertEqual(native.read_bytes(), b"stock")
+                self.assertEqual(self.box.read_bytes(), self.original)
+                self.assertFalse(self.backup.exists())
+                native.unlink()
         (self.extras / "cfs").mkdir()
         with self.assertRaises(ValueError):
             installer.prepare(self.extras, self.backup)

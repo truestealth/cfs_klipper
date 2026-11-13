@@ -58,6 +58,10 @@ def sources():
 
 def prepare(extras, backup):
     extras, backup = inputs(extras, backup)
+    for path in extras.iterdir():
+        name = path.name.lower()
+        if name.startswith("box.") and (name.endswith(".so") or name.endswith(".pyd")):
+            raise ValueError("native box entry point shadows box.py: " + path.name)
     box = safe_path(extras / "box.py")
     if not box.is_file() or (extras / "cfs").exists() or (extras / "cfs").is_symlink():
         raise ValueError("a regular box.py and absent cfs directory are required")
