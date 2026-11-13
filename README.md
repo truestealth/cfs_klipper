@@ -14,13 +14,17 @@ The baseline is CFS MCU firmware **1.1.3** on the reference K1C. The
 [firmware change history](docs/compatibility.md#firmware-history) records the
 examined differences through 1.5.3 and their compatibility implications.
 
-**Status:** state, configuration, compatible storage, native-call integration,
-reply decoding, per-device versions, lifecycle, operation context and common
-error handling are implemented and PC-tested.
-Configured motion, heating, cutting, cleaning, preload, loading and unloading
-components and tool-change/print lifecycle routes have synthetic PC checks.
-Stage 8 adds runout, refill, recovery, resume and power-loss paths with synthetic PC checks; hardware acceptance remains pending. The entry point refuses activation before accessing
-printer objects. No installer or printer-ready release is provided.
+**Status:** the replacement's host components, supported loading/tool-change,
+print, refill and recovery routes have PC checks. Stage 9 adds retained-consumer
+integration, Jinja macro tests and a reversible development-file installer.
+Local verification also executes pinned retained Python and saved macro sources
+with substituted hardware effects; public CI uses synthetic fixtures.
+
+**Activation remains blocked.** The entry point refuses before obtaining printer
+objects. Hardware acceptance and the live configuration fingerprint are pending.
+Two examined saved load wrappers omit the required physical `TNN`; they fail
+before loading and need an explicit caller target or an agreed compatibility
+policy. No target is guessed and no user macro is rewritten.
 
 ## Project layout
 
@@ -39,10 +43,13 @@ guarded operation waits and shared error reporting. Stage 5 adds configured
 host motion, fans, heating, extrusion, cutting, cleaning and calibration
 handlers. Stage 6 adds preload, loading and unloading phases. Stage 7 adds tool
 changes and print lifecycle routes. Stage 8 adds runout, recovery and resume paths.
+Stage 9 tests integration and reversible file deployment.
 All 103 command names are registered: 101 unconditional and two conditional Hall
-commands. The legacy feed command remains deliberately blocked. Retained macro
-rendering and hardware acceptance remain pending.
+commands. The legacy feed command remains deliberately blocked; encoding 0,
+wire stages above seven, reserved operations and unaddressed diagnostics remain
+unsupported. See the matrix for the exact open paths.
 
+- [Development installation and rollback](docs/installation.md): preview, scoped backup and restore; activation remains blocked.
 - [Architecture](docs/architecture.md): responsibilities and Klipper layout.
 - [Protocol](docs/protocol.md): framing, native API boundary and open questions.
 - [Compatibility](docs/compatibility.md): implementation and validation coverage.
@@ -51,8 +58,9 @@ rendering and hardware acceptance remain pending.
 
 ## Quick start
 
-Tests run directly from the checkout using standard-library `unittest`, without
-installing the extension or additional Python dependencies. **Python 3.8 is the
+Tests run directly from the checkout using standard-library `unittest`. Install
+[requirements-test.txt](requirements-test.txt) for test-only Jinja2 3.1.6 macro
+rendering; the extension itself is not installed as a package. **Python 3.8 is the
 project default**, recorded in [.python-version](.python-version). Create a local
 environment with CPython 3.8 before running the tests. Native MIPS/printer
 compatibility remains unverified.
@@ -61,6 +69,7 @@ Windows / PowerShell:
 
 ```powershell
 py -3.8 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-test.txt
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
@@ -68,6 +77,7 @@ Linux / macOS:
 
 ```sh
 python3.8 -m venv .venv
+.venv/bin/python -m pip install -r requirements-test.txt
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
@@ -89,8 +99,9 @@ and [host-action policies](docs/compatibility.md#host-actions), as well as
 ## Development
 
 The [CI workflow](.github/workflows/ci.yml) is configured to run the same tests
-on Python 3.8, using the same version file. Installation and distribution builds
-are not part of CI.
+on Python 3.8, using the same version file and test-only requirements. CI checks
+installation and rollback in temporary directories; it does not deploy to a
+printer or build a distribution.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 For bug reports, include the commit, environment, relevant host/MCU versions and

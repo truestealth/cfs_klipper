@@ -8,6 +8,7 @@ English | [Русский](CONTRIBUTING.ru.md)
 4. Run the checks from the project root in the activated Python 3.8 environment:
 
    ```sh
+   python -m pip install -r requirements-test.txt
    python -m unittest discover -s tests -v
    ```
 
@@ -16,7 +17,10 @@ English | [Русский](CONTRIBUTING.ru.md)
 
 Source code belongs in `src/cfs/`, the Klipper entry point in `klipper/`,
 and tests in `tests/`. Tests use standard-library `unittest`; test filenames start
-with `test_`. Run tests directly from the checkout without package installation.
+with `test_`. Run tests directly from the checkout without extension installation.
+Jinja2 3.1.6 in `requirements-test.txt` is only for macro-rendering tests. Public
+fixtures must remain synthetic; local retained-source execution is separate
+evidence and must not be described as public CI coverage.
 Use docstrings for non-obvious behavior and comments to explain implementation
 decisions. Keep changes small and avoid unrelated refactoring.
 
@@ -25,7 +29,10 @@ Read the [architecture](docs/architecture.md), [protocol](docs/protocol.md), and
 Python 3.8 is the development and CI default, pinned in [.python-version](.python-version).
 Keep the existing `serial_485` transport;
 validate the exact native API path instead of opening another serial connection.
-The current bootstrap intentionally refuses activation.
+The current bootstrap intentionally refuses activation. The [development installer](docs/installation.md)
+tests only scoped file deployment and rollback; it does not certify startup.
+Preserve explicit blockers, including the missing target in examined saved load
+wrappers, rather than adding a guessed default or changing user macros.
 
 Add loading and native-call tests with the corresponding implementations. Cover
 missing observations, negative replies and timeout paths, not only acknowledgements.

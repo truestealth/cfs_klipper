@@ -102,7 +102,8 @@ class FinishingTests(unittest.TestCase):
             box_state=SimpleNamespace(Tn_data={"enable": 1},
                                       get_Tnn_content=lambda tnn: {"addr": 1}),
             motion=SimpleNamespace(z_down=lambda **kw: calls.append(("z", kw)),
-                                   move_to_safe_pos=lambda: calls.append("safe")),
+                                   move_to_safe_pos=lambda: calls.append("safe"),
+                                   _positions=lambda *names: [0] * len(names)),
             get_filament_sensor_detect=lambda: True,
             move_to_cut=lambda **kw: False,
         )
@@ -264,7 +265,8 @@ class FinishingTests(unittest.TestCase):
             box_state=SimpleNamespace(Tn_data={"enable": 1},
                                       get_Tnn_content=lambda tnn: {"addr": 1}),
             motion=SimpleNamespace(z_down=lambda **kw: calls.append("z"),
-                                   move_to_safe_pos=lambda: calls.append("safe")),
+                                   move_to_safe_pos=lambda: calls.append("safe"),
+                                   _positions=lambda *names: [0] * len(names)),
             get_filament_sensor_detect=lambda: True, move_to_cut=cut,
             box_retrude_material=lambda **kw: calls.append("retract"),
         )
@@ -286,7 +288,8 @@ class FinishingTests(unittest.TestCase):
             is_use_ending_material=False,
             box_state=SimpleNamespace(Tn_data={"enable": 1},
                                       get_Tnn_content=lambda tnn: {"addr": 1}),
-            motion=SimpleNamespace(move_to_safe_pos=lambda: epoch.__setitem__(0, 1)),
+            motion=SimpleNamespace(move_to_safe_pos=lambda: epoch.__setitem__(0, 1),
+                                   _positions=lambda *names: [0] * len(names)),
         )
         finishing = Finishing(box)
         finishing.box_end = lambda: None

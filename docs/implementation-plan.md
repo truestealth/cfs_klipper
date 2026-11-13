@@ -2,15 +2,13 @@
 
 English | [Русский](implementation-plan.ru.md)
 
-**Status:** stage 1 is complete. Stage 2 state/configuration/storage and stage 3
-native/decoder/version components are implemented and PC-tested.
-Stage 4 adds lifecycle, operation-context and common-error components. Stage 5
-implements configured host mechanical primitives with synthetic PC checks. Stage 6
-adds preload, loading and unloading phases with PC checks. Stage 7 adds tool-change
-and print lifecycle routes with substitute checks. Stage 8 adds drain, refill,
-recovery and resume paths. Retained sensor-producer execution, macro rendering
-and hardware acceptance remain incomplete. The bootstrap refuses activation; no installer or printer
-changes have been introduced.
+**Status:** stages 1–8 provide the contract inventory and host components for
+state, native calls, lifecycle, motion, load/unload, tool changes and recovery.
+Stage 9 adds PC integration, Jinja tests, bounded local retained-source execution
+and reversible development-file installation. Explicit unresolved paths remain
+in the matrix, including the missing physical target in two examined saved load
+wrappers. The bootstrap refuses activation; hardware acceptance and the live
+configuration fingerprint remain pending. No printer was changed.
 
 ## Target and design
 
@@ -88,9 +86,9 @@ power-loss data cleanup without losing the material cache.
 **PC result:** exact request bodies, validated command/status replies, borrowed
 native API calls and per-address identities/profiles are implemented. Twelve
 native-command handlers join the nine data handlers in substitute-based tests.
-The stage-3 suite had 103 test methods. Real native ABI/wire behavior and
-operation/error/event integration remain unverified; the bootstrap refuses
-activation. See the [native integration boundaries](protocol.md#native-integration)
+The stage-3 suite had 103 test methods. Later stages compose operation/error/event
+handlers on PC substitutes; real native ABI/wire behavior remains unverified and
+the bootstrap refuses activation. See the [native integration boundaries](protocol.md#native-integration)
 and runnable references in the [matrix](contract-matrix.md).
 
 Obtain the configured stock Klipper serial object and use its supported request
@@ -119,10 +117,11 @@ establish native API use; actual wire transmissions require target validation.
 
 **PC result:** explicit ready/shutdown, configured dependencies, per-address
 reconnect/identity, round-robin heartbeat, owned scheduling, cooperative operation
-context and shared client reporting are implemented. There are 23 functional
-handlers. Targeted heartbeat ownership and failed stage6 results during a stage4
+context and shared client reporting are implemented. Stage 4 initially supplied 23
+functional handlers; later stages register all 103 required names. Targeted heartbeat ownership and failed stage6 results during a stage4
 native wait are tested. Stage 6 supplies loading consumers and power-on refresh;
-retained sensor-producer execution and reason-specific recovery remain partial.
+stage 8 adds reason-specific recovery and stage 9 executes the retained producer
+in a bounded local PC harness.
 Unavailable phase actions fail explicitly. See [lifecycle integration](protocol.md#lifecycle-integration)
 and the [matrix](contract-matrix.md). The bootstrap still refuses activation.
 
@@ -152,8 +151,8 @@ are implemented and tested with substitutes. Missing position fields are checked
 before the affected movement. The cleaning route uses four strokes independent
 of `clean_run_count`; fan saves use `last_value * scale`. `speed_factor` starts
 as `None`; no M220 behavior is inferred. Registered-action compositions cover
-wheel/feed/cleaning, shared error restoration and macro aliases. Hardware and
-full tool-change routes remain unverified. The [host policies](compatibility.md#host-actions)
+wheel/feed/cleaning, shared error restoration and macro aliases. Later stages compose full tool changes on PC substitutes; hardware remains
+unverified. The [host policies](compatibility.md#host-actions)
 record deliberate guards. Colour-derived purge calculations use the retained Klipper
 `chelper` interface (`get_ffi`, `rgb_t` and `get_flushing_volume`); its native
 implementation is substituted in PC tests.
@@ -205,8 +204,8 @@ inputs retain their required meanings throughout the operation.
 
 ### 8. Complete runout, recovery, pause/resume and power-loss behavior
 
-The host paths below have synthetic component and composed PC checks. Retained
-producer and macro execution, plus physical behavior, remain unverified.
+The host paths below have synthetic component and composed PC checks. Stage 9
+adds bounded retained producer/macro execution; physical behavior remains unverified.
 
 Implement runout/draining, same-material replacement selection, candidate sensor
 checks, alias remapping and deferred tool changes. Complete reason-specific
@@ -219,6 +218,13 @@ error family, deferred targets and restart with conflicting saved/live state.
 Clearing host error state does not assert that the physical route has rolled back.
 
 ### 9. Close PC integration and prepare reversible installation
+
+**PC result:** public synthetic Jinja/consumer tests, configuration/encoding
+preflight and temporary-tree install/rollback tests are present. Separate local
+checks execute pinned retained modules and saved macros. Both examined saved
+load wrappers omit required `TNN`; their unchanged successful load remains
+blocked. Live include/override fingerprints and hardware acceptance are still
+required. The installer deploys the gated development bootstrap only.
 
 Check the complete command/API matrix, registration order, optional configurations,
 settings and persisted formats against consumer scenarios. Exercise combined

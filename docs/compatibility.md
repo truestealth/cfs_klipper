@@ -21,11 +21,17 @@ an implemented or hardware-verified one.
 | Configured motion, heating, cutting and cleaning | Stage 5 components implemented | Synthetic G-code, fan, heater and sensor checks; hardware acceptance pending |
 | Preload, loading and unloading | Stage 6 components implemented | Synthetic phase checks; hardware acceptance pending |
 | Tool change and print lifecycle | Partial | PC substitutes cover tool changes and ending-material drain; hardware acceptance pending |
-| Pause/resume and recovery | Stage 8 components | PC substitutes cover recovery, refill, resume and persisted hints; retained macros and hardware remain unverified |
+| Pause/resume and recovery | Stage 8 components | PC substitutes cover recovery, refill, resume and persisted hints; bounded retained-source checks supplement CI; hardware unverified |
 | Stock G-code and status interfaces | Partial | All 103 names registered, including two conditional Hall commands and one blocked legacy feed command; endpoint and snapshots tested |
 | RFID, remaining length, saved materials | Partial | Normal replies, metadata/cache updates and deferred grouping tested; hardware observations and mechanical slot handling pending |
-| Reversible installation | Pending | No installer or rollback provided |
-| Python 3.8 | Project and CI default | 499 local tests passed on Python 3.8.20/Windows; native MIPS runtime unverified |
+| Reversible development-file installation | Implemented | Preview, backup, scoped restore, failure and tampering tests in temporary trees; bootstrap remains gated |
+| Python 3.8 | Project and CI default | 546 methods run: 543 passed, 3 Windows symlink-privilege skips on Python 3.8.20; test-only Jinja2; native MIPS runtime unverified |
+
+The 546-method total is the public suite only. Separate local runs passed 13
+retained-module checks, 13 saved-macro checks and the 17 public macro checks
+using the retained renderer. They are additional evidence, not extra public
+test methods. The three skips require Windows native symlink privileges;
+platform-independent reparse rejection is checked.
 
 Coverage records local component checks. Hosted results for each commit are
 available in [GitHub Actions](https://github.com/truestealth/cfs_klipper/actions).
@@ -48,14 +54,16 @@ cache; lifecycle initialization applies them only after a fresh successful
 MATERIAL presence response. That observation does not establish completed motion.
 Tool remapping saves the complete sixteen-entry map without selecting a source.
 Grouping uses type/colour and the read-only material catalogue; candidate sensor
-checks remain part of the later refill operation.
+checks are performed by the implemented refill operation.
 
 All 54 loader options retain their own types, defaults and bounds. The endpoint
 uses its separate 21-field value/min/max schema. Construction errors, including
 missing optional positions, discard partial fields and send/return `{}`;
 errors from sending itself propagate. This resolves the data endpoint behavior
 for position-disabled setups. Stage 5 validates fields needed by an affected
-move before issuing it; complete position-disabled routes remain unverified.
+move before issuing it. Stage 9 checks position-disabled data, load, continuation
+and resume paths before effects; exhaustive partial-coordinate combinations
+remain unverified.
 
 The nine data handlers cover remapping, public/inner data edits, diagnostic
 presentation, auto-refill permission, CFS-print enable, grouping and MODIFY/SAVE.
@@ -136,8 +144,8 @@ The implemented host policies are:
 
 Tests compose native wheel replies with segmented extrusion and actual Python
 cleaning, shared error restoration, macro alias dispatch and temporary-file
-configuration saves. Retained Jinja rendering, producer execution and hardware
-acceptance remain separate checks. The bootstrap still refuses activation.
+configuration saves. Stage 9 adds bounded Jinja and retained-producer execution checks. Hardware
+acceptance remains separate. The bootstrap still refuses activation.
 
 ## Runout, recovery and resume
 
@@ -152,12 +160,12 @@ host error does not establish mechanical rollback.
 
 `BOX_ADD_TNN` queues a known virtual tool on `virtual_sdcard.resume_tnn`; it
 does not execute the later tool change. The replacement rejects unknown queued
-tool strings and cancels its unchanged queued target on shutdown. The retained
-virtual-SD replay and macro templates have not been executed by these PC tests.
+tool strings and cancels its unchanged queued target on shutdown. Public CI uses own fixtures; separate local checks execute pinned retained
+virtual-SD replay and saved macro templates with substituted effects.
 Cooperative guards stop stale work after shutdown, rebinding or relevant device
 replacement. Shutdown clears the extension-owned refill and draining in-progress
-flags while preserving source and error context. Hardware acceptance and printer
-installation remain pending.
+flags while preserving source and error context. Hardware acceptance remains
+pending; development-file installation is tested separately from activation.
 
 ## Preload, loading and unloading
 
@@ -187,8 +195,8 @@ The version-1 public `BOX_EXTRUDE_PROCESS` passes STAGE in the recovered call's
 remain distinct. Encoding 0, typed wire stages above 7 and legacy opcode `0x13`
 are explicitly blocked pending resolution; `BOX_EXTRUDE_2_PROCESS` is registered
 but cannot send. Execution requires a confirmed CFS address 1..4, even though the
-recovered direct-feed parser accepts addresses through 9. Retained Jinja rendering, actual sensor-producer execution and hardware
-acceptance remain separate work.
+recovered direct-feed parser accepts addresses through 9. Stage 9 separately verifies retained Jinja and actual sensor-producer execution
+on the PC. Hardware acceptance remains open.
 
 
 ## Tool changes and print lifecycle
@@ -201,13 +209,55 @@ with synthetic native replies, including a cross-box change, tray and tower path
 continuation, end cleanup and purge failure. They also check that source or target
 replacement stops subsequent effects and that a late ending-material latch reaches
 the drain route. These checks do not establish physical completion. Stage 8 adds
-reason-specific recovery; retained Jinja and producer execution remain unverified.
+reason-specific recovery. Stage 9 adds bounded retained Jinja and producer
+execution checks; these do not establish hardware acceptance.
 
 `BOX_END_PRINT` resets the live map, clears saved recovery hints and sets global
 `enable` to `1`. It disables the configured head runout sensor, or omits the
 sensor command when none is configured. The original used a fixed sensor name;
 this follows the project policy for custom and absent sensors. It is distinct
 from the physical `BOX_END` operation.
+
+## PC integration and remaining blockers
+
+Public tests execute own synthetic Jinja fixtures, renamed base commands,
+render-time snapshots, raw argument forwarding and real Box handlers. The only
+additional test dependency is pinned Jinja2 3.1.6; runtime requirements are
+unchanged. Separate local verification executes pinned retained Python modules
+and saved macro sources. That evidence is not public CI or live configuration
+verification: external actions, reactor timing and serial replies are substituted.
+
+The actual retained head producer runs RunoutHelper before the Box event.
+Disabled, debounced and duplicate helper input still permits a true-level event;
+Box owns duplicate/stale rejection. Full loading consumes the saved stage-six
+result even when False while the surrounding stage-four call succeeds. The
+eight direct retained Box paths use shared live state. Retained virtual-SD
+replay clears its target after any normal command return, including False, but
+an exception retains the hint; neither outcome certifies physical loading.
+
+Both examined saved material-present/material-absent load wrappers omit the
+physical `TNN` required by `BOX_EXTRUDE_MATERIAL`. Static reconstruction predicts the same original-handler failure; the original
+binary was not executed. This is an unresolved caller-contract blocker
+(`GAP-MACRO-LOAD-TARGET`), not a successful load scenario. Supply an explicit
+physical target or agree a compatibility policy before relying on those paths;
+the extension does not infer a target or rewrite user macros. Saved copies do
+not establish today's active includes or overrides: `GAP-MACRO-SNAPSHOT` remains
+a precondition for printer activation/hardware acceptance.
+
+Stage 9 adds preflight for unsupported loading encodings and required movement
+positions. Explicit encoding-0 loading/tool changes stop before heating or
+motion. With `has_extrude_pos=0`, data/endpoint access remains available while
+affected load, movement, continuation and resume paths fail before their effects.
+`BOX_END` validates its final safe-position requirement before Z movement,
+ending-material drain or sensor/flag changes. The same-content path may still
+use the established no-head-sensor fallback without tray positions or fan pins.
+These are deliberate host guards, not inferred coordinates or physical rollback.
+
+The [development installer](installation.md) changes only the scoped Box files
+and preserves retained modules, configuration and spool data. Backup/restore and
+failure cases are tested in temporary trees. It deploys files whose bootstrap
+still refuses activation. Encoding 0, legacy opcode 0x13, typed stages above
+seven, reserved operations and unaddressed diagnostics remain explicitly gated.
 
 <a id="firmware-versions"></a>
 

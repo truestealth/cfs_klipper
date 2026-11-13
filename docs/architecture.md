@@ -6,7 +6,8 @@ English | [Русский](architecture.ru.md)
 and per-device versions are implemented with PC tests. Lifecycle, cooperative
 operation context, common errors and configured mechanical primitives are also
 PC-tested, as are stage 8 drain, refill, recovery and resume components. The
-bootstrap still refuses activation; hardware acceptance remains pending.
+bootstrap still refuses activation; hardware acceptance remains pending. Stage 9
+adds synthetic Jinja/retained-boundary tests and reversible development-file deployment.
 
 ## Scope
 
@@ -44,7 +45,8 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | `docs/` | Architecture, protocol and compatibility, in English and Russian | Draft specifications |
 
 Add modules when implemented behavior needs them, together with its tests.
-The diagram describes responsibilities; full tool changes and hardware acceptance remain pending.
+The diagram describes responsibilities; composed tool changes have PC checks,
+while hardware acceptance remains pending.
 
 ```mermaid
 flowchart LR
@@ -107,20 +109,17 @@ values and transitions come from the target stock implementation.
 
 ## Klipper layout and Python
 
-The planned installed layout is `klippy/extras/box.py` plus
-`klippy/extras/cfs/`. A PC test checks this import arrangement and the explicit
-refusal to activate the scaffold. No installer is provided yet.
+The [development installer](installation.md) deploys `klippy/extras/box.py` and
+`klippy/extras/cfs/` with preview, scoped backup and restore. Temporary-tree tests
+cover the import layout and refusal to activate. It leaves other modules,
+configuration, services and spool data with their owners; no printer was installed.
 
-The project defaults to Python 3.8 via [.python-version](../.python-version), matching the preserved
-native module's CPython 3.8 ABI baseline. Tests on newer PC Python versions do not
-establish native ABI or printer compatibility. Tests run directly from the
-checkout using standard-library `unittest`. CI reads the same version file and runs Python 3.8
-without installation or package builds. The extension is loaded by Klipper;
-its source and entry point will be deployed directly by a separately verified
-reversible installation procedure.
-
-The former demonstration CLI has been removed. The project's runtime entry is
-Klipper's `load_config(config)`.
+Python 3.8 is pinned in [.python-version](../.python-version), matching the
+preserved CPython ABI baseline without establishing MIPS native compatibility.
+The checkout suite uses `unittest` plus test-only Jinja2 3.1.6 from
+`requirements-test.txt`; CI installs those test dependencies. Public fixtures
+are synthetic. Local pinned retained-source execution is separate evidence.
+The runtime entry is Klipper's `load_config(config)`, which remains gated.
 
 ## Configuration and stored data
 

@@ -123,9 +123,11 @@ the target and temporarily disables heartbeat only for that address while the
 head phase is armed. It records the stage-6 result and status even when the
 result is `False`; neither the flag nor an ACK proves physical completion.
 Missing or raising phase actions cancel ownership and restore the previous
-heartbeat permission. The loading phase consumes this saved result. The
-retained sensor producer after disabled/debounced RunoutHelper is confirmed
-statically; these component tests inject its custom event directly.
+heartbeat permission. The loading phase consumes this saved result. Public tests use an own producer fixture. Separate local checks execute the
+pinned retained SwitchSensor/RunoutHelper inside a native stage-four substitute
+and prove complete loading consumes a saved False result. Disabled, debounced
+and duplicate helper input still emits the custom event. No native binary or
+physical sensor ran.
 
 `slot_events` holds per-address diagnostics; the slot event executor separately
 updates metadata and schedules guarded refreshes. Power-on refresh, head motion

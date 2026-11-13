@@ -2,12 +2,11 @@
 
 English | [Русский](contract-matrix.ru.md)
 
-**Stage 1:** the inventory and verification bindings are complete. The
-[machine-readable matrix](contract-matrix.json) contains **423 requirements**
-and **96 check families**: 78 on a PC and 18 on hardware. Data, native/version and
-lifecycle/error/context components and selected mechanical primitives are
-PC-tested: 22 families are implemented, 41 partial and 33 planned. Retained
-producer and macro execution and hardware acceptance remain pending. Catalogue integrity
+The [machine-readable matrix](contract-matrix.json) contains **423 requirements**
+and **96 check families**: 78 on PC and 18 on hardware. Stage 9 records
+59 implemented families, 19 partial and 18 planned; every planned
+family is a hardware check. Public synthetic fixtures and additional local
+retained-source execution have distinct evidence scopes. Catalogue integrity
 alone does not establish functional compatibility.
 
 The baseline is CFS MCU **1.1.3**, with the retained stock `serial_485.so` and
@@ -51,7 +50,7 @@ questions:
 | `checks` | PC/HW case IDs; each resolves to concrete assertions in the catalogue |
 | `evidence` | `static`, `partial` or later `hardware`; this is independent of implementation |
 | `implementation` | `pending`, `partial` or `implemented`; component status is separate from hardware acceptance |
-| `implementation_note` | Scope of partial implementation or a deliberate difference from the original |
+| `implementation_note` | Current implementation/evidence scope or a deliberate difference from the original |
 | `blockers` | Applicable unresolved questions, with affected rows and closing criteria in `gaps` |
 | `code`, `alias_of` | Numeric wire/status value or a registered alias, where applicable |
 
@@ -68,9 +67,9 @@ that each reference resolves to an actual method; executing the suite establishe
 its local result. Do not create empty tests, mark a retained macro as newly
 implemented, or count registration as working mechanics.
 
-The matrix currently has 253 implemented requirements, 143 partial and 27 pending.
-Shared contracts that also require full mechanical operations or recovery remain
-partial. The [compatibility notes](compatibility.md#state-configuration-and-storage)
+The matrix records 316 implemented requirements and 107 partial requirements.
+Partial rows identify concrete unsupported paths or incomplete PC assertions;
+hardware acceptance remains separate. Every row has a current implementation note. The [compatibility notes](compatibility.md#state-configuration-and-storage)
 describe cache/observation separation, error behavior and deliberate save rules;
 [native integration](protocol.md#native-integration) records the implemented
 boundary and execution gates. The [lifecycle notes](protocol.md#lifecycle-integration)
@@ -79,8 +78,9 @@ does not complete shared contracts: 101 commands are explicitly registered,
 including one blocked legacy command, plus two conditional Hall handlers. The 32
 generated bindings have an isolated dispatch check. Separate composed PC tests
 exercise real Box phases with synthetic native replies, including cross-box
-changes, print cleanup and purge failures; retained Jinja and hardware checks
-remain separate.
+changes, print cleanup and purge failures. Jinja tests use own public templates;
+pinned retained-source execution is additional local evidence, not public CI.
+A family validation_note states that distinction where applicable.
 
 ## Macro integration found during the inventory
 
@@ -105,7 +105,10 @@ These are contracts with existing macros, material/diagnostic helpers and sensor
 definitions. Their files and services remain with their current owners. Existing
 macro names must not be registered as replacement-owned commands just because
 they contain `BOX_`. Saved copies establish the examined content; the active
-printer configuration must be identified before installation.
+printer configuration must be identified before activation/hardware acceptance.
+Both examined saved load wrappers omit required physical `TNN`; the original
+and replacement handler fail on that path. `GAP-MACRO-LOAD-TARGET` remains open,
+with no guessed target and no automatic edits to user macros.
 
 ## Direct Python consumers
 
@@ -141,7 +144,8 @@ context-specific pause/after-pause effects.
 | `GAP-SERIAL-NAME` | Resolved: use only the configured bus; omit the historical redundant fixed-name lookup. Baseline and alternate names are PC-tested |
 | `GAP-HEAD-SENSOR-NAME` | Resolved: use the configured sensor for lookup and every enable path. Without a configured sensor, retain the distinct True fallback and emit no sensor-enable G-code |
 | `GAP-RESERVED-WIRE` | Keep three reserved identifiers separate from invented direct APIs; recover a required path before using it |
-| `GAP-MACRO-SNAPSHOT` | Identify the active include chain and configuration fingerprints before printer acceptance |
+| `GAP-MACRO-SNAPSHOT` | Identify the active include chain and configuration fingerprints before printer activation/acceptance; saved copies and temporary-tree deployment do not close it |
+| `GAP-MACRO-LOAD-TARGET` | Resolve the missing physical TNN in both examined load wrappers through an explicit caller target or agreed policy; no inferred spool or silent macro rewrite |
 
 Five gaps remain open; serial and head-sensor lookup policies are resolved. Open gaps gate
 their affected paths. Recording a gap completes the inventory entry; it does not

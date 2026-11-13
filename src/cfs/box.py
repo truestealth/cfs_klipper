@@ -304,6 +304,10 @@ class Box:
         return self.feeding.make_material_loose()
 
     def box_extrude_material(self, tnn):
+        if tnn is not None:
+            self.motion._positions("safe_pos_y")
+            if self.boxcfg.version != 1:
+                raise UnsupportedRequest("staged loading requires the supported box encoding 1")
         return self.loading.box_extrude_material(tnn)
 
     def box_retrude_material(self, report_error=True):
@@ -483,7 +487,7 @@ class Box:
         self.error_next_macro.append(gcmd.get_commandline())
 
     def cmd_box_extrude_material(self, gcmd):
-        self._cmd_material_phase(gcmd, self.loading.box_extrude_material, "macro_box_extrude_err")
+        self._cmd_material_phase(gcmd, self.box_extrude_material, "macro_box_extrude_err")
 
     def cmd_extruder_extrude(self, gcmd):
         self._cmd_material_phase(gcmd, self.loading.extruder_extrude, "macro_extruder_extrude_err")

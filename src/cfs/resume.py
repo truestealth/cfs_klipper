@@ -89,6 +89,8 @@ class Resume:
         # A saved source is not evidence of filament physically in the head.
         if not call(box.get_filament_sensor_detect):
             return
+        if getattr(box.boxcfg, "has_extrude_pos", 1) == 0:
+            box.motion._positions("safe_pos_y")
         move = call(box._printer.lookup_object, "gcode_move")
         speed = move.speed
         run = lambda command: call(box.gcode.run_script_from_command, command)

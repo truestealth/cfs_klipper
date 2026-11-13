@@ -11,7 +11,7 @@ class Finishing:
         box = self.box
         address = box.box_state.get_Tnn_content(tnn)["addr"] if tnn is not None else None
         guard = box.host_guard(address)
-        if box.boxcfg.safe_pos_y is None:
+        if getattr(box.boxcfg, "safe_pos_y", None) is None:
             raise ValueError("CFS positions not configured: safe_pos_y")
         result = box.Tn_Extrude(length, velocity, temp, percent, tnn,
                                 error_report=error_report)
@@ -101,7 +101,7 @@ class Finishing:
             for check in guards:
                 check()
 
-        if box.boxcfg.safe_pos_y is None:
+        if getattr(box.boxcfg, "safe_pos_y", None) is None:
             raise ValueError("CFS positions not configured: safe_pos_y")
         length = self.get_flush_len(last_tnn, tnn)
         guard()
@@ -211,6 +211,9 @@ class Finishing:
 
     def cmd_box_end(self, gcmd):
         box = self.box
+        # Every normal command tail goes to safe XY, so a configuration that
+        # cannot complete that tail must fail before Z, drain or runout changes.
+        box.motion._positions("safe_pos_y", "clean_right_pos_x")
         address = None
         if not box.last_err and box.box_state.Tn_data["enable"] != 0 and box.last_cmd is not None:
             address = box.box_state.get_Tnn_content(box.last_cmd)["addr"]

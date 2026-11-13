@@ -1,0 +1,2 @@
+# Klipper's template engine, used only by the PC macro checks.
+Jinja2==3.1.6

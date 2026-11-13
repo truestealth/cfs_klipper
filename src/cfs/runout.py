@@ -94,6 +94,8 @@ class Runout:
         """
         box = self.box
         call = self._calls(self._source_addresses())
+        if getattr(box.boxcfg, "has_extrude_pos", 1) == 0:
+            box.motion._positions("safe_pos_y")
         run = lambda command: call(box.gcode.run_script_from_command, command)
         if call(box.toolhead.get_position)[2] < 25 and call(box.get_filament_sensor_detect):
             run("M400")

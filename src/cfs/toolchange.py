@@ -58,6 +58,7 @@ class ToolChange:
                 guards.append(box.host_guard(old_content["addr"]))
             if old_content == content and box.error in (None, "filament_err"):
                 if box.box_state.is_continue_print and call(box.get_filament_sensor_detect) is True:
+                    call(box.motion._positions, "safe_pos_y")
                     run("M400")
                     call(box.motion.z_down, distance=25, absolute=True, wait=True)
                     record_z()
@@ -80,6 +81,10 @@ class ToolChange:
                     call(box.quickly_wait_heating, temperature)
                     return True
 
+            call(box.motion._positions, "safe_pos_y")
+            if getattr(box.boxcfg, "version", 1) != 1:
+                from .native import UnsupportedRequest
+                raise UnsupportedRequest("tool loading requires the supported box encoding 1")
             if box.box_state.is_continue_print:
                 box.box_state.is_continue_print = False
             call(box.motion.save_printer_accel, box.toolhead.max_velocity, box.toolhead.max_accel)
