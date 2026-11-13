@@ -173,7 +173,7 @@ class LifecycleTests(unittest.TestCase):
 
     def test_registration_aliases_ready_order_and_borrowed_transport(self):
         self.make_box()
-        self.assertEqual(len(self.printer.gcode.commands), 46)
+        self.assertEqual(len(self.printer.gcode.commands), 55)
         original = self.printer.gcode.register_command("BOX_GET_BOX_STATE", None)
         self.printer.gcode.register_command("BOX_GET_BOX_STATE_OLD", original)
         wrapper = lambda gcmd: None
@@ -426,9 +426,10 @@ class LifecycleTests(unittest.TestCase):
         self.make_box()
         self.box.preloading_poweron = True
         self.ready()
-        with self.assertRaisesRegex(RuntimeError, "not implemented"):
-            self.lifecycle.get_connect_state()
-        self.assertFalse(any(c == 0x0D and data[1] == 2 for _, c, data in self.native.commands()))
+        self.native.responses[(1, 0x03)] = [reply(1, 0x03, data=b"\x01\x02\x03\x04")]
+        self.lifecycle.get_connect_state()
+        self.assertEqual(self.native.commands()[-3:], [(1, 0x0D, b"\x0f\x02"),
+                                                      (1, 0x02, b"\x0f"), (1, 0x03, b"\x0f")])
         self.make_box(head=None)
         self.box.preloading_poweron = True
         self.ready()

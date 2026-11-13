@@ -5,9 +5,9 @@ English | [Русский](implementation-plan.ru.md)
 **Status:** stage 1 is complete. Stage 2 state/configuration/storage and stage 3
 native/decoder/version components are implemented and PC-tested.
 Stage 4 adds lifecycle, operation-context and common-error components. Stage 5
-implements configured host mechanical primitives with synthetic PC checks.
-Full loading, tool changes, sensor producers, recovery and hardware acceptance
-remain incomplete. The bootstrap refuses activation; no installer or printer
+implements configured host mechanical primitives with synthetic PC checks. Stage 6
+adds preload, loading and unloading phases with PC checks. Full tool changes,
+retained sensor-producer execution, recovery and hardware acceptance remain incomplete. The bootstrap refuses activation; no installer or printer
 changes have been introduced.
 
 ## Target and design
@@ -119,9 +119,9 @@ establish native API use; actual wire transmissions require target validation.
 reconnect/identity, round-robin heartbeat, owned scheduling, cooperative operation
 context and shared client reporting are implemented. There are 23 functional
 handlers. Targeted heartbeat ownership and failed stage6 results during a stage4
-native wait are tested. Full loading consumers, retained sensor-producer execution,
-power-on RUN/refresh and reason-specific recovery remain partial; unavailable
-phase callbacks fail explicitly. See [lifecycle integration](protocol.md#lifecycle-integration)
+native wait are tested. Stage 6 supplies loading consumers and power-on refresh;
+retained sensor-producer execution and reason-specific recovery remain partial.
+Unavailable phase actions fail explicitly. See [lifecycle integration](protocol.md#lifecycle-integration)
 and the [matrix](contract-matrix.md). The bootstrap still refuses activation.
 
 Implement command/event registration as the handlers become functional, dependency
@@ -167,6 +167,11 @@ stale required observations cannot become measured success. An established
 no-sensor fallback remains distinguishable from an actual sensor reading.
 
 ### 6. Implement complete CFS loading, unloading and preload phases
+
+**PC result:** preload, staged load, head-result consumption and known/unknown
+unload phases are implemented and exercised with substitutes and real Box
+composition. Legacy opcode 0x13, typed encoding 0 and wire stages above 7
+remain blocked; printer acceptance remains open.
 
 Implement preload permission OPEN/CLOSE separately from RUN/TIGHT procedures,
 pretension/tighten control, staged loading, head callback coordination, final

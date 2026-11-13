@@ -20,8 +20,9 @@ class Lifecycle:
         self.box, self.printer = box, printer
         self.families, self.address_table = families, address_table
         self.port_exists, self.current_dispatch = port_exists, current_dispatch
-        self.startup_refresh = startup_refresh
-        self.move_head, self.stage6 = move_head, stage6
+        self.startup_refresh = startup_refresh if startup_refresh is not None else box.startup_refresh
+        self.move_head = move_head if move_head is not None else box.loading.move_head
+        self.stage6 = stage6 if stage6 is not None else box.loading.stage6
         self.reactor = printer.get_reactor()
         self.running = self.registered = False
         self.is_shutdown = True

@@ -123,14 +123,14 @@ the target and temporarily disables heartbeat only for that address while the
 head phase is armed. It records the stage-6 result and status even when the
 result is `False`; neither the flag nor an ACK proves physical completion.
 Missing or raising phase actions cancel ownership and restore the previous
-heartbeat permission. The complete loading consumer is still pending. The
+heartbeat permission. The loading phase consumes this saved result. The
 retained sensor producer after disabled/debounced RunoutHelper is confirmed
 statically; these component tests inject its custom event directly.
 
 `slot_events` holds per-address diagnostics, not slot/refill processing.
-Power-on refresh, head motion and stage 6 require real supplied callbacks and
-fail explicitly when needed but absent. Later mechanical procedures are not
-exposed as completed operations. See [compatibility](compatibility.md) and the
+Power-on refresh, head motion and stage 6 use real supplied actions and
+fail explicitly when needed but absent. Complete tool changes and recovery
+remain later work. See [compatibility](compatibility.md) and the
 [lifecycle](../tests/test_lifecycle.py), [error](../tests/test_errors.py) and
 [operation](../tests/test_operations.py) component tests.
 

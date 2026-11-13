@@ -297,7 +297,7 @@ class BoxIntegrationTests(unittest.TestCase):
         events = []
         with tempfile.TemporaryDirectory() as directory:
             box = Box(FakeConfig({'bus': 'custom_bus', 'version': 1}), directory)
-            box.lifecycle = SimpleNamespace(running=True, _report_guard=lambda: lambda: None)
+            box.lifecycle = SimpleNamespace(running=True, _report_guard=lambda address=None: lambda: None)
             box.gcode = SimpleNamespace(run_script_from_command=events.append)
             box.toolhead = SimpleNamespace(extruder=SimpleNamespace(
                 get_heater=lambda: SimpleNamespace(can_extrude=True)))

@@ -78,14 +78,14 @@
     "runtime_implementation": "partial",
     "hardware_acceptance": "pending",
     "implementations": {
-      "implemented": 225,
-      "partial": 66,
-      "pending": 131
+      "implemented": 235,
+      "partial": 72,
+      "pending": 115
     },
     "check_statuses": {
-      "partial": 29,
-      "planned": 46,
-      "implemented": 21
+      "partial": 35,
+      "implemented": 21,
+      "planned": 40
     }
   },
   "catalogue_validation": {
@@ -288,10 +288,11 @@
         "HW-CMD-FILAMENT"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [
         "GAP-STAGES"
-      ]
+      ],
+      "implementation_note": "Encoding 1 is PC-tested; public STAGE binds to trigger and leaves wire stage 2 as in the source. Encoding 0, typed wire stages above 7 and non-CFS addresses 5..9 remain blocked; those routes are not implemented."
     },
     {
       "id": "CMD-BOX_RETRUDE_PROCESS",
@@ -311,8 +312,9 @@
         "HW-CMD-FILAMENT"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Host route is exercised on PC substitutes; hardware and full tool-change integration remain unverified."
     },
     {
       "id": "CMD-BOX_CTRL_CONNECTION_MOTOR_ACTION",
@@ -480,8 +482,9 @@
         "HW-CMD-NATIVE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Host route is exercised on PC substitutes; hardware and full tool-change integration remain unverified."
     },
     {
       "id": "CMD-BOX_MEASURING_WHEEL",
@@ -521,8 +524,9 @@
         "HW-CMD-NATIVE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Host route is exercised on PC substitutes; hardware and full tool-change integration remain unverified."
     },
     {
       "id": "CMD-TEST_BOX_CLEAN",
@@ -827,8 +831,9 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Host route is exercised on PC substitutes; hardware and full tool-change integration remain unverified."
     },
     {
       "id": "CMD-BOX_EXTRUDE_MATERIAL",
@@ -849,8 +854,9 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Host route is exercised on PC substitutes; hardware and full tool-change integration remain unverified."
     },
     {
       "id": "CMD-BOX_EXTRUDER_EXTRUDE",
@@ -873,8 +879,9 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Host route is exercised on PC substitutes; hardware and full tool-change integration remain unverified."
     },
     {
       "id": "CMD-BOX_START_PRINT_EXTRUDE_MATERIAL",
@@ -959,8 +966,9 @@
         "HW-CMD-RECOVERY"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "Host route is exercised on PC substitutes; hardware and full tool-change integration remain unverified."
     },
     {
       "id": "CMD-BOX_EXTRUDE_2_PROCESS",
@@ -980,10 +988,11 @@
         "HW-CMD-FILAMENT"
       ],
       "evidence": "partial",
-      "implementation": "pending",
+      "implementation": "partial",
       "blockers": [
         "GAP-LEGACY-13"
-      ]
+      ],
+      "implementation_note": "Registered and explicitly blocked before transport pending resolution of the host/MCU opcode 0x13 payload mismatch."
     },
     {
       "id": "CMD-BOX_GET_VERSION_SN",
@@ -6367,8 +6376,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "PC substitute checks cover the recovered guards and payloads; physical completion is not established."
     },
     {
       "id": "OP-PRELOAD-ACTIONS",
@@ -6384,8 +6394,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "PC substitute checks cover the recovered guards and payloads; physical completion is not established."
     },
     {
       "id": "OP-TIGHTEN",
@@ -6401,8 +6412,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "implemented",
+      "blockers": [],
+      "implementation_note": "PC substitute checks cover the recovered guards and payloads; physical completion is not established."
     },
     {
       "id": "OP-HEAD-CALLBACK",
@@ -6436,8 +6448,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Phase executor and synthetic branches exist; full integration and physical operation remain unverified. Fresh ordinary sensor and buffer replies are required for decisions."
     },
     {
       "id": "OP-UNLOAD-KNOWN",
@@ -6453,8 +6466,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Phase executor and synthetic branches exist; full integration and physical operation remain unverified. Fresh ordinary sensor and buffer replies are required for decisions."
     },
     {
       "id": "OP-UNLOAD-UNKNOWN-CLEAR",
@@ -6470,8 +6484,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Phase executor and synthetic branches exist; full integration and physical operation remain unverified. Fresh ordinary sensor and buffer replies are required for decisions."
     },
     {
       "id": "OP-UNLOAD-UNKNOWN-PRESENT",
@@ -6487,8 +6502,9 @@
         "HW-BASELINE-CYCLE"
       ],
       "evidence": "static",
-      "implementation": "pending",
-      "blockers": []
+      "implementation": "partial",
+      "blockers": [],
+      "implementation_note": "Phase executor and synthetic branches exist; full integration and physical operation remain unverified. Fresh ordinary sensor and buffer replies are required for decisions."
     },
     {
       "id": "OP-MOTION",
@@ -7887,7 +7903,9 @@
         "tests/test_box_data.py::BoxDataTests.test_data_registration_and_client_snapshot_have_no_startup_actions",
         "tests/test_box_native.py::BoxNativeTests.test_binding_uses_configured_bus_without_connecting_or_projecting_presence",
         "tests/test_lifecycle.py::LifecycleTests.test_registration_aliases_ready_order_and_borrowed_transport",
-        "tests/test_host_actions.py::HostActionTests.test_stage5_registration_alias_and_truthy_hall_condition_before_ready"
+        "tests/test_host_actions.py::HostActionTests.test_stage5_registration_alias_and_truthy_hall_condition_before_ready",
+        "tests/test_phase_actions.py::PhaseActionTests.test_raw_target_is_not_remapped_twice_and_pickup_accepts_none",
+        "tests/test_phase_actions.py::PhaseActionTests.test_direct_feed_keeps_stage_binding_and_legacy_execution_gates"
       ],
       "remaining": "All stage-5 handlers, conditional Hall registration and the shared cleaning alias are checked. Later-stage commands, generated tools and actual macro rename_existing execution remain incomplete."
     },
@@ -7961,8 +7979,13 @@
         "Verify RAM preference updates even when print/head guards suppress native sending; preserve printing, pause and paused as the observed distinct state strings.",
         "Verify tighten-up request values ENABLE=0/DISABLE=1 and that procedure timeout scales with selected bits rather than acting as a physical completion guarantee."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_feeding.py::BranchTests.test_broadcast_and_preference_before_failure",
+        "tests/test_feeding.py::BranchTests.test_preload_all_print_and_sensor_branches",
+        "tests/test_feeding.py::BranchTests.test_retract_and_tighten_return_sender_results"
+      ],
+      "remaining": "Broader command integration, failure combinations and hardware behavior require further verification."
     },
     {
       "id": "PC-CMD-MAPPING",
@@ -8026,8 +8049,16 @@
         "Cover a head callback before/during polling, repeated callbacks, failed stage6, late result and mismatch between cached/saved and observed source.",
         "Keep initial ACK, final result, saved stage flag and physical arrival separate; callback wire-stage6 must remain deliverable during wire-stage4."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_feeding.py::CommandTests.test_preference_before_skipped_uart_and_stage_positional",
+        "tests/test_feeding.py::BranchTests.test_native_blocks_unresolved_stages_without_transport",
+        "tests/test_loading.py::LoadingTests.test_pickup_clears_useup",
+        "tests/test_phase_actions.py::PhaseActionTests.test_raw_target_is_not_remapped_twice_and_pickup_accepts_none",
+        "tests/test_phase_actions.py::PhaseActionTests.test_direct_feed_keeps_stage_binding_and_legacy_execution_gates",
+        "tests/test_phase_actions.py::PhaseActionTests.test_phase_resume_and_existing_error_capture_precede_target_parsing"
+      ],
+      "remaining": "Broader command integration, failure combinations and hardware behavior require further verification."
     },
     {
       "id": "PC-CMD-UNLOAD",
@@ -8037,8 +8068,13 @@
         "Verify mask queries versus cache use, phase-specific errors/retries, and exact conditions for clearing/changing the source.",
         "Compare BOX_RETRUDE_MATERIAL_WITH_TNN with the main unload handler without importing guards that its public route does not have."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_retraction.py::RetractionTests.test_with_tnn_ignores_normal_failures_and_uses_connection_stop",
+        "tests/test_phase_actions.py::PhaseActionTests.test_known_unload_updates_source_only_on_its_normal_tail",
+        "tests/test_phase_actions.py::PhaseActionTests.test_explicit_retract_retains_its_distinct_resume_and_return_policy"
+      ],
+      "remaining": "Broader command integration, failure combinations and hardware behavior require further verification."
     },
     {
       "id": "PC-CMD-RESUME-GUARD",
@@ -8427,9 +8463,10 @@
       ],
       "status": "partial",
       "test": [
-        "tests/test_box_data.py::BoxDataTests.test_preload_preferences_are_independent_ram_values"
+        "tests/test_box_data.py::BoxDataTests.test_preload_preferences_are_independent_ram_values",
+        "tests/test_feeding.py::BranchTests.test_broadcast_and_preference_before_failure"
       ],
-      "remaining": "Independent None/False/True RAM values are covered. Permission-command paths and RUN/TIGHT mechanics remain pending."
+      "remaining": "Startup and print-lifecycle use of the preferences remain separate work."
     },
     {
       "id": "PC-CONFIG-LOAD",
@@ -8445,7 +8482,8 @@
         "tests/test_configuration.py::ConfigurationTests.test_all_53_loader_options_and_defaults",
         "tests/test_configuration.py::ConfigurationTests.test_supplied_values_limits_and_profile_validation",
         "tests/test_configuration.py::ConfigurationTests.test_optional_positions_are_not_fabricated",
-        "tests/test_configuration.py::ConfigurationTests.test_disabled_positions_do_not_require_z_limits"
+        "tests/test_configuration.py::ConfigurationTests.test_disabled_positions_do_not_require_z_limits",
+        "tests/test_configuration.py::ConfigurationTests.test_missing_numeric_default_is_not_a_parsed_option"
       ]
     },
     {
@@ -8861,8 +8899,13 @@
         "Force does not bypass printing; the recovered literal pause guard differs from paused.",
         "OPEN/CLOSE update permission separately from RUN/TIGHT mechanics; a skipped exchange can still update a RAM preference."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_feeding.py::FeedingTests.test_preload_gates_and_timeout",
+        "tests/test_feeding.py::BranchTests.test_preload_all_print_and_sensor_branches",
+        "tests/test_feeding.py::BranchTests.test_wait_query_event_mode_and_guard"
+      ],
+      "remaining": "Broader command integration, failure combinations and hardware behavior require further verification."
     },
     {
       "id": "PC-OP-CALLBACK",
@@ -8894,8 +8937,24 @@
         "Keep the recorded final-feed cached-buffer branch separate from a fresh successful measurement.",
         "Inject missing/contradictory sensors and negative replies; ACK or commanded E is not full-route completion."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_loading.py::LoadTests.test_success_sequences_stage0_part_print_and_ownership",
+        "tests/test_loading.py::HeadArrivalTests.test_event_during_stage4_consumes_success_snapshot",
+        "tests/test_loading.py::ExtraLoadingTests.test_callback_during_pause_consumes_saved_state_not_clobbered_global",
+        "tests/test_loading.py::UnavailableBufferTests.test_event_reply_stops_without_gear_retry",
+        "tests/test_phase_actions.py::PhaseActionTests.test_complete_load_uses_head_snapshot_and_each_version_profile",
+        "tests/test_phase_actions.py::PhaseActionTests.test_failed_head_result_is_not_hidden_by_outer_stage4_success",
+        "tests/test_phase_actions.py::PhaseActionTests.test_unknown_buffer_stops_without_gear_cut_or_retract",
+        "tests/test_phase_actions.py::PhaseActionTests.test_unknown_material_does_not_report_a_confirmed_empty_slot",
+        "tests/test_phase_actions.py::PhaseActionTests.test_shutdown_in_final_feed_stops_old_phase_and_restores_permission",
+        "tests/test_phase_actions.py::PhaseActionTests.test_resume_hint_precedes_load_and_does_not_change_live_source",
+        "tests/test_phase_actions.py::PhaseActionTests.test_retained_prime_tower_policy_uses_slicer_version_and_first_tool",
+        "tests/test_phase_actions.py::PhaseActionTests.test_sensor_retry_defers_head_event_during_loose_motion",
+        "tests/test_phase_actions.py::PhaseActionTests.test_full_buffer_encodes_integral_configured_length_without_mutation",
+        "tests/test_phase_actions.py::PhaseActionTests.test_fractional_box_amount_fails_before_final_feed_effects"
+      ],
+      "remaining": "Broader command integration, failure combinations and hardware behavior require further verification."
     },
     {
       "id": "PC-OP-UNLOAD",
@@ -8904,8 +8963,18 @@
         "Cover known source, unknown source with clear head, and unknown source with present head.",
         "Assert required cut/relief/idle/buffer steps and cleanup; stale cache never establishes a confirmed owner."
       ],
-      "status": "planned",
-      "test": null
+      "status": "partial",
+      "test": [
+        "tests/test_retraction.py::RetractionTests.test_known_clear_uses_exact_source_and_updates_only_normal_tail",
+        "tests/test_retraction.py::RetractionTests.test_unknown_clear_intersection_only_across_addresses",
+        "tests/test_retraction.py::RetractionTests.test_unknown_failed_buffer_cleanup_continues_to_final_head",
+        "tests/test_retraction.py::RetractionTests.test_unknown_failed_buffer_connection_only_reports_and_retains_last_result",
+        "tests/test_phase_actions.py::PhaseActionTests.test_known_unload_updates_source_only_on_its_normal_tail",
+        "tests/test_phase_actions.py::PhaseActionTests.test_unknown_clear_unload_uses_intersection_of_fresh_masks",
+        "tests/test_phase_actions.py::PhaseActionTests.test_explicit_retract_retains_its_distinct_resume_and_return_policy",
+        "tests/test_phase_actions.py::PhaseActionTests.test_unknown_present_unload_uses_shared_buffer_then_selected_material"
+      ],
+      "remaining": "Broader command integration, failure combinations and hardware behavior require further verification."
     },
     {
       "id": "PC-OP-HOST-PRIMITIVES",

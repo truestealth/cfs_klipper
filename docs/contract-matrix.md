@@ -6,8 +6,8 @@ English | [Русский](contract-matrix.ru.md)
 [machine-readable matrix](contract-matrix.json) contains **422 requirements**
 and **96 check families**: 78 on a PC and 18 on hardware. Data, native/version and
 lifecycle/error/context components and selected mechanical primitives are
-PC-tested: 21 families are implemented, 29 partial and 46 planned. Full
-mechanical routes and hardware acceptance remain pending. Catalogue integrity
+PC-tested: 21 families are implemented, 35 partial and 40 planned. Complete
+tool changes, recovery and hardware acceptance remain pending. Catalogue integrity
 alone does not establish functional compatibility.
 
 The baseline is CFS MCU **1.1.3**, with the retained stock `serial_485.so` and
@@ -68,15 +68,15 @@ that each reference resolves to an actual method; executing the suite establishe
 its local result. Do not create empty tests, mark a retained macro as newly
 implemented, or count registration as working mechanics.
 
-The matrix currently has 225 implemented requirements, 66 partial and 131 pending.
+The matrix currently has 235 implemented requirements, 72 partial and 115 pending.
 Shared contracts that also require full mechanical operations or recovery remain
 partial. The [compatibility notes](compatibility.md#state-configuration-and-storage)
 describe cache/observation separation, error behavior and deliberate save rules;
 [native integration](protocol.md#native-integration) records the implemented
 boundary and execution gates. The [lifecycle notes](protocol.md#lifecycle-integration)
 describe the new components and deliberate policies. Handler registration alone
-does not complete shared contracts: 46 handlers and two conditional Hall handlers
-are available through explicit substitute-based registration.
+does not complete shared contracts: 55 commands are explicitly registered,
+including one blocked legacy command, plus two conditional Hall handlers.
 
 ## Macro integration found during the inventory
 

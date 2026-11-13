@@ -17,8 +17,8 @@ examined differences through 1.5.3 and their compatibility implications.
 **Status:** state, configuration, compatible storage, native-call integration,
 reply decoding, per-device versions, lifecycle, operation context and common
 error handling are implemented and PC-tested.
-Configured motion, heating, cutting, cleaning and purge components have
-synthetic PC checks. Complete loading, tool changes, recovery and hardware
+Configured motion, heating, cutting, cleaning, preload, loading and unloading
+components have synthetic PC checks. Complete tool changes, recovery and hardware
 acceptance remain pending. The entry point refuses activation before accessing
 printer objects. No installer or printer-ready release is provided.
 
@@ -37,9 +37,10 @@ native API, validated replies, exact firmware profiles and twelve native-command
 handlers. Stage 4 adds explicit ready/shutdown wiring, reconnect, heartbeat,
 guarded operation waits and shared error reporting. Stage 5 adds configured
 host motion, fans, heating, extrusion, cutting, cleaning and calibration
-handlers. Explicit substitute-based registration comprises 46 handlers, plus
-two Hall handlers when a cut switch is configured. Full loading, tool changes
-and recovery follow in later stages.
+handlers. Stage 6 adds preload, loading and unloading phases. Explicit registration
+contains 55 commands, including the deliberately blocked legacy feed command;
+two Hall commands are added when a cut switch is configured. Complete tool
+changes and recovery follow in later stages.
 
 - [Architecture](docs/architecture.md): responsibilities and Klipper layout.
 - [Protocol](docs/protocol.md): framing, native API boundary and open questions.

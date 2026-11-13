@@ -8,11 +8,15 @@ from copy import deepcopy
 import importlib
 import logging
 from math import isfinite
+from itertools import zip_longest
 
 from .configuration import BoxConfiguration, _field_name
 from .cutting import CutSensor, Cutter
 from .extrusion import Extrusion
 from .firmware import DeviceVersions
+from .feeding import Feeding
+from .loading import Loading
+from .retraction import Retraction
 from .errors import format_error
 from .lifecycle import Lifecycle
 from .motion import Motion
@@ -98,12 +102,15 @@ class Box:
         self.motion = Motion(self)
         self.extrusion = Extrusion(self)
         self.cut_sensor = self.cutter = None
+        self.feeding = Feeding(self)
+        self.loading = Loading(self)
+        self.retraction = Retraction(self)
 
-    def host_guard(self):
+    def host_guard(self, address=None):
         """Capture ownership once for a host action's cooperative calls."""
         if self.lifecycle is None or not self.lifecycle.running:
             raise RuntimeError("the CFS host lifecycle is not ready")
-        guard = self.lifecycle._report_guard()
+        guard = self.lifecycle._report_guard(address)
         guard()
         return guard
 
@@ -205,6 +212,98 @@ class Box:
     def do_after_extrude(self):
         self.motion.do_after_extrude()
 
+    def update_filament_pos(self, tnn, data=None):
+        if tnn is None:
+            logging.warning("Cannot update filament position without a source")
+            return
+        address = self.box_state.get_Tnn_content(tnn)["addr"]
+        self.box_state.modify_Tn_data(address, "None" if data is None else data, "filament")
+
+    def is_material_available(self, tnn):
+        content = self.box_state.get_Tnn_content(tnn)
+        address, slot = content["addr"], content["num"]
+        guard = self.host_guard(address)
+        result = self.send_native(build_request(address, "GET_FILAMENT_SENSOR_STATE", b"\x00"))
+        guard()
+        frame = self.last_replies.get(address)
+        if result is not True or frame is None or frame.status != 0 or frame.command != 8:
+            raise RuntimeError("fresh ordinary material-sensor observation required")
+        mask = self.box_state.get_Tn_inner_data(address, "filament_sensor", subpart="material")
+        return bool(mask & slot_mask(slot))
+
+    def get_purge_in_prime_tower(self):
+        """Read the retained slicer policy; unavailable metadata returns None."""
+        guard = self.host_guard()
+        try:
+            virtual_sd = self._printer.lookup_object("virtual_sdcard")
+            guard()
+            stats = self._printer.lookup_object("print_stats")
+            guard()
+            metadata = virtual_sd.gcode_metadata.get("metadata", {})
+            version = metadata.get("slicer_version", "")
+            supported = False
+            if metadata.get("slicer", "").upper() == "CREALITY" and version:
+                parts = [int(part) for part in version.split(".")]
+                supported = True
+                for current, minimum in zip_longest(parts, (5, 1, 7, 10471), fillvalue=0):
+                    if current != minimum:
+                        supported = current > minimum
+                        break
+            if (stats.state == "printing" and virtual_sd.gcode_metadata
+                    and virtual_sd.first_tnn_finished and supported):
+                parameters = virtual_sd.get_gcode_flush_para()
+                guard()
+                return parameters.get("purge_in_prime_tower", 0) if parameters else None
+        except Exception:
+            guard()
+            logging.exception("Could not read the retained prime-tower policy")
+        return None
+
+    def communication_set_pre_loading(self, addr, action, num=15, force=False):
+        return self.feeding.communication_set_pre_loading(addr, action, num, force)
+
+    def communication_tighten_up_enable(self, addr, enable):
+        return self.feeding.communication_tighten_up_enable(addr, enable)
+
+    def communication_set_box_mode(self, addr, mode, num="0"):
+        guard = self.host_guard(addr)
+        value = {"PRINT": 0, "IDLE": 1}[mode]
+        result = self.send_native(build_request(addr, "SET_BOX_MODE", bytes((slot_mask(num, allow_zero=True), value))))
+        guard()
+        return result
+
+    def communication_extrude_process(self, addr, num, trigger="", stage=2, report_err=True, extrude=None):
+        return self.feeding.communication_extrude_process(addr, num, trigger, stage, report_err, extrude)
+
+    def communication_retrude_process(self, addr, num, trigger, report_err=True):
+        return self.feeding.communication_retrude_process(addr, num, trigger, report_err)
+
+    def wait_box_preloading(self, addr):
+        return self.feeding.wait_box_preloading(addr)
+
+    def make_material_loose(self):
+        return self.feeding.make_material_loose()
+
+    def box_extrude_material(self, tnn):
+        return self.loading.box_extrude_material(tnn)
+
+    def box_retrude_material(self, report_error=True):
+        return self.retraction.box_retrude_material(report_error)
+
+    def move_to_cut(self, report_error=True):
+        return self.cutter.move_to_cut(report_error)
+
+    def go_to_extrude_pos(self):
+        return self.motion.go_to_extrude_pos()
+
+    def startup_refresh(self, address):
+        guard = self.host_guard(address)
+        self.communication_set_pre_loading(address, 2)
+        guard()
+        for command in ("GET_RFID", "GET_REMAIN_LEN"):
+            self.send_native(build_request(address, command, b"\x0f"))
+            guard()
+
     def check_and_extrude(self, extrude, velocity, wait=True):
         guard = self.host_guard()
         if self.box_state.extrude_err:
@@ -250,6 +349,66 @@ class Box:
         if self.boxcfg.switch_pin:
             self.gcode.register_command("BOX_CUT_HALL_ZERO", self.cmd_cut_hall_zero)
             self.gcode.register_command("BOX_CUT_HALL_TEST", self.cmd_cut_hall_test)
+        for name, handler in (
+            ("BOX_SET_PRE_LOADING", self.feeding.cmd_set_pre_loading),
+            ("BOX_TIGHTEN_UP_ENABLE", self.feeding.cmd_tighten_up_enable),
+            ("BOX_RETRUDE_PROCESS", self.feeding.cmd_retrude_process),
+            ("BOX_EXTRUDE_PROCESS", self.feeding.cmd_extrude_process),
+            ("BOX_EXTRUDE_2_PROCESS", self.cmd_extrude_2_process),
+            ("BOX_EXTRUDE_MATERIAL", self.cmd_box_extrude_material),
+            ("BOX_EXTRUDER_EXTRUDE", self.cmd_extruder_extrude),
+            ("BOX_RETRUDE_MATERIAL", self.cmd_box_retrude_material),
+            ("BOX_RETRUDE_MATERIAL_WITH_TNN", self.cmd_retrude_material_with_tnn),
+        ):
+            self.gcode.register_command(name, handler)
+
+    def cmd_extrude_2_process(self, gcmd):
+        try:
+            self.feeding.cmd_extrude_2_process(gcmd)
+        except (ValueError, RuntimeError) as error:
+            raise gcmd.error("cfs: %s" % error) from error
+
+    def _cmd_material_phase(self, gcmd, action, reason):
+        guard = self.lifecycle._report_guard(operation=False)
+        guard()
+        if self.if_in_resume():
+            logging.warning("In resume, cannot run the CFS material phase")
+            return
+        if self.error is None:
+            tnn = gcmd.get_command_parameters().get("TNN")
+            if tnn is not None and tnn not in self.box_state.Tnn_map:
+                logging.warning("Invalid physical CFS target: %s", tnn)
+                return
+            result = action(tnn)
+            guard()
+            if result:
+                return
+            self.lifecycle.record_error(reason, {"tnn": tnn})
+            guard()
+        self.error_next_macro.append(gcmd.get_commandline())
+
+    def cmd_box_extrude_material(self, gcmd):
+        self._cmd_material_phase(gcmd, self.loading.box_extrude_material, "macro_box_extrude_err")
+
+    def cmd_extruder_extrude(self, gcmd):
+        self._cmd_material_phase(gcmd, self.loading.extruder_extrude, "macro_extruder_extrude_err")
+
+    def cmd_box_retrude_material(self, gcmd):
+        guard = self.host_guard()
+        if self.if_in_resume():
+            logging.warning("In resume, cannot retract material now")
+            return
+        if self.error is None:
+            result = self.retraction.box_retrude_material()
+            guard()
+            if result:
+                return
+            self.lifecycle.record_error("macro_retrude_err", {})
+            guard()
+        self.error_next_macro.append(gcmd.get_commandline())
+
+    def cmd_retrude_material_with_tnn(self, gcmd):
+        self.retraction.retrude_material_with_tnn(gcmd.get_command_parameters().get("TNN"))
 
     def cmd_cut_state(self, gcmd):
         self.cut_sensor.state()
@@ -398,7 +557,7 @@ class Box:
             "schedule_groups": lambda: self._schedule_groups(request),
         }
 
-    def send_native(self, request, context=None, retries_en=None):
+    def send_native(self, request, context=None, retries_en=None, report_err=True):
         """Execute one checked request and apply its ordered semantic effects.
 
         Contextual pause/error/refill actions must have real handlers. Missing
@@ -449,6 +608,7 @@ class Box:
                         "request_address": address, "slot": self.last_cmd[2],
                     })
             context = DecodeContext(
+                report_err=report_err,
                 last_cmd=self.last_cmd, error=self.error, last_err=self.last_err,
                 print_state=self.print_state,
                 box_filament_err=self.box_filament_err,

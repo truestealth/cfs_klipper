@@ -32,6 +32,7 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | `src/cfs/operations.py` | Source/target ownership, cooperative waits and head-result latch | Required phase callbacks, targeted heartbeat suspension and cancellation PC-tested |
 | `src/cfs/errors.py` | Client reports, pause/restore ordering and saved error context | Duplicate/special-key behavior and caught-error exits PC-tested |
 | `src/cfs/motion.py`, `extrusion.py`, `cutting.py` | Configured motion, fans, heating, extrusion, cutting and calibration | Component checks with substitutes; hardware acceptance pending |
+| `src/cfs/feeding.py`, `loading.py`, `retraction.py` | Preload, staged loading and unloading | PC phase checks; hardware acceptance pending |
 | `tests/test_box_contract.py` | Klipper layout and external contract checks | Bootstrap/layout check only |
 | `tests/test_contract_matrix.py` | Inventory completeness and verification bindings | Validates real test references and remaining work |
 | `tests/test_state.py`, `test_configuration.py`, `test_storage.py`, `test_box_data.py` | Component and data-command scenarios | Synthetic values, temporary files, bounded Klipper substitutes |
@@ -42,7 +43,7 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | `docs/` | Architecture, protocol and compatibility, in English and Russian | Draft specifications |
 
 Add modules when implemented behavior needs them, together with its tests.
-The diagram describes responsibilities; full mechanical procedures remain pending.
+The diagram describes responsibilities; full tool changes and hardware acceptance remain pending.
 
 ```mermaid
 flowchart LR

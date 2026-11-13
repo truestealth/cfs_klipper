@@ -19,12 +19,12 @@ an implemented or hardware-verified one.
 | Per-device firmware selection | Implemented for six exact cfs0 versions | Independent identities, profiles and four-/six-byte layouts tested on a PC |
 | Lifecycle, shared errors and operation context | Component implementation | Cooperative reactor and substitute tests; physical operations remain incomplete |
 | Configured motion, heating, cutting and cleaning | Stage 5 components implemented | Synthetic G-code, fan, heater and sensor checks; hardware acceptance pending |
-| Filament loading | Pending | Operation sequencing and hardware acceptance pending |
-| Unload, change, pause/resume, recovery | Pending | No replacement validation |
-| Stock G-code and status interfaces | Partial | 46 handlers registered explicitly, plus two conditional Hall handlers; endpoint and snapshots tested; full 103-name contract pending |
+| Preload, loading and unloading | Stage 6 components implemented | Synthetic phase checks; hardware acceptance pending |
+| Tool change, pause/resume, recovery | Pending | Full replacement validation remains pending |
+| Stock G-code and status interfaces | Partial | 55 commands registered explicitly, including one blocked legacy command, plus two conditional Hall handlers; endpoint and snapshots tested; full 103-name contract pending |
 | RFID, remaining length, saved materials | Partial | Normal replies, metadata/cache updates and deferred grouping tested; hardware observations and mechanical slot handling pending |
 | Reversible installation | Pending | No installer or rollback provided |
-| Python 3.8 | Project and CI default | 226 local tests passed on Python 3.8.20/Windows; native MIPS runtime unverified |
+| Python 3.8 | Project and CI default | 301 local tests passed on Python 3.8.20/Windows; native MIPS runtime unverified |
 
 Coverage records local component checks. Hosted results for each commit are
 available in [GitHub Actions](https://github.com/truestealth/cfs_klipper/actions).
@@ -95,7 +95,7 @@ data/cache updates, missing-response distinctions, communication-test byte zero
 and EXTRUDE_PROCESS snapshots before error effects. Deferred RFID grouping is
 guarded against a changed device or binding. Lifecycle, shared reporting,
 timeout handling and operation ownership have component tests. Slot-event
-mechanics, tighten-up, drain/refill and full loading routes remain pending; a route
+mechanics and drain/refill remain pending; a route
 requiring an unbound handler fails explicitly. An ACK does not establish
 completed motion.
 
@@ -109,8 +109,8 @@ boundaries and remaining checks.
 
 Stage 5 implements configured positioning, Z and acceleration context, fan
 save/restore, heating, extrusion, cutting, cleaning and calibration. Registration
-before retained macro aliases provides 46 handlers plus two Hall commands when
-`switch_pin` is truthy. Cleaning uses four fixed strokes; `clean_run_count` is
+before retained macro aliases provides 55 commands, including one blocked legacy
+command, plus two Hall commands when `switch_pin` is truthy. Cleaning uses four fixed strokes; `clean_run_count` is
 retained as configuration without changing that routine. Cutter current state
 and the sticky observed event remain separate; blind motion is not a measured cut.
 
@@ -135,9 +135,39 @@ The implemented host policies are:
 
 Tests compose native wheel replies with segmented extrusion and actual Python
 cleaning, shared error restoration, macro alias dispatch and temporary-file
-configuration saves. Retained Jinja rendering, the extruder-feed macro base
-from stage 6, complete tool changes/recovery and hardware acceptance remain
-separate checks. The bootstrap still refuses activation.
+configuration saves. Retained Jinja rendering and producer execution, complete tool changes/recovery
+and hardware acceptance remain separate checks. The bootstrap still refuses activation.
+
+## Preload, loading and unloading
+
+Stage 6 adds `feeding`, `loading` and `retraction` phases. Preload distinguishes
+literal `pause` from `paused`: force permits the former, while `printing` still
+suppresses the request. RUN/TIGHT require the head helper to report absent; its
+configured no-sensor fallback remains True. OPEN/CLOSE update RAM preference
+before attempting connected addresses. RUN/TIGHT timeouts scale with mask bits;
+an ACK or timeout is not physical completion.
+
+Loading preserves the head callback result and the source's distinct `False`,
+`None` and exception branches. Fresh ordinary successful material and buffer
+observations are required for decisions; missing or event replies do not become
+cached success. Unknown-source unloading scans fresh connection/material masks;
+a failed shared buffer retract follows its cleanup branches and subsequent head
+check. A connection-only slot reports the material error while retaining the
+source's last-result behavior. These are PC checks, not mechanical acceptance.
+
+Final feed encodes an integral configured length such as `3.0` exactly as byte
+`3`, preserving the configured value. Fractional, nonfinite or out-of-byte values
+raise before final-feed motion. This corrects the original mismatch between an
+explicit `getfloat` setting and the byte encoder; an omitted integer default
+stays an integer in the retained configuration reader.
+
+The version-1 public `BOX_EXTRUDE_PROCESS` passes STAGE in the recovered call's
+`trigger` position, so the default wire stage remains 2. Internal stage keywords
+remain distinct. Encoding 0, typed wire stages above 7 and legacy opcode `0x13`
+are explicitly blocked pending resolution; `BOX_EXTRUDE_2_PROCESS` is registered
+but cannot send. Execution requires a confirmed CFS address 1..4, even though the
+recovered direct-feed parser accepts addresses through 9. Retained Jinja rendering, actual sensor-producer execution, full
+tool changes and reason-specific replay remain separate work.
 
 <a id="firmware-versions"></a>
 

@@ -8,6 +8,8 @@ _MESSAGES = {
     "key_timeout": (831, "serial_485 communication timeout", "address"),
     "key_params_err": (834, "params error, send data: %s", "data_send"),
     "key_extrude_err1": (835, "extrude error, maybe it's blocked at the connections", "slot"),
+    "key_extrude_err2": (836, "extrude error, maybe there's a blockage between the connections and the filament sensor", "slot"),
+    "key_extrude_err3": (837, "extrude error, maybe there is a blockage between the filament sensor and the extrusion gear", "slot"),
     "key_extrude_err4": (838, "extrude error, through the connections but not extrude", "slot"),
     "key_filament_err": (839, "filament error, no filament detected at box extrude position", "slot"),
     "key_state_err": (840, "box switch state error, check it's current action, addr: %d, cmd: 0x%x", "state"),
@@ -17,10 +19,15 @@ _MESSAGES = {
     "key_nozzle_blocked_err": (845, "the nozzle is blocked", None),
     "key_speed_err": (846, "empty printing, box speed is smaller than extruder", None),
     "key_enwind_err": (847, "empty printing, material enwind", None),
+    "key_material_err": (848, "material err, may break at connections", "slot"),
     "key_retrude_err1": (849, "retrude error, failed to exit connections", "slot"),
     "key_retrude_err2": (850, "retrude error, unspecified retrude, multiple connections triggered, addr: %d", "in_address"),
+    "key_retrude_err3": (851, "retrude error, retrude but not trigger buffer empty limit", None),
+    "key_sensor_err": (852, "check extruder filament sensor and box sensor state", None),
     "key_cut_filament_err": (854, "the presence of filament when cutting detected", None),
     "key_load_err": (857, "motor load error", None),
+    "key_retrude_err4": (863, "retrude error, retrude success but filament sensor is detected", None),
+    "key_extrude_err5": (864, "extrude error, extrude but not trigger buffer full limit", None),
 }
 _SPECIAL = tuple("key%d" % n for n in (843, 853, 858, 859, 860, 861, 862))
 _ERRORS = frozenset((

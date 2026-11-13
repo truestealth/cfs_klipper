@@ -33,6 +33,10 @@ class FakeConfig:
 
     def _number(self, name, default, convert, **bounds):
         self.calls.append((name, convert.__name__, bounds))
+        # The retained ConfigWrapper returns missing defaults unchanged,
+        # before conversion or bounds checks.
+        if name.lower() not in self.values:
+            return default
         value = convert(self.values.get(name.lower(), default))
         if "minval" in bounds and value < bounds["minval"]:
             raise ValueError(name + " below minimum")
@@ -78,35 +82,43 @@ class ConfigurationTests(unittest.TestCase):
             "version": 0, "has_extrude_pos": 1, "filament_sensor": None,
             "switch_pin": None, "box_extrude_retry_num": 5,
             "box_first_clean_length": 90, "box_need_clean_length": 80,
-            "box_need_clean_length_max": 100, "pre_cut_pos_x": 0.0,
-            "pre_cut_pos_y": 0.0, "cut_pos_x": -6.5, "cut_pos_y": 0.0,
-            "cut_pos_offset": 0.0, "cut_find_start_offset_y": 6.0,
-            "cut_velocity": 6000.0, "cut_accel": 5000.0,
-            "cut_accel_to_decel": 30000.0, "cut_run_count": 1,
-            "Tn_retrude": -60.0, "Tn_retrude_velocity": (360,),
-            "Tn_extrude_temp": 220.0, "nozzle_volume": 200.0,
-            "flush_multiplier": 1.0, "Tn_extrude": 140.0,
+            "box_need_clean_length_max": 100, "pre_cut_pos_x": 0,
+            "pre_cut_pos_y": 0, "cut_pos_x": -6.5, "cut_pos_y": 0,
+            "cut_pos_offset": 0, "cut_find_start_offset_y": 6,
+            "cut_velocity": 6000, "cut_accel": 5000,
+            "cut_accel_to_decel": 30000, "cut_run_count": 1,
+            "Tn_retrude": -60, "Tn_retrude_velocity": (360,),
+            "Tn_extrude_temp": 220, "nozzle_volume": 200,
+            "flush_multiplier": 1, "Tn_extrude": 140,
             "Tn_extrude_percent": (1,), "Tn_extrude_velocity": (360,),
-            "buffer_empty_len": 30.0, "diff_length": -10.0,
-            "extrude_material_len_for_box": 3.0,
-            "extrude_material_len_for_extruder": 18.0,
-            "extrude_material_velocity": 180.0, "extrude_material_times": 6,
-            "Tn_line_len": 1.0, "clean_run_count": 1, "cr_machine": 1,
-            "clean_left_pos_x": 150.0, "clean_left_pos_y": 368.0,
-            "clean_left_pos_z": 23.0, "clean_right_pos_x": 170.0,
-            "clean_right_pos_y": 368.0, "clean_right_pos_z": 23.0,
-            "clean_velocity": 6000.0, "extrude_pos_x": 127.0,
-            "extrude_pos_y": 368.0, "extrude_pos_z": 23.0,
-            "clean_pos_min_x": 152.0, "clean_pos_min_y": 362.0,
-            "clean_pos_max_x": 156.0, "clean_pos_max_y": 368.0,
-            "safe_pos_y": 350.0, "retrude_position_x": 42.0,
-            "retrude_position_y": 100.0,
+            "buffer_empty_len": 30, "diff_length": -10,
+            "extrude_material_len_for_box": 3,
+            "extrude_material_len_for_extruder": 18,
+            "extrude_material_velocity": 180, "extrude_material_times": 6,
+            "Tn_line_len": 1, "clean_run_count": 1, "cr_machine": 1,
+            "clean_left_pos_x": 150, "clean_left_pos_y": 368,
+            "clean_left_pos_z": 23.0, "clean_right_pos_x": 170,
+            "clean_right_pos_y": 368, "clean_right_pos_z": 23.0,
+            "clean_velocity": 6000, "extrude_pos_x": 127,
+            "extrude_pos_y": 368, "extrude_pos_z": 23.0,
+            "clean_pos_min_x": 152, "clean_pos_min_y": 362,
+            "clean_pos_max_x": 156, "clean_pos_max_y": 368,
+            "safe_pos_y": 350, "retrude_position_x": 42,
+            "retrude_position_y": 100,
         }.items():
             with self.subTest(option=name):
                 self.assertEqual(getattr(config, name), expected)
                 self.assertIs(type(getattr(config, name)), type(expected))
         self.assertEqual(config.modify_dict, {})
         self.assertEqual(source.values, {"bus": "stock", "has_extrude_pos": 1})
+
+    def test_missing_numeric_default_is_not_a_parsed_option(self):
+        config = FakeConfig()
+        self.assertIs(type(config.getfloat("amount", 3, minval=10)), int)
+        explicit = FakeConfig({"amount": "3"})
+        self.assertIs(type(explicit.getfloat("amount", 3)), float)
+        self.assertIs(type(configuration().extrude_material_len_for_box), int)
+        self.assertIs(type(configuration(extrude_material_len_for_box="3").extrude_material_len_for_box), float)
 
     def test_supplied_values_limits_and_profile_validation(self):
         config = configuration(

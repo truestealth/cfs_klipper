@@ -73,6 +73,7 @@ class HostPrinter(Printer):
             max_accel=1500, max_accel_to_decel=1000)
         move = self.objects["gcode_move"]
         move.absolute_coord = True
+        move.absolute_extrude = True
         move.last_position = list(self.position)
         self.objects["virtual_sdcard"].do_resume_status = False
         self.objects["filament_switch_sensor head"].runout_helper.filament_present = True
@@ -122,10 +123,10 @@ class HostActionTests(unittest.TestCase):
                 self.make_box(switch=switch)
                 expected = required if switch else required - hall
                 self.assertEqual(set(self.gcode.commands) & required, expected)
-                self.assertEqual(len(self.gcode.commands), 48 if switch else 46)
+                self.assertEqual(len(self.gcode.commands), 57 if switch else 55)
                 self.assertIs(self.gcode.commands["BOX_NOZZLE_CLEAN"], self.gcode.commands["TEST_BOX_CLEAN"])
                 self.assertEqual(len(self.printer.buttons), int(bool(switch)))
-                self.assertNotIn("BOX_EXTRUDER_EXTRUDE", self.gcode.commands)
+                self.assertIn("BOX_EXTRUDER_EXTRUDE", self.gcode.commands)
                 self.assertIsNone(self.box._ffi_pair)
                 self.assertEqual(self.native.calls, [])
                 self.assertEqual(self.gcode.scripts, [])
