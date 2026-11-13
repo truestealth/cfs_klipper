@@ -10,6 +10,10 @@ Upgrade. Сохраняем прошивку MCU CFS, экран, Creality Print
 штатный контракт `box`: инициализация, загрузка, выгрузка, резка, смена и продувка,
 пауза/продолжение, ошибки/восстановление, датчики, RFID и данные катушек.
 
+Базовая прошивка MCU нашего CFS — **1.1.3**. В
+[истории изменений прошивки](docs/compatibility.ru.md#firmware-history) описаны
+изученные отличия до 1.5.3 и их значение для совместимости.
+
 **Статус:** начало разработки расширения Klipper. Операции CFS не реализованы.
 Точка входа явно отклоняет активацию до получения объектов принтера. Установщика
 и готовой для принтера версии нет.
@@ -59,3 +63,9 @@ python3 -m unittest discover -s tests -v
 
 В сообщении об ошибке укажите коммит, окружение, версии хоста/MCU и шаги
 воспроизведения. Удаляйте секреты, личные идентификаторы и частные захваты.
+
+## Поддержать проект
+
+<a href="https://nowpayments.io/donation?api_key=608dff38-32c9-4d19-8f85-0c8a46408f3f" target="_blank" rel="noreferrer noopener">
+   <img src="https://nowpayments.io/images/embeds/donation-button-white.svg" alt="Cryptocurrency & Bitcoin donation button by NOWPayments">
+</a>

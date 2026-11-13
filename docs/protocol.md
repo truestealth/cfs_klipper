@@ -26,6 +26,44 @@ Scope each claim to the host/MCU versions and operation actually examined.
 Matching an opcode alone is insufficient. Original binaries and research
 references remain outside public source at this stage.
 
+<a id="firmware-versions"></a>
+
+## Firmware version requirements
+
+The current baseline is CFS MCU 1.1.3; 1.5.2 and 1.5.3 are additional targets
+awaiting hardware validation. Static comparison also covers 1.2.2, 1.4.2 and
+1.5.0 cfs0/G32 images. Version detection and selection are not implemented.
+
+Before relying on version-specific behavior, read the running firmware through
+the retained native API and keep its raw version/identity per box. A bundled
+image name or update manifest is not proof of what the MCU is running. Keep the
+MCU version distinct from the printer firmware and `[box] version` setting.
+
+The examined `0x14` reply carries three ASCII version digits and 19 serial-number
+bytes. It does not identify the product generation or hardware ID by itself.
+Record hardware identity separately and select behavior per connected device.
+
+Offline comparison establishes four ordinary `0x0A` data bytes in 1.1.3/1.2.2
+and six in 1.4.2/1.5.0/1.5.2/1.5.3. Slot-event replies with status `0x30` retain
+four data bytes. Additional ordinary fields must not be mistaken for events.
+The examined 1.5.2/1.5.3 applications share ordinary command behavior; factory
+test parameters and version metadata differ. This is not hardware acceptance.
+
+The [baseline and firmware change history](compatibility.md#firmware-history)
+describe the cumulative changes from the reference CFS MCU 1.1.3 through 1.5.3,
+including RFID, buffer recovery and the additional feed command.
+
+For each validated version, record request/reply layouts, status meanings,
+preload and staged-operation behavior, and applicable wait/retry limits. Decode
+ordinary replies and event replies separately. Matching request lengths do not
+prove matching response lengths or mechanical behavior.
+
+Enable additional commands only after verifying both MCU support and their
+behavior through the retained `serial_485.so`, including its command-dependent
+retries. Unknown firmware must remain explicitly unsupported for mechanical
+operations until the required behavior is established. Tests and hardware
+acceptance must identify the exact version combination they cover.
+
 <a id="framing"></a>
 
 ## Frame format

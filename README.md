@@ -10,6 +10,10 @@ The existing host-side `serial_485` library remains in use. The scope covers the
 full stock `box` contract: initialization, loading, unloading, cutting, tool
 changes and purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 
+The baseline is CFS MCU firmware **1.1.3** on the reference K1C. The
+[firmware change history](docs/compatibility.md#firmware-history) records the
+examined differences through 1.5.3 and their compatibility implications.
+
 **Status:** early Klipper extension development. CFS operations are not
 implemented. The entry point explicitly refuses activation before accessing
 printer objects. No installer or printer-ready release is provided.
@@ -59,3 +63,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 For bug reports, include the commit, environment, relevant host/MCU versions and
 reproduction steps. Remove secrets, personal identifiers and private captures.
+
+## Support the project
+
+<a href="https://nowpayments.io/donation?api_key=608dff38-32c9-4d19-8f85-0c8a46408f3f" target="_blank" rel="noreferrer noopener">
+   <img src="https://nowpayments.io/images/embeds/donation-button-white.svg" alt="Cryptocurrency & Bitcoin donation button by NOWPayments">
+</a>
