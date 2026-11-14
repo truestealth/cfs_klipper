@@ -4,7 +4,7 @@ import importlib
 import logging
 import os
 
-from .errors import ErrorHandler
+from .errors import ErrorHandler, format_error
 from .native import build_request
 from .operations import OperationCancelled
 
@@ -16,8 +16,9 @@ class LifecycleStopped(RuntimeError):
 class Lifecycle:
     def __init__(self, box, printer, families=None, address_table=None,
                  port_exists=os.path.exists, current_dispatch=None,
-                 startup_refresh=None, move_head=None, stage6=None):
+                 startup_refresh=None, move_head=None, stage6=None, passive=False):
         self.box, self.printer = box, printer
+        self.passive = passive
         self.families, self.address_table = families, address_table
         self.port_exists, self.current_dispatch = port_exists, current_dispatch
         self.startup_refresh = startup_refresh if startup_refresh is not None else box.startup_refresh
@@ -34,6 +35,7 @@ class Lifecycle:
         self.counters = [5] * 4
         self._versions = None
         self._initialized = {}
+        self.last_error = None
 
     def register(self):
         """Register functional base commands before macro rename_existing runs."""
@@ -54,52 +56,51 @@ class Lifecycle:
     def ready(self):
         if self.running:
             return
-        box = self.box
-        # Resolve dependencies before starting any extension-owned work.
-        for name in ("toolhead", "gcode_move", "print_stats", "virtual_sdcard"):
-            setattr(box, name, self.printer.lookup_object(name))
-        self.head_sensor = None
-        if box.boxcfg.filament_sensor is not None:
-            self.head_sensor = self.printer.lookup_object(
-                "filament_switch_sensor " + box.boxcfg.filament_sensor)
-        if self.address_table is None:
-            self.address_table = importlib.import_module(
-                "extras.auto_addr_wrapper").addr_manager_table_mb
-        if len(self.address_table) != 4:
-            raise ValueError("the retained address table must contain four CFS entries")
-        if self.current_dispatch is None:
-            self.current_dispatch = importlib.import_module("greenlet").getcurrent
-        if not callable(self.current_dispatch):
-            raise ValueError("the Klipper dispatch reader must be callable")
-        self.errors = ErrorHandler(box, box.gcode, self.reactor, box.print_stats,
-                                   box.virtual_sdcard, self.current_dispatch)
-        box.bind_native(self.printer, families=self.families, effect_handlers={
-            "report_error": self.report_error,
-            "record_error": self.record_error,
-            "timeout_process": self.timeout_process,
-            "state_events": self.observe_state_event,
-            "schedule_tighten_up": box.runout.schedule_tighten_up,
-            "run_gcode": self.run_gcode,
-        })
-        if self._versions is not None:
-            # Keep replacement fingerprints/family revocations across ready cycles.
-            box.device_versions = self._versions
-        self._versions = box.device_versions
-        # No is_connected projection: presence comes from the address table.
-        try:
-            self.serial_port = box.native.native.serial_port
-        except Exception:
-            box.unbind_native()
-            raise
-        self._generation += 1
-        self.is_shutdown = False
-        self.running = True
-        box.cut_sensor.activate()
-        self.address, self.counters = 0, [5] * 4
-        self._initialized.clear()
-        self._initial_wait_done = False
         generation = self._generation
         try:
+            box = self.box
+            # Resolve dependencies before starting any extension-owned work.
+            for name in ("toolhead", "gcode_move", "print_stats", "virtual_sdcard"):
+                setattr(box, name, self.printer.lookup_object(name))
+            self.head_sensor = None
+            if box.boxcfg.filament_sensor is not None:
+                self.head_sensor = self.printer.lookup_object(
+                    "filament_switch_sensor " + box.boxcfg.filament_sensor)
+            if self.address_table is None:
+                self.address_table = importlib.import_module(
+                    "extras.auto_addr_wrapper").addr_manager_table_mb
+            if len(self.address_table) != 4:
+                raise ValueError("the retained address table must contain four CFS entries")
+            if self.current_dispatch is None:
+                self.current_dispatch = importlib.import_module("greenlet").getcurrent
+            if not callable(self.current_dispatch):
+                raise ValueError("the Klipper dispatch reader must be callable")
+            self.errors = ErrorHandler(box, box.gcode, self.reactor, box.print_stats,
+                                       box.virtual_sdcard, self.current_dispatch)
+            box.bind_native(self.printer, families=self.families, effect_handlers={
+                "report_error": self.report_error,
+                "record_error": self.record_error,
+                "timeout_process": self.timeout_process,
+                "state_events": self.observe_state_event,
+                "schedule_tighten_up": self.schedule_tighten_up,
+                "run_gcode": self.run_gcode,
+            })
+            if self._versions is not None:
+                # Keep replacement fingerprints/family revocations across ready cycles.
+                box.device_versions = self._versions
+            self._versions = box.device_versions
+            # No is_connected projection: presence comes from the address table.
+            self.serial_port = box.native.native.serial_port
+            self._generation += 1
+            generation = self._generation
+            self.is_shutdown = False
+            self.running = True
+            box.cut_sensor.activate()
+            self.address, self.counters = 0, [5] * 4
+            self._initialized.clear()
+            self._initial_wait_done = False
+            if self.passive:
+                logging.info("CFS admission ready: identity and telemetry only; host actions blocked")
             self.printer.send_event("box:ready")
             self.check(generation)
             self._timer = self.reactor.register_timer(
@@ -196,8 +197,8 @@ class Lifecycle:
             if state not in ("None", "disconnect"):
                 # A newly confirmed family/version needs startup even when
                 # the address was already present. Unknown profiles stay gated.
-                if (state != "connect" or self.box.device_versions.profile(address) is None
-                        or self._initialized.get(address) == self.box.device_versions.generation(address)):
+                if (state != "connect" or self._initialized.get(address)
+                        == self.box.device_versions.generation(address)):
                     continue
             self.box.box_state.modify_Tn_data(address, "connect", "state")
             self.counters[address - 1] = 5
@@ -205,7 +206,12 @@ class Lifecycle:
             self.box.invalidate_device(address)
             self._request(address, "GET_VERSION_SN")
             guard()
+            if self.box.device_versions.get(address) is None:
+                if self.box.box_state.get_Tn_data(address, "state") != "disconnect":
+                    self.disconnect(address)
+                continue
             if self.box.device_versions.profile(address) is None:
+                self._initialized[address] = self.box.device_versions.generation(address)
                 continue
             first = self._request(address, "GET_BOX_STATE")
             guard()
@@ -219,12 +225,12 @@ class Lifecycle:
                     raise LifecycleStopped("CFS changed while reading its mode")
                 mode = self.box.box_state.get_box_mode(address)
             # Reported mode encoding differs from SET_BOX_MODE's action byte.
-            if mode != "1":
+            if not self.passive and mode != "1":
                 self._request(address, "SET_BOX_MODE", b"\x00\x01")
                 guard()
             self.preloading_permission(address)
             guard()
-            if self.box.preloading_poweron and self.head_present() is False:
+            if not self.passive and self.box.preloading_poweron and self.head_present() is False:
                 if not callable(self.startup_refresh):
                     raise RuntimeError("CFS power-on preload/refresh is not implemented")
                 device = self.box.device_versions.generation(address)
@@ -232,7 +238,9 @@ class Lifecycle:
                 guard()
                 if device != self.box.device_versions.generation(address):
                     raise LifecycleStopped("CFS changed during power-on refresh")
-            elif state == "None":
+            elif self.passive or state == "None":
+                # Admission refreshes live labels from a fresh presence mask
+                # even when the retained address owner already wrote connect.
                 result = self._request(address, "GET_FILAMENT_SENSOR_STATE", b"\x00")
                 guard()
                 frame = self.box.last_replies.get(address)
@@ -247,6 +255,8 @@ class Lifecycle:
                 self._initialized[address] = self.box.device_versions.generation(address)
 
     def preloading_permission(self, address):
+        if self.passive:
+            return None
         state = self.box.print_stats.state
         if state in ("printing", "pause"):
             return None
@@ -258,17 +268,19 @@ class Lifecycle:
         connected = any(state["T%d" % address]["state"] == "connect" for address in range(1, 5))
         if not connected:
             state["state"] = "disconnect"
-            self.box.set_head_runout_enabled(1)
+            if not self.passive:
+                self.box.set_head_runout_enabled(1)
         elif state["state"] in ("None", "disconnect"):
             state["state"] = "connect"
-            self.box.set_head_runout_enabled(1 - state.get("enable", 1))
+            if not self.passive:
+                self.box.set_head_runout_enabled(1 - state.get("enable", 1))
 
     def _heartbeat(self, eventtime, generation=None):
         generation = self._generation if generation is None else generation
         try:
             self.check(generation)
             if not self._initial_wait_done:
-                for _ in range(10):
+                for _ in range(0 if self.passive else 10):
                     if self.box.preloading_poweron is not None:
                         break
                     self.reactor.pause(self.reactor.monotonic() + 0.5)
@@ -316,6 +328,19 @@ class Lifecycle:
 
     def report_error(self, key, facts):
         self.box.print_state = self.box.print_stats.state
+        if self.passive:
+            # Admission reports preserve recovery hints; they must not pause,
+            # restore motion, or change temperatures as the full reporter can.
+            guard = self._report_guard(facts.get("address"), operation=False)
+            guard()
+            message = format_error(key, facts)
+            if self.last_error != message:
+                self.box.gcode.respond_raw(message)
+                guard()
+                # Retained virtual SD treats box.last_err as a pause request.
+                # Admission diagnostics must not activate that indirect path.
+                self.last_error = message
+            return
         self.errors.report_error(key, facts, check_context=self._report_guard(facts.get("address")))
 
     def observe_state_event(self, address, data):
@@ -324,17 +349,28 @@ class Lifecycle:
         self.box.slot_events[address] = {
             "data": bytes(data), "generation": self.box.device_versions.generation(address),
         }
-        self.box.events.process(address, data)
+        if not self.passive:
+            self.box.events.process(address, data)
 
     def record_error(self, reason, context):
         guard = self._report_guard(context.get("addr"))
         guard()
+        if self.passive:
+            # Retain the source/reason without enabling a sensor from an
+            # unsolicited runout report during the observation-only startup.
+            context = dict(context, filament_sensor_enable=False)
         self.errors.record_error(reason, context)
         guard()
+
+    def schedule_tighten_up(self):
+        if not self.passive:
+            self.box.runout.schedule_tighten_up()
 
     def run_gcode(self, script):
         guard = self._report_guard(operation=False)
         guard()
+        if self.passive:
+            return
         self.box.gcode.run_script_from_command(script)
         guard()
 
@@ -351,6 +387,8 @@ class Lifecycle:
         return None
 
     def do_after_pause(self):
+        if self.passive:
+            raise RuntimeError("CFS admission mode blocks pause actions")
         guard = self._report_guard()
         guard()
         dispatch = self.current_dispatch()
@@ -363,7 +401,7 @@ class Lifecycle:
         self.box.gcode.run_script_from_command("WAIT_PAUSE")
 
     def head_event(self):
-        if not self.running:
+        if not self.running or self.passive:
             return
         try:
             self.box.operations.head(self.move_head, self.stage6)

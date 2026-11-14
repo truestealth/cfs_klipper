@@ -6,7 +6,7 @@ English | [Русский](architecture.ru.md)
 and per-device versions are implemented with PC tests. Lifecycle, cooperative
 operation context, common errors and configured mechanical primitives are also
 PC-tested, as are stage 8 drain, refill, recovery and resume components. The
-bootstrap still refuses activation; hardware acceptance remains pending. Stage 9
+bootstrap initializes passive admission without host mechanics; hardware acceptance remains pending. Stage 9
 adds synthetic Jinja/retained-boundary tests and reversible development-file deployment.
 
 ## Scope
@@ -21,8 +21,8 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 
 | Path | Responsibility | Current state |
 | --- | --- | --- |
-| `klipper/box.py` | Thin Klipper entry point | Imports the bootstrap; refuses activation |
-| `src/cfs/box.py` | Shared data, endpoint, status, metadata hook and handler integration | PC-tested with substitutes; bootstrap refuses activation |
+| `klipper/box.py` | Thin Klipper entry point | Imports the passive bootstrap |
+| `src/cfs/box.py` | Shared data, endpoint, status, metadata hook and handler integration | PC-tested initialization, typed-read admission and host-action gates |
 | `src/cfs/state.py` | Shared live state, snapshots, tool maps and grouping | Implemented; decoded observations share this state |
 | `src/cfs/configuration.py` | Loader, UI values and MODIFY/SAVE | Implemented with explicit preservation rules |
 | `src/cfs/storage.py` | Spool cache, recovery hints and read-only material database | Implemented; recovery uses validated hints |
@@ -94,6 +94,16 @@ Per-address identity and external family context must be current before startup;
 later family/version confirmation forces initialization again. Read the
 [lifecycle policies and remaining phase bindings](protocol.md#lifecycle-integration).
 
+The production `load_config` path requires the retained `extras.base_info.base_dir`,
+loads the configured `serial_485 <bus>` section through Klipper and registers a
+passive lifecycle. It supplies explicit `cfs0` target context for addresses 1–4;
+identity replies do not identify the hardware family. Passive startup keeps
+identity/telemetry decoding and suppresses automatic preload, motor actions,
+sensor toggles, pause, heating and tightening. Host actions are rejected before
+their handlers run. No production setting enables the active component routes.
+The [installation guide](installation.md#passive-startup) lists dependencies,
+data paths and the permitted read commands.
+
 Operations coordinate host actions with separately observed CFS, buffer and
 toolhead state. An ACK, last T-command or cached material record cannot establish
 physical load completion. Unknown observations remain unknown.
@@ -111,7 +121,7 @@ values and transitions come from the target stock implementation.
 
 The [development installer](installation.md) deploys `klippy/extras/box.py` and
 `klippy/extras/cfs/` with preview, scoped backup and restore. Temporary-tree tests
-cover the import layout and refusal to activate. It leaves other modules,
+cover the import layout and passive initialization. It leaves other modules,
 configuration, services and spool data with their owners; no printer was installed.
 
 Python 3.8 is pinned in [.python-version](../.python-version), matching the
@@ -119,7 +129,7 @@ preserved CPython ABI baseline without establishing MIPS native compatibility.
 The checkout suite uses `unittest` plus test-only Jinja2 3.1.6 from
 `requirements-test.txt`; CI installs those test dependencies. Public fixtures
 are synthetic. Local pinned retained-source execution is separate evidence.
-The runtime entry is Klipper's `load_config(config)`, which remains gated.
+The runtime entry is Klipper's `load_config(config)`, with mechanics gated for admission.
 
 ## Configuration and stored data
 

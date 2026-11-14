@@ -1,4 +1,4 @@
-"""Explicit, local installation and restoration of the development scaffold."""
+"""Explicit local deployment and restoration of the CFS extension files."""
 
 import argparse
 import hashlib
@@ -249,10 +249,10 @@ def main():
             extras, backup, _, _, files = prepare(args.extras, args.backup)
             print("Target:", extras, "\nBackup:", backup)
             print("Replace box.py and create cfs/ with", len(files) - 1, "Python files.")
-            print("Preview only; bootstrap still refuses activation.")
+            print("Preview only; CFS startup uses passive admission.")
         elif args.action == "install":
             install(args.extras, args.backup)
-            print("Installed scaffold; bootstrap still refuses activation.")
+            print("Installed CFS extension; startup permits identity and telemetry only.")
         else:
             restore(args.extras, args.backup)
             print("Restored original box.py; backup retained.")

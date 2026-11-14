@@ -1,4 +1,4 @@
-"""Box contract components; the bootstrap still refuses activation.
+"""Box contract components and the passive Klipper entry point.
 
 Explicit construction supports PC checks of state, settings and storage. It
 does not obtain a printer or a serial object, start timers, or run mechanics.
@@ -9,6 +9,7 @@ import importlib
 import logging
 from math import isfinite
 from itertools import zip_longest
+from pathlib import Path
 
 from .configuration import BoxConfiguration, _field_name
 from .cutting import CutSensor, Cutter
@@ -54,11 +55,11 @@ class StaleReplyError(ValueError):
 
 
 class Box:
-    """Compose implemented data behavior without activating an unfinished box.
+    """Compose Box state and actions, with an explicit lifecycle admission mode.
 
     ``base_dir`` is supplied by the caller; PC tests always use a temporary
-    directory. Lifecycle and host actions are wired explicitly on substitutes
-    until the complete replacement is ready for printer acceptance.
+    directory. Construction alone does not obtain printer objects or schedule
+    work. The Klipper entry point registers an observation-only lifecycle.
     """
 
     def __init__(self, config, base_dir, config_paths=None):
@@ -127,6 +128,8 @@ class Box:
         """Capture ownership once for a host action's cooperative calls."""
         if self.lifecycle is None or not self.lifecycle.running:
             raise RuntimeError("the CFS host lifecycle is not ready")
+        if self.lifecycle.passive:
+            raise RuntimeError("CFS admission mode blocks host actions")
         guard = self.lifecycle._report_guard(address)
         guard()
         return guard
@@ -388,20 +391,34 @@ class Box:
         return not self.box_state.extrude_err
 
     def register_lifecycle(self, printer, **kwargs):
-        """Wire functional Klipper hooks explicitly; bootstrap activation is gated."""
+        """Register commands before macros and defer borrowed objects until ready."""
         if self.lifecycle is not None:
             raise RuntimeError("the CFS lifecycle is already registered")
         lifecycle = Lifecycle(self, printer, **kwargs)
-        lifecycle.register()
         self.lifecycle, self._printer = lifecycle, printer
+        try:
+            lifecycle.register()
+        except Exception:
+            lifecycle.shutdown()
+            self.lifecycle, self._printer = None, None
+            raise
         return lifecycle
+
+    def _reject_passive_host_command(self, gcmd):
+        raise gcmd.error("cfs: admission mode blocks host actions")
 
     def register_host_commands(self, printer):
         """Register real host actions before retained macro aliases are loaded."""
         self.cut_sensor = CutSensor(self.boxcfg.config, self.boxcfg.switch_pin, printer=printer)
         self.cutter = Cutter(self, self.motion, self.cut_sensor)
+        def register(name, handler):
+            # Reject before a handler can change queues, flags or tool hints.
+            if self.lifecycle is not None and self.lifecycle.passive:
+                handler = self._reject_passive_host_command
+            self.gcode.register_command(name, handler)
+
         for name, method in Motion.COMMANDS.items():
-            self.gcode.register_command(name, getattr(self.motion, method))
+            register(name, getattr(self.motion, method))
         for name, handler in (
             ("BOX_TN_EXTRUDE", self.extrusion.cmd_Tn_Extrude),
             ("BOX_GET_FLUSH_LEN", self.extrusion.cmd_get_flush_len),
@@ -413,13 +430,13 @@ class Box:
             ("BOX_CUT_MATERIAL", self.cmd_cut_material),
             ("BOX_FIND_CUT_POS", self.cmd_find_cut_pos),
         ):
-            self.gcode.register_command(name, handler)
+            register(name, handler)
         clean = self.cmd_nozzle_clean
-        self.gcode.register_command("BOX_NOZZLE_CLEAN", clean)
-        self.gcode.register_command("TEST_BOX_CLEAN", clean)
+        register("BOX_NOZZLE_CLEAN", clean)
+        register("TEST_BOX_CLEAN", clean)
         if self.boxcfg.switch_pin:
-            self.gcode.register_command("BOX_CUT_HALL_ZERO", self.cmd_cut_hall_zero)
-            self.gcode.register_command("BOX_CUT_HALL_TEST", self.cmd_cut_hall_test)
+            register("BOX_CUT_HALL_ZERO", self.cmd_cut_hall_zero)
+            register("BOX_CUT_HALL_TEST", self.cmd_cut_hall_test)
         for name, handler in (
             ("BOX_SET_PRE_LOADING", self.feeding.cmd_set_pre_loading),
             ("BOX_TIGHTEN_UP_ENABLE", self.feeding.cmd_tighten_up_enable),
@@ -431,7 +448,7 @@ class Box:
             ("BOX_RETRUDE_MATERIAL", self.cmd_box_retrude_material),
             ("BOX_RETRUDE_MATERIAL_WITH_TNN", self.cmd_retrude_material_with_tnn),
         ):
-            self.gcode.register_command(name, handler)
+            register(name, handler)
         for name, handler in (
             ("BOX_START_PRINT", self.printing.cmd_box_start_print),
             ("BOX_END_PRINT", self.printing.cmd_box_end_print),
@@ -448,11 +465,11 @@ class Box:
             ("BOX_POWER_LOSS_RESTORE", self.resume.cmd_power_loss_restore),
             ("BOX_RESUME_EXTRUDE", self.resume.cmd_box_resume_extrude),
         ):
-            self.gcode.register_command(name, handler)
+            register(name, handler)
         for name in self.box_state.Tnn_map:
-            self.gcode.register_command(name, self._tool_handler(name, virtual=False))
+            register(name, self._tool_handler(name, virtual=False))
         for name in self.box_state.Tn_map:
-            self.gcode.register_command(name, self._tool_handler(name, virtual=True))
+            register(name, self._tool_handler(name, virtual=True))
 
     def _tool_handler(self, name, virtual):
         def command(gcmd):
@@ -541,6 +558,8 @@ class Box:
             self.error_next_macro.append(gcmd.get_commandline())
 
     def set_head_runout_enabled(self, enabled):
+        if self.lifecycle is not None and self.lifecycle.passive:
+            raise RuntimeError("CFS admission mode does not change runout sensors")
         name = self.boxcfg.filament_sensor
         if name is not None:
             self.gcode.run_script_from_command(
@@ -563,8 +582,8 @@ class Box:
         """Borrow the configured object explicitly, without connecting it.
 
         Hardware families are externally confirmed context, not inferred from
-        the version/SN reply. This method is used with substitutes until the
-        Klipper lifecycle is implemented; load_config does not call it.
+        the version/SN reply. Lifecycle ready borrows this configured object;
+        constructing or registering Box does not invoke its request API.
         """
         adapter = NativeSerial.from_printer(printer, self.boxcfg.bus)
         reactor = printer.get_reactor()
@@ -667,6 +686,9 @@ class Box:
             raise RuntimeError("the stock native object is not bound")
         if not isinstance(request, Request):
             raise ValueError("native calls require a built Request")
+        if (self.lifecycle is not None and self.lifecycle.passive
+                and (request.diagnostic or request.command not in (0x02, 0x03, 0x05, 0x08, 0x0A, 0x14))):
+            raise UnsupportedRequest("CFS admission mode permits only typed identity and telemetry reads")
         if request.address not in range(1, 5):
             raise UnsupportedRequest("unaddressed diagnostics have no confirmed CFS context")
         address = request.address
@@ -975,6 +997,8 @@ class Box:
         self.box_state.Tn_data["auto_refill"] = gcmd.get_int("ENABLE", 1)
 
     def cmd_box_enable_CFS_print(self, gcmd):
+        if self.lifecycle is not None and self.lifecycle.passive:
+            self._reject_passive_host_command(gcmd)
         enabled = gcmd.get_int("ENABLE", minval=0, maxval=1)
         self.box_state.modify_Tn_data(0, enabled, uppart="enable")
         # CFS uses its custom head event while ordinary runout is disabled.
@@ -1020,7 +1044,32 @@ class Box:
 
 
 def load_config(config):
-    """Reject activation before looking up or changing any printer objects."""
-    raise config.error(
-        "cfs: development scaffold; printer operation is not implemented."
-    )
+    """Load the K1 CFS extension with mechanics disabled for PC admission.
+
+    The retained base-info module owns the data root. The configured native
+    section is loaded by Klipper, then borrowed only at ready; this entry point
+    never imports its binary or opens the serial port itself. CFS0 is explicit
+    target context, not a family inferred from the version/serial reply.
+    """
+    bus = config.get("bus", None)
+    if not isinstance(bus, str) or not bus.strip():
+        raise config.error("cfs: set the serial_485 section name in [box] bus")
+    try:
+        base_dir = importlib.import_module("extras.base_info").base_dir
+        if not isinstance(base_dir, (str, Path)) or not str(base_dir) or "\0" in str(base_dir):
+            raise ValueError("extras.base_info.base_dir must be an absolute data directory")
+        base_dir = Path(base_dir)
+        if not base_dir.is_absolute():
+            raise ValueError("extras.base_info.base_dir must be an absolute data directory")
+        printer = config.get_printer()
+        # Fail before creating a metadata cache when a required owner is absent.
+        printer.lookup_object("gcode")
+        printer.lookup_object("webhooks")
+        printer.load_object(config, "serial_485 " + bus)
+        box = Box(config, base_dir)
+        box.register_lifecycle(
+            printer, passive=True,
+            families={address: "cfs0" for address in range(1, 5)})
+        return box
+    except Exception as error:
+        raise config.error("cfs: could not initialize [box]: %s" % error) from error

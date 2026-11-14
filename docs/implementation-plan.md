@@ -7,8 +7,9 @@ state, native calls, lifecycle, motion, load/unload, tool changes and recovery.
 Stage 9 adds PC integration, Jinja tests, bounded local retained-source execution
 and reversible development-file installation. Explicit unresolved paths remain
 in the matrix, including the missing physical target in two examined saved load
-wrappers. The bootstrap refuses activation; hardware acceptance and the live
-configuration fingerprint remain pending. No printer was changed.
+wrappers. PC admission now provides real initialization and passive identity/
+telemetry startup. Hardware acceptance and the live configuration fingerprint
+remain pending. No printer was changed.
 
 ## Target and design
 
@@ -88,7 +89,7 @@ native API calls and per-address identities/profiles are implemented. Twelve
 native-command handlers join the nine data handlers in substitute-based tests.
 The stage-3 suite had 103 test methods. Later stages compose operation/error/event
 handlers on PC substitutes; real native ABI/wire behavior remains unverified and
-the bootstrap refuses activation. See the [native integration boundaries](protocol.md#native-integration)
+the bootstrap permits passive reads only. See the [native integration boundaries](protocol.md#native-integration)
 and runnable references in the [matrix](contract-matrix.md).
 
 Obtain the configured stock Klipper serial object and use its supported request
@@ -123,7 +124,7 @@ native wait are tested. Stage 6 supplies loading consumers and power-on refresh;
 stage 8 adds reason-specific recovery and stage 9 executes the retained producer
 in a bounded local PC harness.
 Unavailable phase actions fail explicitly. See [lifecycle integration](protocol.md#lifecycle-integration)
-and the [matrix](contract-matrix.md). The bootstrap still refuses activation.
+and the [matrix](contract-matrix.md). The real entry point now uses passive startup.
 
 Implement command/event registration as the handlers become functional, dependency
 lookup, ready/shutdown behavior, connect/reconnect and per-address heartbeat.
@@ -224,7 +225,13 @@ preflight and temporary-tree install/rollback tests are present. Separate local
 checks execute pinned retained modules and saved macros. Both examined saved
 load wrappers omit required `TNN`; their unchanged successful load remains
 blocked. Live include/override fingerprints and hardware acceptance are still
-required. The installer deploys the gated development bootstrap only.
+required. The installer deploys the passive admission bootstrap.
+
+The subsequent PC admission work implements `load_config`, the retained data-root
+and dependency lookup, failure cleanup and exact shared-state checks after nested
+failures/recovery. The first startup polls identity and telemetry without automatic
+mechanics; host actions and raw diagnostics are blocked. This does not complete
+stage 10. See [passive startup](installation.md#passive-startup).
 
 Check the complete command/API matrix, registration order, optional configurations,
 settings and persisted formats against consumer scenarios. Exercise combined

@@ -11,7 +11,7 @@ an implemented or hardware-verified one.
 | Area | Implementation | Validation |
 | --- | --- | --- |
 | Proposed Klipper import layout | Implemented | PC regression test; not a printer installation test |
-| Refusal to activate the scaffold | Implemented | PC regression test before printer-object lookup |
+| Passive Klipper startup | Implemented on PC | Real load_config, owner dependencies and data root; identity/telemetry only, host actions blocked |
 | Full contract inventory and check bindings | Stage 1 complete | Real test references, partial families and remaining acceptance cases are tracked |
 | State, configuration and compatible storage | Stage 2 components implemented | Synthetic state, all 54 options, 21 endpoint fields and temporary-file tests |
 | Native `serial_485` calls | Stage 3 primitives implemented | Borrowed-API substitutes, typed request bodies and retry tests; stock binary not executed |
@@ -24,14 +24,21 @@ an implemented or hardware-verified one.
 | Pause/resume and recovery | Stage 8 components | PC substitutes cover recovery, refill, resume and persisted hints; bounded retained-source checks supplement CI; hardware unverified |
 | Stock G-code and status interfaces | Partial | All 103 names registered, including two conditional Hall commands and one blocked legacy feed command; endpoint and snapshots tested |
 | RFID, remaining length, saved materials | Partial | Normal replies, metadata/cache updates and deferred grouping tested; hardware observations and mechanical slot handling pending |
-| Reversible development-file installation | Implemented | Preview, backup, scoped restore, failure and tampering tests in temporary trees; bootstrap remains gated |
-| Python 3.8 | Project and CI default | 546 methods run: 543 passed, 3 Windows symlink-privilege skips on Python 3.8.20; test-only Jinja2; native MIPS runtime unverified |
+| Reversible development-file installation | Implemented | Preview, backup, scoped restore, failure and tampering tests in temporary trees; passive bootstrap |
+| Python 3.8 | Project and CI default | 576 methods run: 573 passed, 3 Windows symlink-privilege skips on Python 3.8.20; test-only Jinja2; native MIPS runtime unverified |
 
-The 546-method total is the public suite only. Separate local runs passed 13
+The 576-method total is the public suite only. Separate local runs passed 14
 retained-module checks, 13 saved-macro checks and the 17 public macro checks
 using the retained renderer. They are additional evidence, not extra public
 test methods. The three skips require Windows native symlink privileges;
-platform-independent reparse rejection is checked.
+platform-independent reparse rejection is checked. The retained checks include
+the actual virtual-SD worker after a passive diagnostic: it does not dispatch PAUSE.
+
+PC admission adds 30 public methods: 10 bootstrap, 15 passive lifecycle and five
+composed failure-state checks. Caller-boundary False/None returns are injected
+after real phases; separate effect exceptions exercise interrupted phases.
+All eight recovery leaves assert their distinct shared-context tails. These
+checks do not imply physical rollback or a successful hardware operation.
 
 Coverage records local component checks. Hosted results for each commit are
 available in [GitHub Actions](https://github.com/truestealth/cfs_klipper/actions).
@@ -44,9 +51,11 @@ and remaining acceptance cases. Hardware acceptance is pending.
 
 Stage 2 components are tested on a PC. Explicit `Box(config, base_dir)`
 construction uses the supplied data root without obtaining a printer or serial
-object. `load_config()` continues to refuse activation. The data-command subset
-and lifecycle are registered explicitly in component tests; the bootstrap
-does not activate them on a printer.
+object. `load_config()` now obtains the established `extras.base_info.base_dir`,
+loads the configured stock serial section, and registers a passive lifecycle.
+Ready resolves the remaining printer dependencies and borrows the native API.
+The real entry-to-heartbeat route is tested with substitutes; no printer was used.
+See [passive startup](installation.md#passive-startup) for its restrictions.
 
 State preserves the four-box/sixteen-slot schema, raw value types and distinct
 sentinels. Client snapshots are deep copies. Saved labels load into a separate
@@ -97,7 +106,7 @@ Stage 3 implements request primitives through the configured stock `serial_485`
 object, command-specific reply decoding and per-address identity/profile selection.
 Explicit binding borrows the object without connecting or disconnecting it.
 The PC suite uses substitutes; no stock binary ran and no printer connection was made.
-`load_config()` still refuses activation.
+`load_config()` permits only passive identity/telemetry admission.
 
 Checks cover all 25 named reply statuses and their contextual outcomes, normal
 data/cache updates, missing-response distinctions, communication-test byte zero
@@ -145,7 +154,7 @@ The implemented host policies are:
 Tests compose native wheel replies with segmented extrusion and actual Python
 cleaning, shared error restoration, macro alias dispatch and temporary-file
 configuration saves. Stage 9 adds bounded Jinja and retained-producer execution checks. Hardware
-acceptance remains separate. The bootstrap still refuses activation.
+acceptance remains separate. The bootstrap blocks host actions in passive mode.
 
 ## Runout, recovery and resume
 
@@ -255,8 +264,8 @@ These are deliberate host guards, not inferred coordinates or physical rollback.
 
 The [development installer](installation.md) changes only the scoped Box files
 and preserves retained modules, configuration and spool data. Backup/restore and
-failure cases are tested in temporary trees. It deploys files whose bootstrap
-still refuses activation. Encoding 0, legacy opcode 0x13, typed stages above
+failure cases are tested in temporary trees. Its bootstrap starts in passive
+admission mode. Encoding 0, legacy opcode 0x13, typed stages above
 seven, reserved operations and unaddressed diagnostics remain explicitly gated.
 
 <a id="firmware-versions"></a>

@@ -1,7 +1,7 @@
-"""Klipper entry point for the development scaffold, which refuses activation.
+"""Klipper entry point with identity/telemetry-only admission startup.
 
-The planned layout places this file in extras/box.py and the implementation in
-extras/cfs/. This layout is tested on a PC; it is not a printer installer.
+Deploy this file as extras/box.py and the implementation as extras/cfs/.
+Host mechanics remain blocked; printer acceptance is separate from PC checks.
 """
 
 from .cfs.box import load_config

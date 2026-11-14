@@ -3,8 +3,8 @@
 English | [Русский](contract-matrix.ru.md)
 
 The [machine-readable matrix](contract-matrix.json) contains **423 requirements**
-and **96 check families**: 78 on PC and 18 on hardware. Stage 9 records
-59 implemented families, 19 partial and 18 planned; every planned
+and **96 check families**: 78 on PC and 18 on hardware. PC admission records
+61 implemented families, 17 partial and 18 planned; every planned
 family is a hardware check. Public synthetic fixtures and additional local
 retained-source execution have distinct evidence scopes. Catalogue integrity
 alone does not establish functional compatibility.
@@ -200,8 +200,10 @@ ready/shutdown, reconnect, heartbeat, reporting and re-entrant head-event cases.
 Motion, extrusion and cutting tests exercise configured commands, limits, fan
 state, heater and wheel substitutes, sensor latches and calibration failures.
 Retained sensor-producer behavior and full loading-result consumption remain
-separate from these component checks. The bootstrap check verifies refusal to access
-printer objects. None of these tests executes the stock binary or operates equipment.
+separate from these component checks. Real bootstrap checks cover dependency/data-root
+resolution, passive ready/heartbeat/restart and failure cleanup. Composed failure
+checks assert the actual motion/source/error context after nested phases and all
+eight recovery leaves. None executes the stock binary or operates equipment.
 
 See [compatibility.md](compatibility.md) for implementation/validation status
 and [protocol.md](protocol.md) for the native API boundary.

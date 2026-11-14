@@ -4,8 +4,9 @@ English | [Русский](protocol.ru.md)
 
 **Status:** borrowed-native calls, reply decoding, per-device version selection,
 and stage 4 lifecycle, error and operation-context components are tested with PC
-substitutes. The package is `cfs`; the Klipper object remains `box`. The bootstrap still
-refuses activation. These checks did not execute the retained `.so` or contact
+substitutes. The package is `cfs`; the Klipper object remains `box`. The bootstrap
+now initializes passive identity/telemetry admission with mechanics blocked.
+These checks did not execute the retained `.so` or contact
 the printer; a complete K1C replacement cycle remains unverified.
 
 Stable section anchors allow implementation and tests to reference this document.
@@ -63,9 +64,9 @@ context stops subsequent host processing; deferred callbacks also reject old
 context after detachment. These guards do not interrupt an API call already in
 progress or cancel its internal native retries.
 
-The lifecycle supplies shared reporting, saved-error and timeout handlers, and
-retains slot events as diagnostics. Other required operation hooks remain unbound;
-their absence raises `MissingProtocolEffect` before effect execution. The sender
+The lifecycle supplies reporting, saved-error, timeout, slot-event and runout
+handlers. A missing required handler raises `MissingProtocolEffect` before
+effect execution. The sender
 retains contextual `True`/`False`/`None` outcomes. ACK, telemetry and cached labels
 do not establish completed loading or switching.
 
@@ -85,8 +86,17 @@ counts, scheduling and mechanical completion remain hardware acceptance work.
 
 ## Lifecycle, errors and operation context
 
-Explicit registration provides 46 functional handlers and two conditional Hall
-handlers. On `klippy:ready`, the
+`load_config` always registers passive admission: only typed reads `0x02`, `0x03`,
+`0x05`, `0x08`, `0x0A` and `0x14` may reach the borrowed native API. Raw diagnostics,
+wheel requests, `CREATE_CONNECT` and writes are blocked, as are host actions.
+Automatic preload/RUN, sensor toggles, head feed, runout tightening, pause and
+heating are suppressed. Reports retain their client text without executing
+mechanical error tails. No configuration/G-code opt-out is provided. See
+[startup dependencies and data paths](installation.md#passive-startup).
+
+The following operation policies describe the active component contract tested
+with explicit PC construction. Registration provides 101 unconditional commands
+and two conditional Hall commands. On `klippy:ready`, the
 lifecycle resolves its dependencies, borrows serial, emits `box:ready` and then
 starts its own heartbeat timer. Presence uses the address manager's `online == 1`
 and the serial port's existence, independently of the native connection flag.
@@ -264,7 +274,9 @@ The table describes required operation coverage, not a successful runtime cycle.
 Do not invent stage timing or copy a sequence from a different printer/MCU.
 Keep the existing preload policy;
 configuration such as OPEN and an action such as RUN are not interchangeable.
-RFID or slot refresh can involve mechanics and is not a passive status query.
+The full power-on refresh includes a mechanical RUN before RFID/remain queries;
+passive admission permits the typed reads alone and suppresses RUN and slot-event
+actions.
 
 <a id="timing"></a>
 

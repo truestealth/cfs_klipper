@@ -20,8 +20,11 @@ integration, Jinja macro tests and a reversible development-file installer.
 Local verification also executes pinned retained Python and saved macro sources
 with substituted hardware effects; public CI uses synthetic fixtures.
 
-**Activation remains blocked.** The entry point refuses before obtaining printer
-objects. Hardware acceptance and the live configuration fingerprint are pending.
+`load_config` now initializes `[box]` in **passive admission mode**: identity and
+telemetry reads are available, while host actions and native writes are blocked.
+There is no configuration or G-code switch to enable mechanics. See
+[first-start behavior](docs/installation.md#passive-startup).
+Hardware acceptance and the live configuration fingerprint are pending.
 Two examined saved load wrappers omit the required physical `TNN`; they fail
 before loading and need an explicit caller target or an agreed compatibility
 policy. No target is guessed and no user macro is rewritten.
@@ -49,7 +52,7 @@ commands. The legacy feed command remains deliberately blocked; encoding 0,
 wire stages above seven, reserved operations and unaddressed diagnostics remain
 unsupported. See the matrix for the exact open paths.
 
-- [Development installation and rollback](docs/installation.md): preview, scoped backup and restore; activation remains blocked.
+- [Development installation and rollback](docs/installation.md): preview, scoped backup, restore and passive first startup.
 - [Architecture](docs/architecture.md): responsibilities and Klipper layout.
 - [Protocol](docs/protocol.md): framing, native API boundary and open questions.
 - [Compatibility](docs/compatibility.md): implementation and validation coverage.

@@ -1,4 +1,4 @@
-"""Validate the planned Klipper layout and refusal to activate the scaffold."""
+"""Validate the deployed Klipper layout and bootstrap configuration errors."""
 
 from pathlib import Path
 import shutil
@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class BootstrapTests(unittest.TestCase):
-    def test_klipper_layout_refuses_activation_without_printer_access(self):
+    def test_klipper_layout_imports_and_requires_bus_before_printer_access(self):
         with tempfile.TemporaryDirectory() as directory:
             extras = Path(directory) / "extras"
             extras.mkdir()
@@ -30,15 +30,18 @@ from extras.box import load_config
 class Config:
     error = RuntimeError
 
+    def get(self, name, default=None):
+        return default
+
     def get_printer(self):
-        raise AssertionError("The scaffold must not obtain printer objects")
+        raise AssertionError("Missing bus must fail before printer lookup")
 
 try:
     load_config(Config())
 except RuntimeError as error:
     print(error)
 else:
-    raise AssertionError("The scaffold must refuse activation")
+    raise AssertionError("The bootstrap must require a configured bus")
 """],
                 cwd=directory,
                 capture_output=True,
@@ -46,8 +49,7 @@ else:
                 check=False,
             )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("development scaffold", result.stdout)
-        self.assertIn("printer operation is not implemented", result.stdout)
+        self.assertIn("set the serial_485 section name", result.stdout)
 
 
 if __name__ == "__main__":

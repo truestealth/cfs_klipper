@@ -82,8 +82,8 @@
       "partial": 107
     },
     "check_statuses": {
-      "implemented": 59,
-      "partial": 19,
+      "implemented": 61,
+      "partial": 17,
       "planned": 18
     }
   },
@@ -4644,7 +4644,7 @@
       "evidence": "static",
       "implementation": "partial",
       "blockers": [],
-      "implementation_note": "Host components are composed with loading, tool-change and recovery routes in PC tests. Position-disabled preflight stops affected actions; exhaustive partial-coordinate/recovery combinations and hardware outcomes remain unverified."
+      "implementation_note": "Composed tool changes and every recovery leaf assert actual shared context after success and failure; exceptions release ownership without a fabricated motion rollback. Exhaustive partial-coordinate combinations and hardware outcomes remain unverified."
     },
     {
       "id": "STATE-MAX-VELOCITY",
@@ -4660,7 +4660,7 @@
       "evidence": "static",
       "implementation": "partial",
       "blockers": [],
-      "implementation_note": "Host components are composed with loading, tool-change and recovery routes in PC tests. Position-disabled preflight stops affected actions; exhaustive partial-coordinate/recovery combinations and hardware outcomes remain unverified."
+      "implementation_note": "Composed tool changes and every recovery leaf assert actual shared context after success and failure; exceptions release ownership without a fabricated motion rollback. Exhaustive partial-coordinate combinations and hardware outcomes remain unverified."
     },
     {
       "id": "STATE-MAX-ACCEL",
@@ -4676,7 +4676,7 @@
       "evidence": "static",
       "implementation": "partial",
       "blockers": [],
-      "implementation_note": "Host components are composed with loading, tool-change and recovery routes in PC tests. Position-disabled preflight stops affected actions; exhaustive partial-coordinate/recovery combinations and hardware outcomes remain unverified."
+      "implementation_note": "Composed tool changes and every recovery leaf assert actual shared context after success and failure; exceptions release ownership without a fabricated motion rollback. Exhaustive partial-coordinate combinations and hardware outcomes remain unverified."
     },
     {
       "id": "STATE-SPEED-FACTOR",
@@ -5450,7 +5450,7 @@
       "evidence": "static",
       "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "Configured dependency ownership and shared interface are exercised by the bound PC tests; physical/native services remain substituted."
+      "implementation_note": "The real loader reads the retained extras.base_info.base_dir scalar, rejects missing/relative/invalid roots, and derives compatible metadata, material database and flushing-marker paths. Factory configuration-save paths remain unchanged. Existing data is preserved; no printer is contacted."
     },
     {
       "id": "DEPENDENCY-RENAME-EXISTING",
@@ -7707,7 +7707,7 @@
       "evidence": "static",
       "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "Preview, scoped backup/install/restore, injected failures and tampering are tested in temporary trees. Only development files are deployed; bootstrap still refuses activation and printer installation is unverified."
+      "implementation_note": "Preview, scoped backup/install/restore, injected failures and tampering are tested in temporary trees. Only development files are deployed; bootstrap uses passive admission and printer installation is unverified."
     },
     {
       "id": "BUILD-PYTHON-TARGET",
@@ -8824,7 +8824,7 @@
         "Check the required Z, velocity, acceleration and speed-factor context on every specified completion and failure exit.",
         "Keep the continue-print route distinct; cleanup is not a universal physical rollback."
       ],
-      "status": "partial",
+      "status": "implemented",
       "test": [
         "tests/test_motion.py::MotionTests.test_z_down_bounds_accumulation_and_restore",
         "tests/test_motion.py::MotionTests.test_homing_and_restoring_limits",
@@ -8832,9 +8832,14 @@
         "tests/test_host_actions.py::HostActionTests.test_shared_motion_context_and_print_metadata_restore",
         "tests/test_host_actions.py::HostActionTests.test_shared_error_handler_consumes_real_saved_motion_context",
         "tests/test_toolchange.py::ToolChangeTests.test_continuation_uses_old_old_profile_and_has_distinct_restore_tail",
-        "tests/test_tool_actions.py::ToolActionTests.test_retained_continue_flag_uses_its_distinct_route"
+        "tests/test_tool_actions.py::ToolActionTests.test_retained_continue_flag_uses_its_distinct_route",
+        "tests/test_failure_states.py::FailureStateTests.test_tool_exact_false_keeps_phase_state_and_typed_recovery_context",
+        "tests/test_failure_states.py::FailureStateTests.test_tool_none_reaches_success_tail_and_clears_shared_motion_context",
+        "tests/test_failure_states.py::FailureStateTests.test_nested_tool_exceptions_release_ownership_without_motion_rollback",
+        "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_has_its_own_successful_shared_context_tail",
+        "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_exception_preserves_the_state_at_its_failure"
       ],
-      "remaining": "Recovery leaf tests record restore calls, but the resulting shared Z/velocity/acceleration values are not asserted for each retry leaf. Basic restoration, cut failure and continuation have explicit state checks."
+      "validation_note": "Actual composed Python components now assert shared Z/velocity/acceleration, fan/source/error hints and operation/head/heartbeat ownership after nested cut/load/flush False, None and exceptions, plus the distinct normal and exception tails of all eight recovery leaves. False/None caller-boundary returns follow real phase execution; separate effect injections interrupt actual phases with exceptions. Physical rollback is not inferred."
     },
     {
       "id": "PC-STATE-PRELOAD-PREFERENCES",
@@ -8996,7 +9001,9 @@
         "Exercise configured versus fixed serial/head-sensor names and identify unresolved mismatches.",
         "Preserve rename_existing chains, status clients and borrowed object ownership.",
         "Read axis limits, runtime data root and resume interfaces without replacing other subsystems.",
-        "Check retained chelper get_ffi, rgb_t and get_flushing_volume call shape with a substitute."
+        "Check retained chelper get_ffi, rgb_t and get_flushing_volume call shape with a substitute.",
+        "The real entry point resolves extras.base_info.base_dir and registers a passive lifecycle before macros; ready borrows the configured serial owner.",
+        "Passive startup permits only typed identity/telemetry reads and blocks host actions, raw diagnostics, automatic motion, preload, pause, heating and sensor changes."
       ],
       "status": "partial",
       "test": [
@@ -9018,9 +9025,34 @@
         "tests/test_macro_integration.py::MacroIntegrationTests.test_connect_renames_existing_and_forwards_raw_parameters",
         "tests/test_pc_integration.py::PCIntegrationTests.test_position_disabled_commands_fail_before_affected_effects",
         "tests/test_pc_integration.py::PCIntegrationTests.test_position_disabled_resume_and_continuation_fail_before_motion",
-        "tests/test_pc_integration.py::PCIntegrationTests.test_no_sensor_same_content_does_not_require_tray_or_fans"
+        "tests/test_pc_integration.py::PCIntegrationTests.test_no_sensor_same_content_does_not_require_tray_or_fans",
+        "tests/test_bootstrap.py::BootstrapTests.test_real_loader_registers_passive_lifecycle_and_borrows_configured_owner",
+        "tests/test_bootstrap.py::BootstrapTests.test_saved_settings_and_recovery_hints_are_preserved_without_restoring_live_state",
+        "tests/test_bootstrap.py::BootstrapTests.test_entry_ready_heartbeat_shutdown_and_re_ready_keep_borrowed_owners",
+        "tests/test_bootstrap.py::BootstrapTests.test_missing_cache_creates_only_compatible_metadata",
+        "tests/test_bootstrap.py::BootstrapTests.test_invalid_data_root_fails_before_dependencies_registration_or_writes",
+        "tests/test_bootstrap.py::BootstrapTests.test_missing_base_info_keeps_original_import_error_as_cause",
+        "tests/test_bootstrap.py::BootstrapTests.test_missing_configured_native_owner_fails_without_cache_or_registration",
+        "tests/test_bootstrap.py::BootstrapTests.test_missing_webhooks_does_not_load_native_or_create_cache",
+        "tests/test_bootstrap.py::BootstrapTests.test_missing_bus_fails_before_base_info_or_printer_access",
+        "tests/test_bootstrap.py::BootstrapTests.test_corrupt_saved_metadata_is_preserved_and_does_not_register_partial_box",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_startup_and_reconnect_only_read_even_with_poweron_preload",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_passive_startup_does_not_wait_for_ui_preferences_or_toggle_sensor",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_retained_preconnected_state_still_requires_identity",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_unsupported_identity_is_read_once_until_context_changes",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_missing_identity_disconnects_and_retries_without_mechanics",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_runout_report_preserves_recovery_state_without_pause_or_drain",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_diagnostic_dedup_does_not_change_retained_pause_hint",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_slot_reports_are_diagnostics_without_automatic_event_actions",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_timeout_invalidates_device_without_motion_or_clearing_hints",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_head_event_cannot_start_phase_even_if_context_was_armed",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_host_entry_rejects_before_mutating_tool_or_resume_state",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_native_and_direct_host_bypasses_are_rejected_before_io",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_dependency_failure_and_retry_leave_no_owned_work",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_activation_failure_cleans_binding_and_can_retry",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_ready_restart_does_not_clean_up_the_new_lifecycle"
       ],
-      "remaining": "Configured lookups, aliases and retained direct paths are checked. Live configuration fingerprints, complete include overrides and target runtime data-root discovery remain unverified; native chelper is substituted."
+      "remaining": "Real load_config and the retained base_info.base_dir scalar, configured serial section loading, deferred ready dependencies, passive command/effect gates and cleanup after failures are checked with substitutes. Live configuration fingerprints and complete include overrides remain unverified; native chelper and the MIPS transport are not executed."
     },
     {
       "id": "PC-INTEGRATION-EVENTS",
@@ -9041,7 +9073,23 @@
         "tests/test_recovery_actions.py::RecoveryActionTests.test_queued_runout_callback_does_not_attach_to_replacement",
         "tests/test_retained_integration.py::RetainedIntegrationTests.test_head_producer_completes_full_load_once",
         "tests/test_retained_integration.py::RetainedIntegrationTests.test_false_head_result_is_consumed_after_stage4_success",
-        "tests/test_retained_integration.py::RetainedIntegrationTests.test_unowned_and_shutdown_head_events_cannot_feed"
+        "tests/test_retained_integration.py::RetainedIntegrationTests.test_unowned_and_shutdown_head_events_cannot_feed",
+        "tests/test_bootstrap.py::BootstrapTests.test_entry_ready_heartbeat_shutdown_and_re_ready_keep_borrowed_owners",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_startup_and_reconnect_only_read_even_with_poweron_preload",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_passive_startup_does_not_wait_for_ui_preferences_or_toggle_sensor",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_retained_preconnected_state_still_requires_identity",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_unsupported_identity_is_read_once_until_context_changes",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_missing_identity_disconnects_and_retries_without_mechanics",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_runout_report_preserves_recovery_state_without_pause_or_drain",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_diagnostic_dedup_does_not_change_retained_pause_hint",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_slot_reports_are_diagnostics_without_automatic_event_actions",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_timeout_invalidates_device_without_motion_or_clearing_hints",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_head_event_cannot_start_phase_even_if_context_was_armed",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_host_entry_rejects_before_mutating_tool_or_resume_state",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_native_and_direct_host_bypasses_are_rejected_before_io",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_dependency_failure_and_retry_leave_no_owned_work",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_activation_failure_cleans_binding_and_can_retry",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_ready_restart_does_not_clean_up_the_new_lifecycle"
       ],
       "validation_note": "Public producer fixture verifies Box consumption and ownership. Additional local execution of pinned SwitchSensor/RunoutHelper verifies disabled/debounce/duplicate behavior inside stage4; this retained-source proof is separate from public CI."
     },
@@ -9288,7 +9336,13 @@
         "tests/test_lifecycle.py::LifecycleTests.test_poweron_requires_real_refresh_hook_and_optional_head_fallback",
         "tests/test_lifecycle.py::LifecycleTests.test_explicit_poweron_hook_and_head_event_use_current_operation",
         "tests/test_lifecycle.py::LifecycleTests.test_new_family_confirmation_reenters_initialization_before_polling",
-        "tests/test_lifecycle.py::LifecycleTests.test_live_version_change_cancels_operation_and_refreshes_layout"
+        "tests/test_lifecycle.py::LifecycleTests.test_live_version_change_cancels_operation_and_refreshes_layout",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_startup_and_reconnect_only_read_even_with_poweron_preload",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_passive_startup_does_not_wait_for_ui_preferences_or_toggle_sensor",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_retained_preconnected_state_still_requires_identity",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_unsupported_identity_is_read_once_until_context_changes",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_missing_identity_disconnects_and_retries_without_mechanics",
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_timeout_invalidates_device_without_motion_or_clearing_hints"
       ]
     },
     {
@@ -9570,7 +9624,7 @@
         "Inject False, None and exceptions at significant phase boundaries and verify the documented handler/error/state result.",
         "Do not replace recorded branch behavior with a universal Boolean or unconditional finally rollback."
       ],
-      "status": "partial",
+      "status": "implemented",
       "test": [
         "tests/test_operations.py::OperationTests.test_action_and_wait_exceptions_release_ownership_without_rollback",
         "tests/test_lifecycle.py::LifecycleTests.test_head_reenters_stage4_native_wait_and_keeps_failed_stage6_snapshot",
@@ -9590,9 +9644,14 @@
         "tests/test_recovery.py::RecoveryTests.test_stage_exception_propagates_with_cleared_error_and_no_final_motion",
         "tests/test_resume.py::ResumeTests.test_real_lifecycle_guard_rejects_replacement_and_shutdown",
         "tests/test_runout.py::RunoutTests.test_refill_target_replacement_stops_before_bookkeeping",
-        "tests/test_pc_integration.py::PCIntegrationTests.test_position_disabled_box_end_preserves_pending_drain_and_source"
+        "tests/test_pc_integration.py::PCIntegrationTests.test_position_disabled_box_end_preserves_pending_drain_and_source",
+        "tests/test_failure_states.py::FailureStateTests.test_tool_exact_false_keeps_phase_state_and_typed_recovery_context",
+        "tests/test_failure_states.py::FailureStateTests.test_tool_none_reaches_success_tail_and_clears_shared_motion_context",
+        "tests/test_failure_states.py::FailureStateTests.test_nested_tool_exceptions_release_ownership_without_motion_rollback",
+        "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_has_its_own_successful_shared_context_tail",
+        "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_exception_preserves_the_state_at_its_failure"
       ],
-      "remaining": "Leaf tests distinguish False/None/exceptions. Complete Box compositions still lack exact shared-state assertions after exceptions in each nested cut/load/flush recovery exit."
+      "validation_note": "Actual composed Python components now assert shared Z/velocity/acceleration, fan/source/error hints and operation/head/heartbeat ownership after nested cut/load/flush False, None and exceptions, plus the distinct normal and exception tails of all eight recovery leaves. False/None caller-boundary returns follow real phase execution; separate effect injections interrupt actual phases with exceptions. Physical rollback is not inferred."
     },
     {
       "id": "PC-ERROR-REPORT",
@@ -9656,7 +9715,7 @@
         "tests/test_installation.py::InstallationTests.test_preview_and_roundtrip",
         "tests/test_installation.py::InstallationTests.test_partial_install_rolls_back",
         "tests/test_installation.py::InstallationTests.test_partial_box_write_rolls_back",
-        "tests/test_installation.py::InstallationTests.test_import_refuses_activation_then_restore_removes_bytecode",
+        "tests/test_installation.py::InstallationTests.test_import_validates_configuration_then_restore_removes_bytecode",
         "tests/test_installation.py::InstallationTests.test_unexpected_cache_entry_blocks_restore",
         "tests/test_installation.py::InstallationTests.test_linked_target_rejected",
         "tests/test_installation.py::InstallationTests.test_reparse_point_rejected",
@@ -9671,7 +9730,7 @@
         "tests/test_installation.py::InstallationTests.test_tampered_saved_cache_blocks_restore",
         "tests/test_installation.py::InstallationTests.test_linked_entry_cache_rejected"
       ],
-      "validation_note": "Temporary trees only; development bootstrap remains gated. Native symlink privilege cases are skipped on Windows when unavailable; reparse-point rejection has a separate platform-independent check."
+      "validation_note": "Temporary trees only; the deployed bootstrap uses passive admission. Native symlink privilege cases are skipped on Windows when unavailable; reparse-point rejection has a separate platform-independent check."
     },
     {
       "id": "PC-PYTHON-COMPATIBILITY",
@@ -9682,7 +9741,7 @@
       ],
       "status": "implemented",
       "test": [
-        "tests/test_box_contract.py::BootstrapTests.test_klipper_layout_refuses_activation_without_printer_access"
+        "tests/test_box_contract.py::BootstrapTests.test_klipper_layout_imports_and_requires_bus_before_printer_access"
       ],
       "validation_note": "Checkout unittest runs on project-default CPython 3.8.20; CI reads .python-version and installs test-only requirements. This does not establish MIPS ABI compatibility."
     },
@@ -10073,5 +10132,21 @@
       "observation": "Both examined saved load wrappers omit required physical TNN; actual retained-template/replacement execution fails before loading. Static original-handler reconstruction predicts the same missing-target failure; the original binary was not executed.",
       "close_when": "Provide an explicit physical target at the caller or agree and verify a compatibility policy. Preserve user macro ownership; do not guess a spool or silently patch the saved/current configuration."
     }
-  ]
+  ],
+  "admission_policy": {
+    "entry": "load_config always registers passive=True; no G-code or configuration opt-out",
+    "family_context": "cfs0 is the explicit K1 CFS Upgrade target, not inferred from identity replies",
+    "native_read_opcodes": [
+      2,
+      3,
+      5,
+      8,
+      10,
+      20
+    ],
+    "host_actions": "blocked before handler mutation; raw requests and all other opcodes are blocked",
+    "metadata": "each passive initialization reads a fresh MATERIAL mask before applying saved labels to live state",
+    "errors": "passive diagnostics use Lifecycle.last_error and leave the retained virtual-SD pause hint box.last_err unchanged",
+    "acceptance": "PC substitutes only; live configuration and hardware acceptance remain pending"
+  }
 }

@@ -79,18 +79,19 @@ class InstallationTests(unittest.TestCase):
         self.assertFalse((self.extras / "cfs").exists())
         self.assertEqual((self.backup / "box.py.original").read_bytes(), self.original)
 
-    def test_import_refuses_activation_then_restore_removes_bytecode(self):
+    def test_import_validates_configuration_then_restore_removes_bytecode(self):
         installer.install(self.extras, self.backup)
         code = (
             "import sys; sys.path.insert(0, sys.argv[1]); "
             "from extras.box import load_config; "
-            "Config = type('Config', (), {'error': lambda self, msg: RuntimeError(msg)}); "
+            "Config = type('Config', (), {'error': lambda self, msg: RuntimeError(msg), "
+            "'get': lambda self, name, default=None: default}); "
             "load_config(Config())"
         )
         result = subprocess.run([sys.executable, "-c", code, str(self.root)],
                                 capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("cfs: development scaffold; printer operation is not implemented.", result.stderr)
+        self.assertIn("cfs: set the serial_485 section name in [box] bus", result.stderr)
         self.assertTrue((self.extras / "cfs" / "__pycache__").is_dir())
         installer.restore(self.extras, self.backup)
         self.assertEqual(self.box.read_bytes(), self.original)

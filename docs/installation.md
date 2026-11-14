@@ -2,9 +2,9 @@
 
 [Русский](installation.ru.md)
 
-This PC-tested tool copies the development scaffold to a local Klipper `extras`
-directory. **The bootstrap still refuses activation.** Component tests do not
-establish printer readiness; a future printer trial requires separate
+This PC-tested tool copies the extension to a local Klipper `extras`
+directory. The bootstrap initializes passive admission with mechanics blocked.
+Component tests do not establish printer readiness; a future printer trial requires separate
 authorization and hardware acceptance. This tool does not contact a printer,
 manage services, or edit configuration, macros, firmware or data.
 
@@ -42,3 +42,57 @@ directory remains for inspection. A restore error can require manual recovery
 from `box.py.original`; do not discard it. The target must remain quiescent
 throughout either operation: the tool does not lock out concurrent writers or
 survive power loss as a transaction.
+
+<a id="passive-startup"></a>
+
+## Passive first startup
+
+`load_config(config)` now returns the `box` object instead of rejecting every
+startup. It obtains the absolute data root from the retained scalar
+`extras.base_info.base_dir`, requires `gcode` and `webhooks`, and asks Klipper to
+load `serial_485 <bus>` using `[box] bus`. It does not import the native binary
+directly or open a second serial connection. A configured cutter switch uses
+the retained `buttons` object.
+
+On `klippy:ready`, the lifecycle resolves `toolhead`, `gcode_move`, `print_stats`,
+`virtual_sdcard`, the configured head sensor, the four-entry retained
+`extras.auto_addr_wrapper.addr_manager_table_mb` and `greenlet.getcurrent`.
+The existing address-manager configuration must remain enabled; its own bus
+requirements are not changed by Box's configured lookup.
+Only then does it borrow the configured serial object, emit `box:ready` and
+schedule its heartbeat. A failed ready attempt cancels extension-owned work
+and releases its native binding without closing the stock transport.
+
+The entry supplies explicit first-generation `cfs0` context for addresses 1–4.
+This is the supported K1 CFS Upgrade target, not hardware identification from
+the version reply. Exact firmware profiles remain required, with 1.1.3 as the
+baseline; a replaced serial number clears family confirmation.
+
+Admission permits only typed `GET_RFID` (`0x02`), `GET_REMAIN_LEN` (`0x03`),
+`GET_BUFFER_STATE` (`0x05`), `GET_FILAMENT_SENSOR_STATE` (`0x08`), `GET_BOX_STATE`
+(`0x0A`) and `GET_VERSION_SN` (`0x14`). Wheel requests, raw diagnostics,
+`CREATE_CONNECT`, motor/preload writes and host actions are rejected. Incoming
+error/runout/head events cannot trigger pause, motion restoration, heating,
+tightening or sensor-enable G-code. Automatic preload permission and power-on
+RUN are suppressed. Existing macros can encounter these explicit admission
+errors; this mode is not suitable for printing. There is currently no
+configuration or G-code option to enable mechanics.
+
+After identification, each passive initialization reads a fresh MATERIAL presence
+mask before applying saved labels to live state, including reconnect and addresses
+already marked connected by the retained address manager. Passive diagnostics use
+`Lifecycle.last_error`, leaving the retained virtual-SD pause hint `box.last_err`
+unchanged.
+
+The spool cache stays at `<base_dir>/creality/userdata/box/tn_data.json`, with
+`material_database.json` beside it; the flushing marker stays at
+`<base_dir>/creality/userdata/config/flushing_sign`. Existing valid cache data
+is preserved and malformed data raises an error. A missing file or `base_data`
+creates the compatible empty cache, so passive admission does not mean a
+read-only filesystem. Explicit data/configuration commands can also save data.
+`SAVE_BOX_CFG` retains the factory paths `/usr/data/printer_data/config/box.cfg`
+and `/mnt/UDISK/printer_data/config/box.cfg`; the data root does not redirect them.
+
+All startup and failure checks so far use PC substitutes and temporary paths.
+The live configuration fingerprint and hardware acceptance remain pending;
+no printer was contacted or changed for this work.
