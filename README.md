@@ -26,8 +26,10 @@ There is no configuration or G-code switch to enable mechanics. See
 [first-start behavior](docs/installation.md#passive-startup).
 Hardware acceptance and the live configuration fingerprint are pending.
 Two examined saved load wrappers omit the required physical `TNN`; they fail
-before loading and need an explicit caller target or an agreed compatibility
-policy. No target is guessed and no user macro is rewritten.
+before loading. The current phase preserves the observed `START_PRINT` mapping
+check and both load wrappers' argument forwarding for behavior parity.
+Optimization and corrections will be considered later if needed. These recorded
+outcomes do not establish successful printing or loading.
 
 ## Project layout
 

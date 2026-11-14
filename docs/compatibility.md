@@ -245,13 +245,19 @@ replay clears its target after any normal command return, including False, but
 an exception retains the hint; neither outcome certifies physical loading.
 
 Both examined saved material-present/material-absent load wrappers omit the
-physical `TNN` required by `BOX_EXTRUDE_MATERIAL`. Static reconstruction predicts the same original-handler failure; the original
-binary was not executed. This is an unresolved caller-contract blocker
-(`GAP-MACRO-LOAD-TARGET`), not a successful load scenario. Supply an explicit
-physical target or agree a compatibility policy before relying on those paths;
-the extension does not infer a target or rewrite user macros. Saved copies do
-not establish today's active includes or overrides: `GAP-MACRO-SNAPSHOT` remains
-a precondition for printer activation/hardware acceptance.
+physical `TNN` required by `BOX_EXTRUDE_MATERIAL`. Static reconstruction predicts
+the same original-handler failure; the original binary was not executed.
+`GAP-MACRO-LOAD-TARGET` records this observed behavior and does not establish
+successful loading.
+
+**Current phase: reproduce the reference behavior.** Keep the existing
+`START_PRINT` mapping check and missing `TNN` forwarding in both load wrappers
+unchanged. They are recorded compatibility observations; correcting them is
+outside this phase. Optimization and fixes will be considered later if needed.
+Do not infer a spool or change status/macro interfaces to bypass these outcomes.
+Preserving them does not establish successful printing/loading or hardware
+acceptance. Active include fingerprints and physical acceptance remain separate
+checks tracked by the matrix.
 
 Stage 9 adds preflight for unsupported loading encodings and required movement
 positions. Explicit encoding-0 loading/tool changes stop before heating or

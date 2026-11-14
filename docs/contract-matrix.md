@@ -108,7 +108,11 @@ they contain `BOX_`. Saved copies establish the examined content; the active
 printer configuration must be identified before activation/hardware acceptance.
 Both examined saved load wrappers omit required physical `TNN`; the original
 and replacement handler fail on that path. `GAP-MACRO-LOAD-TARGET` remains open,
-with no guessed target and no automatic edits to user macros.
+with no guessed target and no automatic edits to user macros. The current phase
+preserves the existing `START_PRINT` mapping check and both load wrappers' missing
+`TNN` forwarding for behavior parity. Optimization/corrections are deferred for
+later consideration if needed; these observations do not require a repair in
+this phase or establish successful printing/loading.
 
 ## Direct Python consumers
 
@@ -145,7 +149,7 @@ context-specific pause/after-pause effects.
 | `GAP-HEAD-SENSOR-NAME` | Resolved: use the configured sensor for lookup and every enable path. Without a configured sensor, retain the distinct True fallback and emit no sensor-enable G-code |
 | `GAP-RESERVED-WIRE` | Keep three reserved identifiers separate from invented direct APIs; recover a required path before using it |
 | `GAP-MACRO-SNAPSHOT` | Identify the active include chain and configuration fingerprints before printer activation/acceptance; saved copies and temporary-tree deployment do not close it |
-| `GAP-MACRO-LOAD-TARGET` | Resolve the missing physical TNN in both examined load wrappers through an explicit caller target or agreed policy; no inferred spool or silent macro rewrite |
+| `GAP-MACRO-LOAD-TARGET` | Preserve the observed missing TNN forwarding for current behavior parity; revisit a correction later if needed, without guessing a spool or silently rewriting macros |
 
 Five gaps remain open; serial and head-sensor lookup policies are resolved. Open gaps gate
 their affected paths. Recording a gap completes the inventory entry; it does not

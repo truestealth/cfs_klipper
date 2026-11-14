@@ -863,7 +863,7 @@
       "blockers": [
         "GAP-MACRO-LOAD-TARGET"
       ],
-      "implementation_note": "Explicit physical TNN loading is implemented. Both examined saved load wrappers omit TNN and fail before loading when executed with the replacement. Static reconstruction predicts the same original-handler failure; the original binary was not executed. No default target is inferred or user macro rewritten."
+      "implementation_note": "Explicit physical TNN loading is implemented. Both examined saved load wrappers omit TNN and fail before loading when executed with the replacement. Static reconstruction predicts the same original-handler failure; the original binary was not executed. No default target is inferred or user macro rewritten. Current-phase policy: reproduce the previous observed behavior, including the existing START_PRINT mapping check and missing TNN forwarding in both load wrappers. Keep these paths unchanged; consider optimization/corrections later only if needed. This does not establish successful printing/loading or hardware acceptance."
     },
     {
       "id": "CMD-BOX_EXTRUDER_EXTRUDE",
@@ -7830,7 +7830,7 @@
       "blockers": [
         "GAP-MACRO-LOAD-TARGET"
       ],
-      "implementation_note": "Explicit physical TNN loading is implemented. Both examined saved load wrappers omit TNN and fail before loading when executed with the replacement. Static reconstruction predicts the same original-handler failure; the original binary was not executed. No default target is inferred or user macro rewritten."
+      "implementation_note": "Explicit physical TNN loading is implemented. Both examined saved load wrappers omit TNN and fail before loading when executed with the replacement. Static reconstruction predicts the same original-handler failure; the original binary was not executed. No default target is inferred or user macro rewritten. Current-phase policy: reproduce the previous observed behavior, including the existing START_PRINT mapping check and missing TNN forwarding in both load wrappers. Keep these paths unchanged; consider optimization/corrections later only if needed. This does not establish successful printing/loading or hardware acceptance."
     },
     {
       "id": "MACRO-LOAD-WITHOUT-MATERIAL",
@@ -7849,7 +7849,7 @@
       "blockers": [
         "GAP-MACRO-LOAD-TARGET"
       ],
-      "implementation_note": "Explicit physical TNN loading is implemented. Both examined saved load wrappers omit TNN and fail before loading when executed with the replacement. Static reconstruction predicts the same original-handler failure; the original binary was not executed. No default target is inferred or user macro rewritten."
+      "implementation_note": "Explicit physical TNN loading is implemented. Both examined saved load wrappers omit TNN and fail before loading when executed with the replacement. Static reconstruction predicts the same original-handler failure; the original binary was not executed. No default target is inferred or user macro rewritten. Current-phase policy: reproduce the previous observed behavior, including the existing START_PRINT mapping check and missing TNN forwarding in both load wrappers. Keep these paths unchanged; consider optimization/corrections later only if needed. This does not establish successful printing/loading or hardware acceptance."
     },
     {
       "id": "MACRO-QUIT-MATERIAL",
@@ -7900,7 +7900,7 @@
       "evidence": "partial",
       "implementation": "partial",
       "blockers": [],
-      "implementation_note": "Synthetic public Jinja fixtures and separate local pinned-source checks cover selected behavior; no user macro is changed. Synthetic public checks cover initial-tool bounds; local saved-template checks cover startup branching. Public CI does not reproduce the entire machine-specific preparation/heating/purge chain or current override selection. Public tests cover real Jinja snapshots, nested re-rendering, rawparams and ignored G-code comments. Commented macro definitions and older snapshot selection across the complete active include/override chain remain unverified (GAP-MACRO-SNAPSHOT)."
+      "implementation_note": "Synthetic public Jinja fixtures and separate local pinned-source checks cover selected behavior; no user macro is changed. Synthetic public checks cover initial-tool bounds; local saved-template checks cover startup branching. Public CI does not reproduce the entire machine-specific preparation/heating/purge chain or current override selection. Public tests cover real Jinja snapshots, nested re-rendering, rawparams and ignored G-code comments. Commented macro definitions and older snapshot selection across the complete active include/override chain remain unverified (GAP-MACRO-SNAPSHOT). Current-phase policy: reproduce the previous observed behavior, including the existing START_PRINT mapping check and missing TNN forwarding in both load wrappers. Keep these paths unchanged; consider optimization/corrections later only if needed. This does not establish successful printing/loading or hardware acceptance."
     },
     {
       "id": "MACRO-INITIAL-PURGE",
@@ -8235,7 +8235,7 @@
         "tests/test_lifecycle.py::LifecycleTests.test_create_connect_command_print_gate_and_parameter_contract",
         "tests/test_printing.py::PrintingTests.test_start_parameter_name_and_default"
       ],
-      "remaining": "An exhaustive omitted/default/boundary matrix for every recovery and diagnostic signature is not claimed; missing TNN in the examined saved load wrappers remains blocked by GAP-MACRO-LOAD-TARGET."
+      "remaining": "An exhaustive omitted/default/boundary matrix for every recovery and diagnostic signature is not claimed; missing TNN in the examined saved load wrappers remains blocked by GAP-MACRO-LOAD-TARGET. The current phase intentionally preserves this outcome; correcting it is deferred for later consideration only if needed."
     },
     {
       "id": "PC-CMD-RETURNS",
@@ -8389,7 +8389,7 @@
         "tests/test_retained_integration.py::RetainedIntegrationTests.test_unowned_and_shutdown_head_events_cannot_feed",
         "tests/test_pc_integration.py::PCIntegrationTests.test_unsupported_feed_encoding_fails_before_loading_effects"
       ],
-      "remaining": "Explicit-target full loading and head-result consumption are checked. Examined saved load wrappers omit TNN and fail before loading; GAP-MACRO-LOAD-TARGET must be resolved for those callers.",
+      "remaining": "Explicit-target full loading and head-result consumption are checked. Examined saved load wrappers omit TNN and fail before loading; GAP-MACRO-LOAD-TARGET records those unchanged caller outcomes. The current phase intentionally preserves this outcome; correcting it is deferred for later consideration only if needed.",
       "validation_note": "Public producer fixture verifies Box consumption and ownership. Additional local execution of pinned SwitchSensor/RunoutHelper verifies disabled/debounce/duplicate behavior inside stage4; this retained-source proof is separate from public CI."
     },
     {
@@ -9830,7 +9830,7 @@
         "tests/test_macro_integration.py::MacroIntegrationTests.test_manual_phase_wrappers_dispatch_in_order"
       ],
       "validation_note": "Public CI executes own synthetic templates with real Jinja2 and bounded dispatch. Separate local checks execute pinned retained renderer/saved templates; neither establishes the live printer include chain or physical completion.",
-      "remaining": "Both examined saved load wrappers omit required physical TNN and fail with the replacement; static original-handler reconstruction predicts the same failure without executing the binary. Synthetic ordering is checked; successful unchanged-wrapper loading is blocked by GAP-MACRO-LOAD-TARGET."
+      "remaining": "Both examined saved load wrappers omit required physical TNN and fail with the replacement; static original-handler reconstruction predicts the same failure without executing the binary. Synthetic ordering is checked; successful unchanged-wrapper loading is blocked by GAP-MACRO-LOAD-TARGET. The current phase intentionally preserves this outcome; correcting it is deferred for later consideration only if needed."
     },
     {
       "id": "PC-MACRO-REFRESH",
@@ -10129,8 +10129,8 @@
         "MACRO-LOAD-WITH-MATERIAL",
         "MACRO-LOAD-WITHOUT-MATERIAL"
       ],
-      "observation": "Both examined saved load wrappers omit required physical TNN; actual retained-template/replacement execution fails before loading. Static original-handler reconstruction predicts the same missing-target failure; the original binary was not executed.",
-      "close_when": "Provide an explicit physical target at the caller or agree and verify a compatibility policy. Preserve user macro ownership; do not guess a spool or silently patch the saved/current configuration."
+      "observation": "Both examined saved load wrappers omit required physical TNN; actual retained-template/replacement execution fails before loading. Static original-handler reconstruction predicts the same missing-target failure; the original binary was not executed. This outcome is intentionally preserved for current behavior parity; it is a recorded baseline limitation, not a repair task for this phase.",
+      "close_when": "Revisit only if a later correction is needed and separately scoped; then verify explicit target forwarding or another agreed policy. Until then preserve the observed missing-target behavior, user macro ownership and absence of an inferred spool."
     }
   ],
   "admission_policy": {
