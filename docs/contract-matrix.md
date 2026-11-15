@@ -225,3 +225,11 @@ acquisition and the client's precise rendering condition remain unverified.
 
 See [compatibility.md](compatibility.md) for implementation/validation status
 and [protocol.md](protocol.md) for the native API boundary.
+
+The extension-only [single-operation trial](installation.md#single-operation-trial)
+adds an explicit confirmed preload command outside the original 103-command
+inventory. Its 19 PC methods are bound to `PC-INTEGRATION-DEPENDENCIES` and the
+relevant event checks; `admission_policy.single_operation_trial` records the
+exact scope. The default lifecycle stays passive during the operation. These
+substitute-based checks do not accept the trial on a printer or close a hardware
+family.

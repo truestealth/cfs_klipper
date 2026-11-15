@@ -21,9 +21,10 @@ Local verification also executes pinned retained Python and saved macro sources
 with substituted hardware effects; public CI uses synthetic fixtures.
 
 `load_config` now initializes `[box]` in **passive admission mode**: identity and
-telemetry reads are available, while host actions and native writes are blocked.
-There is no configuration or G-code switch to enable mechanics. See
-[first-start behavior](docs/installation.md#passive-startup).
+telemetry reads are available, while ordinary host actions and native writes are
+blocked. There is no general switch to enable mechanics. An explicit
+[single-operation preload trial](docs/installation.md#single-operation-trial)
+is prepared on the PC; it has not been deployed or run on the printer.
 A reference K1C trial verified the live configuration and sustained passive reads
 on CFS MCU 1.1.3 with printer Python 3.8.2. Mechanical acceptance remains pending.
 The main installer also completed file/cache rollback with Klipper stopped and
@@ -57,8 +58,9 @@ host motion, fans, heating, extrusion, cutting, cleaning and calibration
 handlers. Stage 6 adds preload, loading and unloading phases. Stage 7 adds tool
 changes and print lifecycle routes. Stage 8 adds runout, recovery and resume paths.
 Stage 9 tests integration and reversible file deployment.
-All 103 command names are registered: 101 unconditional and two conditional Hall
-commands. The legacy feed command remains deliberately blocked; encoding 0,
+All 103 original command names are registered: 101 unconditional and two conditional Hall
+commands. The extension-only `CFS_TEST_PRELOAD` command is separate from that
+inventory. The legacy feed command remains deliberately blocked; encoding 0,
 wire stages above seven, reserved operations and unaddressed diagnostics remain
 unsupported. See the matrix for the exact open paths.
 

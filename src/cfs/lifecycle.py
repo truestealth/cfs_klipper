@@ -48,6 +48,8 @@ class Lifecycle:
         box.register_host_commands(self.printer)
         box.gcode.register_command("BOX_CREATE_CONNECT", box.cmd_create_connect)
         box.gcode.register_command("DO_AFTER_PAUSE", box.cmd_do_after_pause)
+        if self.passive:
+            box.gcode.register_command("CFS_TEST_PRELOAD", box.cmd_test_preload)
         self.printer.register_event_handler("klippy:ready", self.ready)
         self.printer.register_event_handler("klippy:shutdown", self.shutdown)
         self.printer.register_event_handler("box:extrude_process_stage7", self.head_event)

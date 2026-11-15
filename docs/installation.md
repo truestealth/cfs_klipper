@@ -83,15 +83,16 @@ This is the supported K1 CFS Upgrade target, not hardware identification from
 the version reply. Exact firmware profiles remain required, with 1.1.3 as the
 baseline; a replaced serial number clears family confirmation.
 
-Admission permits only typed `GET_RFID` (`0x02`), `GET_REMAIN_LEN` (`0x03`),
+By default, admission permits only typed `GET_RFID` (`0x02`), `GET_REMAIN_LEN` (`0x03`),
 `GET_BUFFER_STATE` (`0x05`), `GET_FILAMENT_SENSOR_STATE` (`0x08`), `GET_BOX_STATE`
 (`0x0A`) and `GET_VERSION_SN` (`0x14`). Wheel requests, raw diagnostics,
 `CREATE_CONNECT`, motor/preload writes and host actions are rejected. Incoming
 error/runout/head events cannot trigger pause, motion restoration, heating,
 tightening or sensor-enable G-code. Automatic preload permission and power-on
 RUN are suppressed. Existing macros can encounter these explicit admission
-errors; this mode is not suitable for printing. There is currently no
-configuration or G-code option to enable mechanics.
+errors; this mode is not suitable for printing. There is no general option to
+enable mechanics. The separate explicit trial below grants one operation without
+changing the passive lifecycle.
 
 Use direct typed read commands for telemetry. `BOX_INFO_REFRESH` invokes preload
 RUN, and existing temperature wrappers can heat before reaching a guarded Box
@@ -136,3 +137,59 @@ A passive start of the same sources restored slot display in both interfaces,
 as confirmed by the user. No decoder/runtime fix or repeated RFID/remaining
 query was involved. This verifies cached display, not fresh physical RFID
 acquisition; RFID and remaining values were restored together.
+
+<a id="single-operation-trial"></a>
+
+## Explicit single-operation preload trial
+
+This path is prepared and checked on a PC only. It has not been deployed or run
+on the printer. A future installation and mechanical trial require separate
+authorization and physical preparation. The default lifecycle remains passive.
+Preserve a spool-cache backup before any authorized future trial.
+
+The extension-only command is `CFS_TEST_PRELOAD TNN=T1A CONFIRM=1`. `TNN` must be
+one physical slot, T1A through T4D; mutable tool mapping is not used. `CONFIRM=1`
+marks an explicit invocation, not operator authentication. No persistent armed
+state or general mechanics switch is created. Existing host commands and
+automatic ready, heartbeat, reconnect, head, runout and error paths keep their
+passive restrictions throughout the trial.
+
+Before RUN, the path requires a ready connected cfs0 MCU **1.1.3**, host encoding
+1, standby print state, inactive virtual SD, no pause/error/other operation,
+and an actual configured head sensor reporting no filament. It obtains fresh
+normal replies in this order:
+
+1. `GET_BOX_STATE`: mode IDLE (`0`).
+2. `GET_FILAMENT_SENSOR_STATE`, MATERIAL: the selected slot is present.
+3. `GET_FILAMENT_SENSOR_STATE`, CONNECTIONS: the entire mask is zero.
+4. One `SET_PRE_LOADING` RUN request (`0x0D`), selecting one slot bit.
+5. Another `GET_BOX_STATE`: mode IDLE (`0`) again.
+6. `GET_RFID` for that slot only.
+7. `GET_REMAIN_LEN` for that slot only.
+
+The permission belongs to the current cooperative dispatch, lifecycle, native
+binding, device generation and exact request object. It is consumed once and
+revoked when the call finishes or fails. Context is checked around waits and
+before native attempts/effects, with a 300-second cooperative deadline.
+Read requests use two-second timeouts; RUN is limited to the remaining trial
+budget. These limits do not interrupt the stock library while it is waiting.
+Missing replies, nonzero statuses, events, non-IDLE state and invalid payloads end the
+trial without proceeding. RFID must contain exactly the selected slot with
+`none`, `unknown` or a 40-byte record before any metadata is persisted.
+
+On MCU 1.1.3, RUN can prepare the shared hub before processing its selected slot.
+The zero CONNECTIONS requirement avoids the observed occupied-channel retraction
+branch at that snapshot; it does not guarantee physical isolation or disable
+autonomous MCU behavior. The RUN ACK can follow an expired internal wait, so it
+is not physical-completion proof; the subsequent fresh IDLE reply is mandatory.
+
+The host does not resend trial requests after MCU CRC/LENGTH errors. Passing
+`retries_en=False` cannot cancel retries already owned by the stock `.so`.
+Revoking permission or reaching the cooperative deadline prevents subsequent
+host work; it is not a physical stop of an in-flight native/MCU operation. No
+unverified CLOSE/STOP cleanup is sent. Results and cache writes retain the normal
+RFID/remaining semantics, including `unknown` and the baseline `100` fallback.
+If RFID metadata has been saved before a later remaining-value request fails,
+that fresh metadata stays saved; the trial does not restore old cache values.
+PC checks do not establish RFID acquisition, mechanical completion or hardware
+acceptance. Other host actions, heaters and toolhead motion receive no permission.

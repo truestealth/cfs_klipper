@@ -7,9 +7,11 @@ state, native calls, lifecycle, motion, load/unload, tool changes and recovery.
 Stage 9 adds PC integration, Jinja tests, bounded local retained-source execution
 and reversible development-file installation. Explicit unresolved paths remain
 in the matrix, including the missing physical target in two examined saved load
-wrappers. PC admission now provides real initialization and passive identity/
-telemetry startup. Hardware acceptance and the live configuration fingerprint
-remain pending. No printer was changed.
+wrappers. PC admission provides real initialization and passive identity/
+telemetry startup. The reference printer's live configuration, passive reads,
+file/cache rollback and cached display have bounded checks. A single-operation
+preload admission path is now prepared on PC without printer contact; it has not
+been deployed or mechanically accepted. Full hardware acceptance remains pending.
 
 ## Target and design
 
@@ -224,7 +226,8 @@ Clearing host error state does not assert that the physical route has rolled bac
 preflight and temporary-tree install/rollback tests are present. Separate local
 checks execute pinned retained modules and saved macros. Both examined saved
 load wrappers omit required `TNN`; their unchanged successful load remains
-blocked. Live include/override fingerprints and hardware acceptance are still
+blocked. The baseline live include/override fingerprints have been compared;
+future trials must recheck their environment. Hardware acceptance remains
 required. The installer deploys the passive admission bootstrap.
 
 The subsequent PC admission work implements `load_config`, the retained data-root
@@ -255,11 +258,22 @@ configuration, CFS hardware and MCU identity. Validate **1.1.3 first**:
 
 1. Connection, identity, telemetry and client interfaces with mechanical startup
    actions excluded from this initial check.
-2. Configured motion, heating, cutting and cleaning.
-3. Preload/pretension, complete loading/unloading and full tool changes.
-4. Real print start/end, tray/tower purging, pause/resume and client behavior.
-5. Controlled failures, disconnect/reconnect, runout/refill, restart and
+2. One explicitly confirmed preload/RFID trial with fresh preconditions and
+   unchanged passive background behavior.
+3. Configured motion, heating, cutting and cleaning.
+4. Complete loading/unloading and full tool changes.
+5. Real print start/end, tray/tower purging, pause/resume and client behavior.
+6. Controlled failures, disconnect/reconnect, runout/refill, restart and
    power-loss recovery; settings/spool data and rollback preservation.
+
+The PC preparation for step 2 is the separate
+[single-operation trial](installation.md#single-operation-trial). It grants one
+selected RUN request without switching the lifecycle to active. Ordinary client
+commands and automatic actions remain blocked; ownership is revoked on return,
+failure or stale context. The stock native library and MCU remain unchanged.
+This preparation does not authorize deployment or mechanics. A zero CONNECTIONS
+snapshot and a normal IDLE reply after RUN are mandatory; neither a one-bit
+selector nor an ACK establishes physical isolation/completion.
 
 Then validate other targeted versions separately. Record results for the number
 of physical CFS units actually tested; PC simulation of four boxes does not

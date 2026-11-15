@@ -9003,7 +9003,8 @@
         "Read axis limits, runtime data root and resume interfaces without replacing other subsystems.",
         "Check retained chelper get_ffi, rgb_t and get_flushing_volume call shape with a substitute.",
         "The real entry point resolves extras.base_info.base_dir and registers a passive lifecycle before macros; ready borrows the configured serial owner.",
-        "Passive startup permits only typed identity/telemetry reads and blocks host actions, raw diagnostics, automatic motion, preload, pause, heating and sensor changes."
+        "Passive startup permits only typed identity/telemetry reads and blocks host actions, raw diagnostics, automatic motion, preload, pause, heating and sensor changes.",
+        "The extension-only CFS_TEST_PRELOAD command admits one confirmed physical target on MCU1.1.3 without changing passive mode; owner/generation/request guards, idle/head/material/hub preconditions and pre-persistence reply checks reject unrelated effects."
       ],
       "status": "partial",
       "test": [
@@ -9050,9 +9051,28 @@
         "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_native_and_direct_host_bypasses_are_rejected_before_io",
         "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_dependency_failure_and_retry_leave_no_owned_work",
         "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_activation_failure_cleans_binding_and_can_retry",
-        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_ready_restart_does_not_clean_up_the_new_lifecycle"
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_ready_restart_does_not_clean_up_the_new_lifecycle",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_real_entry_is_passive_and_registers_an_explicit_extension_command",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_confirmation_and_physical_target_are_required_before_native_calls",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_selected_physical_slot_ignores_remap_and_preserves_other_metadata",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_explicit_command_returns_observations_without_enabling_future_commands",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_unknown_and_none_keep_the_original_cache_distinction",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_unsafe_host_states_refuse_before_any_request",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_baseline_encoding_and_actual_head_sensor_are_required",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_missing_observations_produce_command_errors_before_any_request",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_fresh_material_and_empty_shared_connections_are_required",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_only_fresh_normal_idle_states_allow_preload_and_followup_reads",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_run_missing_event_error_and_malformed_ack_never_trigger_a_host_resend",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_rfid_must_contain_only_the_selected_record_before_persistence",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_later_failure_retains_real_rfid_update_without_fabricating_remaining",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_host_commands_diagnostics_and_background_actions_cannot_inherit_the_grant",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_nested_and_other_dispatch_invocations_do_not_acquire_permission",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_shutdown_unbind_disconnect_and_identity_change_revoke_inflight_permission",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_error_idle_head_owner_and_deadline_changes_stop_followup_requests",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_cancellation_keeps_the_old_native_call_owned_until_it_returns",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_native_exception_unwinds_admission_without_mechanical_cleanup"
       ],
-      "remaining": "Real load_config and the retained base_info.base_dir scalar, configured serial section loading, deferred ready dependencies, passive command/effect gates and cleanup after failures are checked with substitutes. Live configuration fingerprints and complete include overrides remain unverified; native chelper and the MIPS transport are not executed."
+      "remaining": "PC substitutes check real entry/dependency acquisition, passive defaults and the explicit one-operation trial. The published target check separately identified live configuration and bounded passive MIPS reads. Full dependency fault coverage, numerical retained-helper results and physical/mechanical acceptance of the new trial remain unverified."
     },
     {
       "id": "PC-INTEGRATION-EVENTS",
@@ -9060,7 +9080,8 @@
       "assertions": [
         "Register the required events and callbacks once with correct lifecycle/operation ownership.",
         "Exercise ready, reconnect-related observations and shutdown with pending work.",
-        "Keep virtual-SD resume status distinct from paused print state and a queued tool target."
+        "Keep virtual-SD resume status distinct from paused print state and a queued tool target.",
+        "An explicit trial keeps background head/slot/runout/error actions passive and loses permission on owner, lifecycle, binding, identity, idle/head observation or deadline changes, with no automatic mechanical cleanup."
       ],
       "status": "implemented",
       "test": [
@@ -9089,7 +9110,13 @@
         "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_native_and_direct_host_bypasses_are_rejected_before_io",
         "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_dependency_failure_and_retry_leave_no_owned_work",
         "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_activation_failure_cleans_binding_and_can_retry",
-        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_ready_restart_does_not_clean_up_the_new_lifecycle"
+        "tests/test_passive_lifecycle.py::PassiveLifecycleTests.test_ready_restart_does_not_clean_up_the_new_lifecycle",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_host_commands_diagnostics_and_background_actions_cannot_inherit_the_grant",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_nested_and_other_dispatch_invocations_do_not_acquire_permission",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_shutdown_unbind_disconnect_and_identity_change_revoke_inflight_permission",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_error_idle_head_owner_and_deadline_changes_stop_followup_requests",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_cancellation_keeps_the_old_native_call_owned_until_it_returns",
+        "tests/test_preload_trial.py::PreloadTrialTests.test_native_exception_unwinds_admission_without_mechanical_cleanup"
       ],
       "validation_note": "Public producer fixture verifies Box consumption and ownership. Additional local execution of pinned SwitchSensor/RunoutHelper verifies disabled/debounce/duplicate behavior inside stage4; this retained-source proof is separate from public CI."
     },
@@ -10144,7 +10171,7 @@
     }
   ],
   "admission_policy": {
-    "entry": "load_config always registers passive=True; no G-code or configuration opt-out",
+    "entry": "load_config always registers passive=True; no global G-code or configuration activation switch",
     "family_context": "cfs0 is the explicit K1 CFS Upgrade target, not inferred from identity replies",
     "native_read_opcodes": [
       2,
@@ -10154,9 +10181,32 @@
       10,
       20
     ],
-    "host_actions": "blocked before handler mutation; raw requests and all other opcodes are blocked",
+    "host_actions": "Ordinary host handlers remain blocked before mutation. Raw requests and other opcodes stay blocked; only a trial-owned exact one-slot RUN Request is exempted within the explicit test command.",
     "metadata": "each passive initialization reads a fresh MATERIAL mask before applying saved labels to live state",
     "errors": "passive diagnostics use Lifecycle.last_error and leave the retained virtual-SD pause hint box.last_err unchanged",
-    "acceptance": "PC substitutes only; live configuration and hardware acceptance remain pending"
+    "acceptance": "Published reference-printer results cover bounded passive startup/reads and cached display. The new single-operation trial is PC-tested only; no trial deployment or mechanical acceptance is claimed.",
+    "single_operation_trial": {
+      "command": "CFS_TEST_PRELOAD TNN=<physical T1A..T4D> CONFIRM=1",
+      "scope": "Extension-specific command, outside the 103-command original inventory; not operator authentication",
+      "baseline": "Explicit cfs0 MCU1.1.3 with host encoding1 only",
+      "preconditions": "Ready passive lifecycle, standby/inactive virtual SD/not paused, actual empty head sensor, no error or other operation",
+      "sequence": [
+        "Fresh normal 0A IDLE0",
+        "Fresh 08 MATERIAL with selected slot present",
+        "Fresh 08 CONNECTIONS mask zero",
+        "One selected-bit 0D RUN request",
+        "Fresh normal 0A IDLE0 after RUN",
+        "02 exactly one selected RFID record before persistence",
+        "03 positional remaining response, selected-slot persistence only"
+      ],
+      "ownership": "Current dispatch identity, lifecycle/binding/device generations and exact Request admitted once; revoked on exit/failure",
+      "timeouts": "Reads use at most2seconds and RUN at most the remaining300second cooperative budget; no hard interruption of native waits",
+      "retries": "No host CRC/LENGTH resends in the trial; stock native internal retries remain outside its control",
+      "limits": "An ACK is not physical completion; the MCU shared-hub preparation is not physical slot isolation. No speculative stop/rollback command is emitted. RFID may persist before a later remaining failure.",
+      "checks": [
+        "PC-INTEGRATION-DEPENDENCIES",
+        "PC-INTEGRATION-EVENTS"
+      ]
+    }
   }
 }

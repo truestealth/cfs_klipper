@@ -224,3 +224,11 @@ python -m unittest discover -s tests -v
 
 Статусы реализации/проверки — в [compatibility.ru.md](compatibility.ru.md),
 граница native API — в [protocol.ru.md](protocol.ru.md).
+
+Дополнительный [допуск к одной операции](installation.ru.md#single-operation-trial)
+вводит явную подтверждённую команду преднатяга вне перечня 103 штатных команд.
+Его 19 методов на ПК связаны с `PC-INTEGRATION-DEPENDENCIES` и относящимися к
+нему проверками событий; точные границы записаны в
+`admission_policy.single_operation_trial`. Жизненный цикл остаётся пассивным
+во время операции. Проверки с подстановками не подтверждают этот путь на
+принтере и не закрывают аппаратное семейство.

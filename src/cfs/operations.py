@@ -3,9 +3,159 @@
 from copy import deepcopy
 from math import isfinite
 
+from .native import UnsupportedRequest, build_request, slot_mask
+
 
 class OperationCancelled(RuntimeError):
     """The operation no longer owns its binding, device, or error context."""
+
+
+class PreloadTrial:
+    """Admit one explicitly confirmed preload without enabling host mechanics.
+
+    Permission belongs to the current cooperative dispatch and exact request
+    object. It cannot stop a command already executing inside the stock library
+    or MCU. Native retry/physical-completion limits remain separate.
+    """
+
+    def __init__(self, box):
+        self.box = box
+        self._token = self._request = None
+        self._claimed = self._cancelled = False
+        self.address = None
+
+    @property
+    def active(self):
+        return self._token is not None
+
+    def cancel(self):
+        # Keep ownership occupied until its caller unwinds; a new trial cannot
+        # overlap an old native call which has not returned yet.
+        self._cancelled = True
+
+    def admit(self, request):
+        if request is not self._request:
+            return None
+        self._guard()
+        if self._claimed:
+            raise UnsupportedRequest("the trial request has already been admitted")
+        self._claimed = True
+        return self._guard
+
+    def validate_reply(self, request, frame):
+        """Reject unexpected trial data before ordinary decoder persistence."""
+        self._guard()
+        if frame is None or frame.status != 0:
+            raise RuntimeError("test preload needs a fresh normal reply, not an ACK/event fallback")
+        if request.command == 0x0D:
+            valid = frame.data == b""
+        elif request.command == 0x0A:
+            valid = len(frame.data) == 4 and frame.data[3] == 0
+        elif request.command == 0x08:
+            valid = len(frame.data) == 1 and frame.data[0] <= 15
+        elif request.command == 0x02:
+            # The general decoder accepts multiple records. A trial must not
+            # persist metadata from unselected slots or silently fold duplicates.
+            prefix = self.target[2].encode("ascii") + b":"
+            parts = frame.data.split(b";")
+            valid = len(parts) == 2 and parts[1] == b"" and parts[0].startswith(prefix)
+            value = parts[0][2:] if valid else b""
+            valid = valid and (value in (b"none", b"unknown") or len(value) == 40)
+        else:
+            valid = request.command == 0x03 and len(frame.data) == 4
+        if not valid:
+            raise ValueError("unexpected reply data or non-IDLE state in test preload")
+
+    def _send(self, command, data=b""):
+        self._guard()
+        timeout = min(300 if command == "SET_PRE_LOADING" else 2,
+                      self._deadline - self.box._reactor.monotonic())
+        request = build_request(self.address, command, data, timeout=timeout)
+        previous = self.box.last_replies.get(self.address)
+        self._request, self._claimed = request, False
+        try:
+            result = self.box.send_native(request, retries_en=False)
+            self._guard()
+            frame = self.box.last_replies.get(self.address)
+            if (result is not True or frame is None or frame is previous
+                    or frame.command != request.command or frame.address != self.address):
+                raise RuntimeError("test preload did not receive its own fresh reply")
+            return frame
+        finally:
+            self._request = None
+
+    def run(self, tnn, confirmed=False):
+        box, lifecycle = self.box, self.box.lifecycle
+        if confirmed is not True or not isinstance(tnn, str) or tnn not in box.box_state.Tnn_content:
+            raise ValueError("test preload requires a physical TNN and explicit CONFIRM=1")
+        if self.active:
+            raise RuntimeError("a test preload is already running")
+        if lifecycle is None or not lifecycle.passive:
+            raise RuntimeError("test preload requires the passive lifecycle")
+        lifecycle.check()
+        address = box.box_state.Tnn_content[tnn]["addr"]
+        if (box.native is None or box.boxcfg.version != 1
+                or box.device_versions.require_supported(address).version != "1.1.3"):
+            raise RuntimeError("test preload requires encoding 1 and confirmed cfs0 MCU 1.1.3")
+        pause = box._printer.lookup_object("pause_resume", None)
+        if (pause is None or not hasattr(pause, "is_paused")
+                or not callable(getattr(box.virtual_sdcard, "is_active", None))):
+            raise RuntimeError("test preload needs retained pause and virtual-SD observations")
+        owner = lifecycle.current_dispatch()
+        if owner is None:
+            raise RuntimeError("test preload needs a cooperative dispatch owner")
+        context = lifecycle._report_guard(address)
+        token = object()
+        self._deadline = deadline = lifecycle.reactor.monotonic() + 300
+
+        def check():
+            context()
+            lifecycle.guard_device(address)
+            context()
+            try:
+                unsafe = (self._token is not token or self._cancelled
+                    or box.lifecycle is not lifecycle or not lifecycle.passive
+                    or box.boxcfg.version != 1
+                    or lifecycle.current_dispatch() is not owner
+                    or lifecycle.reactor.monotonic() >= deadline
+                    or box.box_state.get_Tn_data(address, "state") != "connect"
+                    or not lifecycle.online(address) or not box.native.is_connected
+                    or box.operations.active or box.error is not None or box.inside_error
+                    or box.print_stats.state != "standby" or box.virtual_sdcard.is_active()
+                    or pause.is_paused or lifecycle.head_sensor is None
+                    or lifecycle.head_sensor.runout_helper.filament_present != 0)
+            except (AttributeError, TypeError):
+                self.cancel()
+                raise OperationCancelled("test preload observations became unavailable")
+            if unsafe:
+                self.cancel()
+                raise OperationCancelled("test preload ownership, idle state or head observation changed")
+
+        self._token, self._cancelled = token, False
+        self.address, self.target, self._guard = address, tnn, check
+        mask = slot_mask(tnn[2])
+        try:
+            check()
+            self._send("GET_BOX_STATE")
+            material = self._send("GET_FILAMENT_SENSOR_STATE", b"\x00")
+            if not material.data[0] & mask:
+                raise RuntimeError("the selected slot has no fresh material observation")
+            connections = self._send("GET_FILAMENT_SENSOR_STATE", b"\x01")
+            if connections.data[0]:
+                # MCU 1.1.3 prepares the shared hub before its selected-slot
+                # loop. Do not enter that path with any observed occupied lane.
+                raise RuntimeError("test preload requires an empty CONNECTIONS mask")
+            self._send("SET_PRE_LOADING", bytes((mask, 2)))
+            # The MCU may acknowledge after its internal wait expires. A normal
+            # IDLE reply is required before consuming RFID/remaining data.
+            self._send("GET_BOX_STATE")
+            rfid = self._send("GET_RFID", bytes((mask,)))
+            remaining = self._send("GET_REMAIN_LEN", bytes((mask,)))
+            return {"target": tnn, "rfid": rfid.data[2:-1].decode("latin-1"),
+                    "remaining": remaining.data["ABCD".index(tnn[2])]}
+        finally:
+            self.cancel()
+            self._request = self._token = None
 
 
 class OperationContext:

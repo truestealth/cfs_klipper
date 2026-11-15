@@ -5,9 +5,10 @@ English | [Русский](protocol.ru.md)
 **Status:** borrowed-native calls, reply decoding, per-device version selection,
 and stage 4 lifecycle, error and operation-context components are tested with PC
 substitutes. The package is `cfs`; the Klipper object remains `box`. The bootstrap
-now initializes passive identity/telemetry admission with mechanics blocked.
-These checks did not execute the retained `.so` or contact
-the printer; a complete K1C replacement cycle remains unverified.
+initializes passive identity/telemetry admission. An explicit single-operation
+trial is prepared on PC separately from the earlier passive target observations;
+it has not been deployed or mechanically accepted. A complete K1C replacement
+cycle remains unverified.
 
 Stable section anchors allow implementation and tests to reference this document.
 Add a verified target command here before using it in an operation.
@@ -87,13 +88,16 @@ and mechanical completion remain hardware acceptance work.
 
 ## Lifecycle, errors and operation context
 
-`load_config` always registers passive admission: only typed reads `0x02`, `0x03`,
+`load_config` always registers passive admission: by default only typed reads `0x02`, `0x03`,
 `0x05`, `0x08`, `0x0A` and `0x14` may reach the borrowed native API. Raw diagnostics,
 wheel requests, `CREATE_CONNECT` and writes are blocked, as are host actions.
 Automatic preload/RUN, sensor toggles, head feed, runout tightening, pause and
 heating are suppressed. Reports retain their client text without executing
-mechanical error tails. No configuration/G-code opt-out is provided. See
-[startup dependencies and data paths](installation.md#passive-startup).
+mechanical error tails. There is no general mechanics switch. The separate
+[explicit preload trial](installation.md#single-operation-trial) can grant one
+selected `0x0D` RUN without changing that passive lifecycle; its request and
+dispatch ownership do not apply to ordinary commands or background callbacks.
+See [startup dependencies and data paths](installation.md#passive-startup).
 
 On baseline MCU 1.1.3, `GET_RFID` (`0x02`) reads the available per-slot record;
 it does not perform physical RFID acquisition. A present slot without an
@@ -102,8 +106,8 @@ returns the fallback byte `100`, which does not confirm a full spool or a fresh
 remaining-material estimate. Both replies were observed on the reference unit.
 The host preserves known colours/materials while recording `vender=unknown`;
 these getter replies can therefore replace previously saved metadata. The full
-RFID acquisition/estimation path can move motors and remains outside passive
-admission. A saved tag ID or remaining value must be distinguished from a fresh
+RFID acquisition/estimation path can move motors and is not started by default
+passive admission. A saved tag ID or remaining value must be distinguished from a fresh
 MCU observation.
 
 The following operation policies describe the active component contract tested
@@ -287,8 +291,14 @@ Do not invent stage timing or copy a sequence from a different printer/MCU.
 Keep the existing preload policy;
 configuration such as OPEN and an action such as RUN are not interchangeable.
 The full power-on refresh includes a mechanical RUN before RFID/remain queries;
-passive admission permits the typed reads alone and suppresses RUN and slot-event
-actions.
+default passive admission permits the typed reads alone and suppresses automatic
+RUN and slot-event actions. The explicit trial checks baseline mode and fresh
+MATERIAL/CONNECTIONS observations before its selected RUN, then requires another
+normal IDLE reply before selected-slot RFID/remaining reads. Its predecode RFID
+validation excludes additional/duplicate records before metadata persistence.
+An ACK alone is not mechanical-completion proof. The trial disables host
+CRC/LENGTH resends; retained `.so` retries and an in-flight MCU operation cannot
+be stopped by revoking host permission.
 
 <a id="timing"></a>
 

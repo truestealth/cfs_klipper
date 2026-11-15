@@ -31,7 +31,7 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | `src/cfs/events.py`, `runout.py`, `recovery.py`, `resume.py` | Slot events, drain/refill, recovery and resume | PC substitute checks; physical behavior unverified |
 | `src/cfs/firmware.py` | Per-address identity, explicit family and exact version profiles | Mixed versions and identity invalidation PC-tested |
 | `src/cfs/lifecycle.py` | Ready/shutdown, configured dependencies, reconnect, heartbeat and pause wait | Own work is removed or invalidated; borrowed transport stays with stock serial |
-| `src/cfs/operations.py` | Source/target ownership, cooperative waits and head-result latch | Required phase callbacks, targeted heartbeat suspension and cancellation PC-tested |
+| `src/cfs/operations.py` | Source/target ownership, cooperative waits, head-result latch and explicit preload trial | Phase callbacks, cancellation and one-operation request ownership PC-tested |
 | `src/cfs/errors.py` | Client reports, pause/restore ordering and saved error context | Duplicate/special-key behavior and caught-error exits PC-tested |
 | `src/cfs/motion.py`, `extrusion.py`, `cutting.py` | Configured motion, fans, heating, extrusion, cutting and calibration | Component checks with substitutes; hardware acceptance pending |
 | `src/cfs/feeding.py`, `loading.py`, `retraction.py` | Preload, staged loading and unloading | PC phase checks; hardware acceptance pending |
@@ -103,6 +103,11 @@ sensor toggles, pause, heating and tightening. Host actions are rejected before
 their handlers run. No production setting enables the active component routes.
 The [installation guide](installation.md#passive-startup) lists dependencies,
 data paths and the permitted read commands.
+
+The separate [preload trial](installation.md#single-operation-trial) is an
+extension-only explicit command. It owns a narrowly checked RUN request while
+the lifecycle stays passive; ordinary host guards and automatic paths remain
+blocked. This new path has PC substitute checks only.
 
 Operations coordinate host actions with separately observed CFS, buffer and
 toolhead state. An ACK, last T-command or cached material record cannot establish

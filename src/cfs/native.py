@@ -201,13 +201,15 @@ class NativeSerial:
         address_tag = "" if command == 0xA0 else "#addr_%d" % address
         return self.native.register_response(callback, address_tag, "#cmd_%d" % command)
 
-    def exchange(self, request, retries_en=None, check_context=None):
+    def exchange(self, request, retries_en=None, check_context=None, retry_errors=True):
         """Return a checked frame/None, with only the recovered sender retries.
 
         The ordinary call has two arguments. Explicit False remains a third
         argument, but cannot turn off the retained library's own retry layers.
         A caller-supplied context guard raises if the address identity changed;
         it runs before every API attempt, including CRC/LENGTH resends.
+        Setting retry_errors=False removes this host loop's CRC/LENGTH resends;
+        it cannot disable or interrupt retries inside the retained library.
         """
         if not isinstance(request, Request):
             raise ValueError("exchange requires a built Request")
@@ -215,12 +217,14 @@ class NativeSerial:
             raise ValueError("retries_en must be None, False or True")
         if check_context is not None and not callable(check_context):
             raise ValueError("check_context must be callable or None")
+        if type(retry_errors) is not bool:
+            raise ValueError("retry_errors must be boolean")
         if request.command == 0x13:
             raise UnsupportedRequest("legacy opcode 13 has an unresolved host/MCU payload mismatch")
         if not request.diagnostic and request.command == 0x10:
             if len(request.data) != 3 or request.data[1] > 7:
                 raise UnsupportedRequest("only the established encoding-1 wire stages 0 through 7 may execute")
-        attempts = 3 if request.timeout >= 3600 else 7
+        attempts = (3 if request.timeout >= 3600 else 7) if retry_errors else 1
         for _ in range(attempts):
             arguments = (request.body, request.timeout)
             if retries_en is not None:

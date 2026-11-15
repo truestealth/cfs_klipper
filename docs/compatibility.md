@@ -12,6 +12,7 @@ an implemented or hardware-verified one.
 | --- | --- | --- |
 | Klipper import layout | Implemented | PC regression tests and passive deployment on the reference K1C |
 | Passive Klipper startup | Implemented | Real load_config, dependencies and data root; reference MCU 1.1.3 trial reached ready with host actions blocked |
+| Explicit single-operation preload trial | Prepared on PC | Narrow dispatch/request ownership and fresh baseline checks; not deployed or mechanically accepted; default lifecycle stays passive |
 | Full contract inventory and check bindings | Stage 1 complete | Real test references, partial families and remaining acceptance cases are tracked |
 | State, configuration and compatible storage | Stage 2 components implemented | Synthetic state, all 54 options, 21 endpoint fields and temporary-file tests |
 | Native `serial_485` calls | Stage 3 primitives implemented | PC request/retry checks plus real identity/state/sensor reads through the unchanged target library |
@@ -25,9 +26,9 @@ an implemented or hardware-verified one.
 | Stock G-code and status interfaces | Partial | All 103 names registered, including two conditional Hall commands and one blocked legacy feed command; endpoint and snapshots tested |
 | RFID, remaining length, saved materials | Partial | PC metadata/cache/grouping checks plus target buffer, RFID-unknown and remaining replies; both interfaces display saved slots again after exact cache rollback; fresh RFID acquisition and mechanical slot acceptance remain pending |
 | Reversible development-file installation | Implemented | Modern/sibling bytecode backup and scoped restore; PC failure/tamper checks and actual target file/cache rollback while stopped, followed by passive reinstallation |
-| Python 3.8 | Project and CI default | 586 methods run: 582 passed, 4 Windows symlink-privilege skips on Python 3.8.20; passive target runtime 3.8.2 checked separately |
+| Python 3.8 | Project and CI default | 605 methods run: 601 passed, 4 Windows symlink-privilege skips on Python 3.8.20; passive target runtime 3.8.2 checked separately |
 
-The 586-method total is the public suite only. Separate local runs passed 14
+The 605-method total is the public suite only. Separate local runs passed 14
 retained-module checks, 13 saved-macro checks and the 17 public macro checks
 using the retained renderer. They are additional evidence, not extra public
 test methods. The four skips require Windows native symlink privileges;
@@ -44,6 +45,12 @@ Legacy bytecode support adds ten installation methods, covering both cache
 layouts, exact cache restoration, import collisions, interrupted installation
 and rejection of tampered or unexpected files. All 27 installation methods pass
 in the separate Linux portability run; the project-default run remains Python 3.8.
+
+The single-operation preload admission adds 19 public PC methods for explicit
+confirmation, request/dispatch ownership, fresh observations, blocked background
+effects, reply validation and revocation after failures. This addition has not
+been tested on Linux or the printer; the earlier installer portability result
+does not validate the new trial.
 
 The first authorized reference trial used the unchanged stock native transport
 on CFS MCU 1.1.3 and printer Python 3.8.2. It reached ready/standby, preserved all 54
@@ -153,7 +160,10 @@ The PC suite uses substitutes. Separately, the reference passive trial exercised
 the stock binary in its intended target process for identity/state/sensor reads.
 This does not validate mechanical commands, injected transport faults or the
 other MCU versions.
-`load_config()` permits only passive identity/telemetry admission.
+`load_config()` retains passive identity/telemetry admission. The separate
+[explicit preload trial](installation.md#single-operation-trial) grants one
+selected RUN path without enabling ordinary host actions or automatic mechanics.
+Its PC preparation is separate from the earlier passive target observations.
 
 Checks cover all 25 named reply statuses and their contextual outcomes, normal
 data/cache updates, missing-response distinctions, communication-test byte zero
