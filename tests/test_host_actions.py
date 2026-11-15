@@ -2,6 +2,7 @@
 
 import json
 import math
+import re
 from pathlib import Path
 import struct
 import sys
@@ -26,6 +27,7 @@ class HostCommand(NativeCommand):
     def __init__(self, parameters=None, line=None):
         super().__init__(parameters or {})
         self.line = line
+        self.raw = line.partition(" ")[2] if line else ""
 
     def get(self, name, default=NativeCommand._missing):
         if name not in self.parameters and default is self._missing:
@@ -35,6 +37,9 @@ class HostCommand(NativeCommand):
     def get_commandline(self):
         return self.line
 
+    def get_raw_command_parameters(self):
+        return self.raw
+
 
 class HostGCode(GCode):
     """Record physical G-code; dispatch only the extension's Python handlers."""
@@ -42,6 +47,10 @@ class HostGCode(GCode):
     def __init__(self, printer):
         super().__init__()
         self.printer, self.on_script = printer, None
+        self.ready_gcode_handlers = self.commands
+
+    def create_gcode_command(self, command, commandline, parameters):
+        return HostCommand(parameters, commandline)
 
     def run_script_from_command(self, script):
         super().run_script_from_command(script)
@@ -52,8 +61,13 @@ class HostGCode(GCode):
             move = self.printer.objects["gcode_move"]
             if parts[0] in ("G90", "G91"):
                 move.absolute_coord = parts[0] == "G90"
+            if parts[0] in ("M82", "M83"):
+                move.absolute_extrude = parts[0] == "M82"
             if parts[0] in self.commands:
-                parameters = dict(item.split("=", 1) for item in parts[1:])
+                if re.fullmatch(r"[GMT]\d+(?:\.\d+)?", parts[0]):
+                    parameters = dict(re.findall(r"([A-Z])([-+]?\d*\.?\d+)", " ".join(parts[1:])))
+                else:
+                    parameters = dict(item.split("=", 1) for item in parts[1:])
                 self.commands[parts[0]](HostCommand(parameters, line))
         if self.on_script is not None:
             self.on_script(script)

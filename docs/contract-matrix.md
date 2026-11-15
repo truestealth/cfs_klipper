@@ -106,9 +106,11 @@ definitions. Their files and services remain with their current owners. Existing
 macro names must not be registered as replacement-owned commands just because
 they contain `BOX_`. Saved copies establish the examined content; the active
 printer configuration must be identified before activation/hardware acceptance.
-Both examined saved load wrappers omit required physical `TNN`; the original
-and replacement handler fail on that path. `GAP-MACRO-LOAD-TARGET` remains open,
-with no guessed target and no automatic edits to user macros. The current phase
+Both examined saved load wrappers omit required physical `TNN` on direct
+invocation. The replacement rejects that direct path; the reference LAN service
+instead supplies `TNN` while dispatching the material-present wrapper's command
+list. Full service-path compatibility remains unaccepted under
+`GAP-MACRO-LOAD-TARGET`, with no guessed target or automatic macro edits. The current phase
 preserves the existing `START_PRINT` mapping check and both load wrappers' missing
 `TNN` forwarding for behavior parity. Optimization/corrections are deferred for
 later consideration if needed; these observations do not require a repair in
@@ -149,7 +151,7 @@ context-specific pause/after-pause effects.
 | `GAP-HEAD-SENSOR-NAME` | Resolved: use the configured sensor for lookup and every enable path. Without a configured sensor, retain the distinct True fallback and emit no sensor-enable G-code |
 | `GAP-RESERVED-WIRE` | Keep three reserved identifiers separate from invented direct APIs; recover a required path before using it |
 | `GAP-MACRO-SNAPSHOT` | Resolved for the recorded reference environment: active includes/aliases were captured and fingerprints rechecked on target; recheck after configuration, firmware or host changes |
-| `GAP-MACRO-LOAD-TARGET` | Preserve the observed missing TNN forwarding for current behavior parity; revisit a correction later if needed, without guessing a spool or silently rewriting macros |
+| `GAP-MACRO-LOAD-TARGET` | Distinguish a direct call without TNN from the retained service's injection; verify the full service path without guessing a spool or silently rewriting macros |
 
 Five gaps remain open; serial/head-sensor lookup and the recorded configuration snapshot are resolved. Open gaps gate
 their affected paths. Recording a gap completes the inventory entry; it does not
@@ -237,14 +239,18 @@ See [compatibility.md](compatibility.md) for implementation/validation status
 and [protocol.md](protocol.md) for the native API boundary.
 
 The separate [load/unload trial preparation](installation.md#material-operation-trial)
-reuses the complete transport phases with explicit confirmation and a root
-operation context. Its PC tests are bound to the same dependency/event families:
+reads and executes the complete configured load/quit phase order with explicit
+confirmation and a root operation context. Its PC tests are bound to the same dependency/event families:
 fresh pre/post observations, actual-head callback admission, sensed cutting,
 service positioning, first-failure stopping and revocation. These commands are
 also outside the original inventory. The reference full trial failed: normal
 head/transport observations did not establish nozzle output, and an X-first
 cutter approach caused reported carriage contact. No retraction was issued.
-The corrected common route completes Y withdrawal before X and releases the
-cutter before any retraction. It is checked with composed XYZ/M400 regressions
-on the PC; it has not been installed or mechanically rerun. Hardware tests are
-held. The earlier four preload observations do not accept the full cycle.
+The current PC workflow includes pre-clean, standalone flush and restore, so its
+normal load tail establishes safe Y before the next original X-first cut. A
+shared entry check rejects a loaded rear or unknown pose rather than adding a
+retreat. There is no added release movement, final M400 or heater-off command.
+End-to-end tests use the same evolving XYZ/E/source state and exercise aliases,
+defaults, errors and revocation. This revision has not been installed or
+mechanically tested. Hardware tests remain held; the earlier four preload
+observations do not accept the full cycle.

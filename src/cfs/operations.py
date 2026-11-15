@@ -173,6 +173,9 @@ class MaterialTrial:
         self._token = self._head_owner = None
         self._cancelled = self._root_done = False
         self.address = None
+        self._command = None
+        self._command_name = None
+        self._command_claimed = self._command_completed = False
 
     @property
     def active(self):
@@ -197,6 +200,37 @@ class MaterialTrial:
             raise UnsupportedRequest("the material trial owns only its selected CFS")
         self._guard()
         return self._guard
+
+    def allows_command(self, name, gcmd):
+        """Admit one exact recipe phase, including its retained macro alias."""
+        if not self.owns_dispatch() or self._command is None or self._command_claimed:
+            return False
+        expected = ("WAIT_EXTRUSION_ALL_MATERIALS" if self._command_name == "BOX_CHECK_MATERIAL"
+                    else self._command_name)
+        if name != expected:
+            return False
+        if gcmd is not self._command:
+            # These macros create a new command for the base handler. Their
+            # parameters must be exactly the ones supplied by this recipe.
+            aliases = ("BOX_MATERIAL_FLUSH", "BOX_EXTRUDER_EXTRUDE",
+                       "WAIT_EXTRUSION_ALL_MATERIALS")
+            if (name not in aliases or gcmd.get_command_parameters()
+                    != self._command.get_command_parameters()):
+                return False
+        self._guard()
+        return True
+
+    def call_command(self, action, gcmd):
+        """Revoke even if a retained macro dispatcher swallows an exception."""
+        self._command_claimed = True
+        try:
+            result = action(gcmd)
+            self._guard()
+        except Exception:
+            self.cancel()
+            raise
+        self._command_completed = True
+        return result
 
     def admit(self, request):
         if not self.owns_dispatch():
@@ -300,12 +334,12 @@ class MaterialTrial:
         for index, axis in enumerate("xyz"):
             section = cfg.config.getsection("stepper_" + axis)
             low, high = section.getfloat("position_min"), section.getfloat("position_max")
-            names = {"x": ("extrude_pos_x", "pre_cut_pos_x", "retrude_position_x"),
+            names = {"x": ("extrude_pos_x", "pre_cut_pos_x", "retrude_position_x", "clean_right_pos_x"),
                      "y": ("safe_pos_y", "extrude_pos_y", "pre_cut_pos_y", "retrude_position_y"),
                      "z": ()}[axis]
             values = [position[index]] + [getattr(cfg, name) for name in names]
             if axis == "y":
-                values.append(cfg.get_real_cut_pos_y())
+                values.extend((cfg.get_real_cut_pos_y(), cfg.extrude_pos_y - 10))
             if axis == "z":
                 values.extend((25, 50))
             if (not all(type(value) in (int, float) and isfinite(value) for value in [low, high] + values)
@@ -338,9 +372,53 @@ class MaterialTrial:
             raise ValueError("material-trial temperature exceeds configured heater limits")
         box.cutter._preflight_cut()
         if self.action == "UNLOAD":
+            if position[1] > cfg.safe_pos_y:
+                raise RuntimeError("material trial requires a safe-Y entry before the original cutter approach")
             box.cutter._require_sensor()
             if box.cut_sensor.cut_present != 0:
                 raise RuntimeError("material trial requires an initially released cutter switch")
+
+    def _recipe(self):
+        """Read the configured stock service recipe without rewriting its macros.
+
+        The LAN service invokes these bodies line by line and supplies TNN to
+        the two loading commands. This bounded trial accepts that known phase
+        order only; custom recipes need separate admission before any effects.
+        Ordinary BOX commands remain phases, so external clients cannot cause
+        a second flush by calling the existing load primitive.
+        """
+        loading = self.action == "LOAD"
+        name = "BOX_LOAD_MATERIAL_WITH_MATERIAL" if loading else "BOX_QUIT_MATERIAL"
+        expected = (("M104", "IF_NEED_HOME", "BOX_ERROR_CLEAR", "BOX_CHECK_MATERIAL",
+                     "BOX_CUT_MATERIAL", "BOX_RETRUDE_MATERIAL", "BOX_GO_TO_EXTRUDE_POS",
+                     "BOX_NOZZLE_CLEAN", "BOX_EXTRUDE_MATERIAL", "BOX_EXTRUDER_EXTRUDE",
+                     "BOX_MATERIAL_FLUSH", "RESTORE_POSITION") if loading else
+                    ("BOX_ERROR_CLEAR", "BOX_CHECK_MATERIAL", "BOX_CUT_MATERIAL",
+                     "BOX_RETRUDE_MATERIAL", "BOX_GO_TO_BOX_EXTRUDE_POS"))
+        raw = self.box.boxcfg.config.getsection("gcode_macro " + name).get("gcode", None)
+        if not isinstance(raw, str):
+            raise ValueError("material trial needs the configured " + name + " recipe")
+        lines = [line.strip() for line in raw.splitlines() if line.strip()]
+        phases = tuple(line for line in lines if not line.startswith("RESPOND "))
+        if phases != expected:
+            raise ValueError("material trial requires the configured stock " + name + " command order")
+        gcode = self.box.gcode
+        handlers = getattr(gcode, "ready_gcode_handlers", None)
+        factory = getattr(gcode, "create_gcode_command", None)
+        if not isinstance(handlers, dict) or not callable(factory):
+            raise RuntimeError("material trial needs retained G-code command registration")
+        recipe = []
+        for line in lines:
+            command = line.split()[0]
+            parameters = {}
+            if command in ("BOX_EXTRUDE_MATERIAL", "BOX_EXTRUDER_EXTRUDE"):
+                parameters["TNN"] = self.target
+                line = command + " TNN=" + self.target
+            handler = handlers.get(command)
+            if not callable(handler):
+                raise RuntimeError("material trial is missing retained command " + command)
+            recipe.append((command, handler, factory(command, line, parameters)))
+        return recipe
 
     def run(self, action, tnn, confirmed=False):
         box, lifecycle = self.box, self.box.lifecycle
@@ -421,6 +499,7 @@ class MaterialTrial:
             box.operations.begin(self.source, tnn, address)
             serial = box.operations._serial
             self._geometry()
+            recipe = self._recipe()
             check()
             mode = self._read("GET_BOX_STATE")[3]
             material = self._read("GET_FILAMENT_SENSOR_STATE", b"\x00")[0]
@@ -434,30 +513,19 @@ class MaterialTrial:
                     or (loaded and box.box_state.get_Tn_data(address, "filament") != tnn)):
                 raise RuntimeError("material-trial source changed during the fresh preflight reads")
             self._phase = "unload" if loaded else "load"
-            if loaded:
-                box.quickly_wait_heating(box.get_flush_temp(tnn, tnn)[2])
+            for name, handler, command in recipe:
+                # Call registered handlers directly: unexpected Python errors
+                # must revoke this trial rather than be swallowed by a nested
+                # service dispatcher. Macro aliases still render normally.
+                self._command_name, self._command = name, command
+                self._command_claimed = self._command_completed = False
+                handler(command)
                 check()
-                if box.cutter.cut_material() is not True:
-                    raise RuntimeError("material-trial cutting did not complete normally")
-                check()
-                result = box.box_retrude_material(report_error=False)
-            else:
-                # Loading's retained Y shortcut does not distinguish a tray
-                # position from the cutter. Always park explicitly for a trial.
-                box.motion.go_to_extrude_pos()
-                check()
-                result = box.box_extrude_material(tnn)
-            check()
-            if result is not True:
-                raise RuntimeError("material phase did not complete normally; no automatic retry")
-            if not loaded:
-                box.extruder_extrude(tnn)
-                check()
-            else:
-                box.motion.go_to_box_extrude_pos()
-                check()
+                if name.startswith("BOX_") or name == "RESTORE_POSITION":
+                    if not self._command_completed:
+                        raise RuntimeError("material trial did not complete the registered " + name + " phase")
+                self._command = self._command_name = None
             self._phase = "after"
-            box.gcode.run_script_from_command("M400")
             check()
             mode = self._read("GET_BOX_STATE")[3]
             material = self._read("GET_FILAMENT_SENSOR_STATE", b"\x00")[0]
@@ -471,12 +539,11 @@ class MaterialTrial:
                     or box.last_cmd != expected
                     or box.box_state.get_Tn_data(address, "filament") != ("None" if loaded else tnn)):
                 raise RuntimeError("material-trial final observations do not establish its requested result")
-            box.gcode.run_script_from_command("M104 S0")
-            check()
             return {"action": action, "target": tnn, "mode": mode,
                     "material": material, "connections": connections, "buffer": buffer}
         finally:
             self.cancel()
+            self._command = self._command_name = None
             self._root_done = True
             if serial is not None and box.operations.active and box.operations._serial == serial:
                 box.operations.cancel()

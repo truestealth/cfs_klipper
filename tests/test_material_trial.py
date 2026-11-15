@@ -20,12 +20,14 @@ from test_native import reply
 
 
 class PoseReplay:
-    """Replay commanded XYZ and M400 barriers, without modelling real mechanics."""
+    """Replay command-space XYZE/modes and M400, without physical mechanics."""
 
     def __init__(self, position):
         self.position = position
         self.completed = tuple(position[:3])
         self.absolute = True
+        self.absolute_extrude = True
+        self.completed_e = position[3]
         self.moves = []
 
     def run(self, script):
@@ -37,6 +39,8 @@ class PoseReplay:
             command = words[0]
             if command in ("G90", "G91"):
                 self.absolute = command == "G90"
+            elif command in ("M82", "M83"):
+                self.absolute_extrude = command == "M82"
             elif command in ("G0", "G1"):
                 before = tuple(self.position[:3])
                 for word in words[1:]:
@@ -44,12 +48,17 @@ class PoseReplay:
                         index = "XYZ".index(word[0])
                         value = float(word[1:])
                         self.position[index] = value if self.absolute else self.position[index] + value
+                    elif word[0] == "E":
+                        value = float(word[1:])
+                        self.position[3] = (value if self.absolute and self.absolute_extrude
+                                            else self.position[3] + value)
                 after = tuple(self.position[:3])
                 if before != after:
                     self.moves.append({"line": line.strip(), "before": before, "after": after,
                                        "completed_before": self.completed})
             elif command == "M400":
                 self.completed = tuple(self.position[:3])
+                self.completed_e = self.position[3]
                 completed.append(self.completed)
         return completed
 
@@ -68,6 +77,15 @@ class MaterialTrialTests(unittest.TestCase):
         self.native, self.reactor = Native(), Reactor()
         self.printer = HostPrinter(self.native, self.reactor)
         self.gcode = self.printer.gcode
+        load = ("RESPOND MSG=load\nM104\nIF_NEED_HOME\nBOX_ERROR_CLEAR\nBOX_CHECK_MATERIAL\n"
+                "BOX_CUT_MATERIAL\nBOX_RETRUDE_MATERIAL\nBOX_GO_TO_EXTRUDE_POS\n"
+                "BOX_NOZZLE_CLEAN\nBOX_EXTRUDE_MATERIAL\nBOX_EXTRUDER_EXTRUDE\n"
+                "BOX_MATERIAL_FLUSH\nRESTORE_POSITION")
+        unload = ("RESPOND MSG=unload\nBOX_ERROR_CLEAR\nBOX_CHECK_MATERIAL\n"
+                  "BOX_CUT_MATERIAL\nBOX_RETRUDE_MATERIAL\nBOX_GO_TO_BOX_EXTRUDE_POS")
+        self.box.boxcfg.config.sections.update({
+            "gcode_macro BOX_LOAD_MATERIAL_WITH_MATERIAL": {"gcode": load},
+            "gcode_macro BOX_QUIT_MATERIAL": {"gcode": unload}})
         self.address, self.slot = int(target[1]), target[2]
         self.mask = 1 << "ABCD".index(self.slot)
         self.target, self.action = target, action
@@ -94,6 +112,12 @@ class MaterialTrialTests(unittest.TestCase):
             current_dispatch=lambda: self.dispatch)
         self.printer.send_event("klippy:ready")
         self.lifecycle.get_connect_state()
+        self.gcode.register_command("RESPOND", lambda command: None)
+        self.gcode.register_command("IF_NEED_HOME", lambda command: None)
+        self.gcode.register_command("M104", lambda command: setattr(
+            self.printer.heater, "target", float(command.parameters.get("S", 0))))
+        self.gcode.register_command("BOX_CHECK_MATERIAL", lambda command:
+            self.gcode.run_script_from_command("WAIT_EXTRUSION_ALL_MATERIALS"))
         self.material = self.mask
         self.connections = 0 if action == "LOAD" else self.mask
         self.buffer = 2
@@ -151,7 +175,7 @@ class MaterialTrialTests(unittest.TestCase):
                 if data[1] == 5:
                     return reply(address, command, data=struct.pack(">f", -42.0))
             if command == 0x11:
-                if self.clear_head_on_retract:
+                if self.clear_head_on_retract and data[1] == 1:
                     self.set_head(False)
                 if data[1] == 1:
                     self.connections, self.buffer = 0, 2
@@ -207,40 +231,33 @@ class MaterialTrialTests(unittest.TestCase):
                                                   bytes((self.mask, 0, 0))))
             self.assertEqual(len(self.native.calls), before)
 
-    def assert_cut_crossings_use_withdrawn_pose(self, start, lifted=True):
-        """Check actual segment geometry and completed travel before lateral X."""
-        moves = self.pose.moves[start:]
-        crossings = [move for move in moves if move["before"][0] != move["after"][0]]
-        self.assertTrue(crossings, "the fixture must exercise lateral X travel")
-        corridor_y = self.box.boxcfg.pre_cut_pos_y
-        for move in crossings:
-            with self.subTest(line=move["line"], before=move["before"]):
-                self.assertLessEqual(move["before"][1], corridor_y)
-                self.assertLessEqual(move["after"][1], corridor_y)
-                self.assertLessEqual(move["completed_before"][1], corridor_y,
-                                     "Y withdrawal must reach an M400 barrier before X travel")
-                if lifted:
-                    self.assertGreaterEqual(move["completed_before"][2], 50)
+    def assert_original_first_x(self, start, entry_y):
+        crossing = next(move for move in self.pose.moves[start:]
+                        if move["before"][0] != move["after"][0])
+        self.assertEqual(crossing["before"][1], entry_y)
+        self.assertEqual(crossing["after"][1], entry_y)
 
-    def test_load_then_unload_withdraws_from_the_same_rear_service_pose_before_x(self):
+    def test_load_then_unload_uses_the_completed_clean_route_before_original_x_first_cut(self):
         self.make_box(target="T1C", switch_pin="synthetic_pin")
         same_box = self.box
         self.run_trial("LOAD")
         cfg = self.box.boxcfg
-        self.assertEqual(self.printer.position[:2], [cfg.extrude_pos_x, cfg.extrude_pos_y])
+        self.assertEqual(self.printer.position[:2], [cfg.clean_right_pos_x, cfg.safe_pos_y])
+        self.assertEqual(self.pose.completed[:2], (cfg.clean_right_pos_x, cfg.safe_pos_y))
+        self.assertEqual(self.printer.position[3], 5 + 18 + cfg.Tn_retrude - 5)
         self.assertGreater(self.printer.position[1], cfg.pre_cut_pos_y)
         self.assertTrue(self.lifecycle.head_present())
         start = len(self.pose.moves)
         result = self.run_trial("UNLOAD")
         self.assertIs(self.box, same_box)
         self.assertEqual(result["target"], "T1C")
-        self.assert_cut_crossings_use_withdrawn_pose(start)
+        self.assert_original_first_x(start, cfg.safe_pos_y)
         self.assertEqual(self.printer.position[:2], [cfg.retrude_position_x, cfg.retrude_position_y])
         self.assertFalse(self.box.cut_sensor.cut_present)
         self.assertIsNone(self.box.last_cmd)
         self.assert_released()
 
-    def test_standalone_cutter_withdraws_before_x_with_and_without_a_tray(self):
+    def test_standalone_cutter_rejects_the_old_rear_entry_with_and_without_a_tray(self):
         for tray in (0, 1):
             with self.subTest(has_extrude_pos=tray):
                 self.make_box(has_extrude_pos=tray)
@@ -248,20 +265,19 @@ class MaterialTrialTests(unittest.TestCase):
                 self.set_head(True)
                 self.printer.position[:3] = [127, 368, 40]
                 self.pose.completed = tuple(self.printer.position[:3])
-                self.assertIs(self.box.cutter.move_to_cut(), True)
-                self.assert_cut_crossings_use_withdrawn_pose(0, lifted=bool(tray))
-                self.assertEqual(self.printer.position[1], self.box.boxcfg.pre_cut_pos_y)
-                self.assertFalse(any("G28" in script for script in self.gcode.scripts))
+                with self.assertRaisesRegex(RuntimeError, "cut entry"):
+                    self.box.cutter.move_to_cut()
+                self.assertEqual(self.gcode.scripts, [])
 
-    def test_cutter_withdrawal_uses_absolute_coordinates_before_lateral_travel(self):
+    def test_original_cutter_uses_absolute_x_from_a_valid_relative_entry(self):
         self.make_box("UNLOAD")
         self.lifecycle.passive = False
-        self.printer.position[:3] = [127, 368, 40]
+        self.printer.position[:3] = [127, self.box.boxcfg.safe_pos_y, 40]
         self.pose.completed = tuple(self.printer.position[:3])
         self.gcode.run_script_from_command("G91")
         self.assertIs(self.box.cutter.move_to_cut(), True)
-        self.assert_cut_crossings_use_withdrawn_pose(0)
-        self.assertEqual(self.printer.position[1], self.box.boxcfg.pre_cut_pos_y)
+        self.assert_original_first_x(0, self.box.boxcfg.safe_pos_y)
+        self.assertEqual(self.printer.position[1], self.box.boxcfg.get_real_cut_pos_y())
 
     def test_passive_registration_and_confirmation_do_not_enable_ordinary_commands(self):
         trial = self.make_box()
@@ -297,7 +313,8 @@ class MaterialTrialTests(unittest.TestCase):
         self.assertFalse(any(command in (0x0D, 0x11) for _, command, _ in self.native.commands()))
         self.assertTrue(all(address == 2 for address, _, _ in self.native.commands()))
         self.assertTrue(all(data[0] == 4 for _, command, data in self.native.commands() if command == 0x10))
-        self.assertEqual(self.printer.heater.target, 0)
+        self.assertEqual(self.printer.heater.target, self.box.boxcfg.Tn_extrude_temp)
+        self.assertNotIn("M104 S0", self.gcode.scripts)
         for name in ("T1", "T3", "T4"):
             self.assertEqual(self.box.store.base_data[name], before[name])
         self.assert_released()
@@ -398,6 +415,7 @@ class MaterialTrialTests(unittest.TestCase):
 
     def test_invalid_geometry_amounts_and_temperature_fail_before_effects(self):
         values = (("safe_pos_y", float("nan")), ("extrude_pos_x", 9999),
+                  ("clean_right_pos_x", 9999), ("extrude_pos_y", -4),
                   ("extrude_material_len_for_box", 3.5), ("extrude_material_times", 0),
                   ("extrude_material_velocity", 0), ("Tn_extrude_velocity", (0,)),
                   ("Tn_extrude_temp", float("inf")))
@@ -455,7 +473,7 @@ class MaterialTrialTests(unittest.TestCase):
             self.run_trial()
         self.assertEqual(self.stages(), [0])
         self.assertFalse(any(command == 0x11 for _, command, _ in self.native.commands()))
-        self.assertFalse(any(script.startswith("SET_VELOCITY_LIMIT") for script in self.gcode.scripts))
+        self.assertEqual(self.gcode.scripts.count("SET_VELOCITY_LIMIT ACCEL=5000 ACCEL_TO_DECEL=30000"), 1)
         self.assertIsNone(self.box.last_cmd)
         self.assert_released()
 
@@ -492,7 +510,7 @@ class MaterialTrialTests(unittest.TestCase):
                 with self.assertRaises((RuntimeError, ValueError)):
                     self.run_trial()
                 self.assertFalse(any(command == 0x11 for _, command, _ in self.native.commands()))
-                self.assertFalse(any(script.startswith("SET_VELOCITY_LIMIT") for script in self.gcode.scripts))
+                self.assertEqual(self.gcode.scripts.count("SET_VELOCITY_LIMIT ACCEL=5000 ACCEL_TO_DECEL=30000"), 1)
                 self.assert_released()
 
     def test_first_missed_cut_switch_stops_before_repositioning_or_retraction(self):
@@ -524,16 +542,17 @@ class MaterialTrialTests(unittest.TestCase):
                 self.assertEqual(self.box.last_cmd, "T1A")
                 self.assert_released()
 
-    def test_unreleased_cut_switch_stops_before_retraction_and_preserves_source(self):
+    def test_unreleased_cut_switch_rejects_the_final_result_without_inventing_a_release_move(self):
         self.make_box("UNLOAD")
         self.release_cut = False
         with self.assertRaises((RuntimeError, ValueError)):
             self.run_trial()
         self.assertTrue(self.box.cut_sensor.cut_present)
-        self.assertEqual(self.box.last_cmd, "T1A")
-        self.assertTrue(self.lifecycle.head_present())
-        self.assertEqual(self.printer.position[1], self.box.boxcfg.pre_cut_pos_y)
-        self.assertFalse(any(command == 0x11 for _, command, _ in self.native.commands()))
+        self.assertIsNone(self.box.last_cmd)
+        self.assertFalse(self.lifecycle.head_present())
+        self.assertEqual(self.printer.position[1], self.box.boxcfg.retrude_position_y)
+        self.assertEqual([data for _, command, data in self.native.commands() if command == 0x11],
+                         [b"\x01\x00", b"\x01\x01"])
         self.assertNotIn("M104 S0", self.gcode.scripts)
         self.assert_released()
 
@@ -593,7 +612,7 @@ class MaterialTrialTests(unittest.TestCase):
             self.run_trial()
         self.assertEqual(self.stages(), [0, 4, 6, 5])
         self.assertFalse(any(command == 0x11 for _, command, _ in self.native.commands()))
-        self.assertFalse(any(script.startswith("SET_VELOCITY_LIMIT") for script in self.gcode.scripts))
+        self.assertEqual(self.gcode.scripts.count("SET_VELOCITY_LIMIT ACCEL=5000 ACCEL_TO_DECEL=30000"), 1)
         self.assertNotIn("M104 S0", self.gcode.scripts)
         self.assert_released()
 
@@ -764,6 +783,93 @@ class MaterialTrialTests(unittest.TestCase):
         self.printer.send_event("box:extrude_process_stage7")
         self.assertEqual(self.gcode.scripts, [])
         self.assertEqual(self.native.calls, [])
+        self.assert_released()
+
+    def test_rear_unload_is_rejected_before_heat_requests_or_a_recovery_move(self):
+        self.make_box("UNLOAD")
+        self.printer.position[1] = self.box.boxcfg.extrude_pos_y
+        with self.assertRaisesRegex(RuntimeError, "safe.?Y"):
+            self.run_trial()
+        self.assertEqual(self.native.calls, [])
+        self.assertEqual(self.gcode.scripts, [])
+        self.assertEqual(self.printer.heater.target, 0)
+        self.assertEqual(self.box.last_cmd, self.target)
+        self.assert_released()
+
+    def test_recipe_and_registered_dependencies_are_checked_before_effects(self):
+        for change in ("order", "extra_motion", "arguments", "missing_recipe", "missing_handler", "missing_factory"):
+            with self.subTest(change=change):
+                self.make_box()
+                section = self.box.boxcfg.config.sections["gcode_macro BOX_LOAD_MATERIAL_WITH_MATERIAL"]
+                if change == "order":
+                    section["gcode"] = section["gcode"].replace("BOX_NOZZLE_CLEAN\n", "")
+                elif change == "extra_motion":
+                    section["gcode"] += "\nG0 Y399"
+                elif change == "arguments":
+                    section["gcode"] = section["gcode"].replace("BOX_MATERIAL_FLUSH", "BOX_MATERIAL_FLUSH LEN=99")
+                elif change == "missing_recipe":
+                    section.pop("gcode")
+                elif change == "missing_handler":
+                    self.gcode.commands.pop("BOX_NOZZLE_CLEAN")
+                else:
+                    self.gcode.create_gcode_command = None
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_trial()
+                self.assertEqual(self.native.calls, [])
+                self.assertEqual(self.gcode.scripts, [])
+                self.assert_released()
+
+    def test_macro_alias_cannot_change_parameters_or_claim_a_phase_twice(self):
+        self.make_box()
+        base = self.gcode.commands["BOX_MATERIAL_FLUSH"]
+        attempts = []
+        def alias(command):
+            with self.assertRaises(CommandError):
+                base(HostCommand({"LEN": "99"}, "BOX_MATERIAL_FLUSH_99 LEN=99"))
+            base(HostCommand({}, "BOX_MATERIAL_FLUSH_99"))
+            attempts.append(True)
+            with self.assertRaises(CommandError):
+                base(HostCommand({}, "BOX_MATERIAL_FLUSH_99"))
+        self.gcode.commands["BOX_MATERIAL_FLUSH"] = alias
+        self.run_trial()
+        self.assertEqual(attempts, [True])
+        feed = "G0 E%.2f F%.2f" % (self.box.boxcfg.Tn_retrude, self.box.boxcfg.Tn_extrude_velocity[0])
+        self.assertEqual(self.gcode.scripts.count(feed), 1)
+        self.assert_released()
+
+    def test_swallowed_alias_exception_revokes_scope_before_restore(self):
+        self.make_box()
+        base = self.gcode.commands["BOX_MATERIAL_FLUSH"]
+        original_clean = self.box.nozzle_clean
+        clean_calls = []
+        def clean():
+            clean_calls.append(True)
+            if len(clean_calls) == 2:
+                raise RuntimeError("synthetic failure inside the flush alias")
+            return original_clean()
+        self.box.nozzle_clean = clean
+        def alias(command):
+            try:
+                base(HostCommand({}, "BOX_MATERIAL_FLUSH_99"))
+            except RuntimeError:
+                pass  # The retained dispatcher can swallow generic exceptions.
+        self.gcode.commands["BOX_MATERIAL_FLUSH"] = alias
+        with self.assertRaises(RuntimeError):
+            self.run_trial()
+        self.assertEqual(len(clean_calls), 2)
+        self.assertEqual(self.box.last_cmd, self.target)
+        self.assertEqual(self.printer.position[1], self.box.boxcfg.extrude_pos_y)
+        self.assertFalse(any(script.startswith("G0 X%.2f F20000" % self.box.boxcfg.clean_right_pos_x)
+                             for script in self.gcode.scripts))
+        self.assert_released()
+
+    def test_a_macro_that_omits_its_base_handler_cannot_accept_the_trial(self):
+        self.make_box()
+        self.gcode.commands["BOX_MATERIAL_FLUSH"] = lambda command: None
+        with self.assertRaisesRegex(RuntimeError, "did not complete"):
+            self.run_trial()
+        self.assertEqual(self.box.last_cmd, self.target)
+        self.assertEqual(self.printer.position[1], self.box.boxcfg.extrude_pos_y)
         self.assert_released()
 
 

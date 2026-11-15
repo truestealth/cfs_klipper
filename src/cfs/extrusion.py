@@ -177,7 +177,7 @@ class Extrusion:
             guard()
             temp = cfg.Tn_extrude_temp
         else:
-            if not 180 < temp < 300:
+            if not 180 <= temp <= 300:
                 logging.warning("Invalid temperature: %s", temp)
                 temp = cfg.Tn_extrude_temp
         try:

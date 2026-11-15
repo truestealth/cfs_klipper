@@ -1,6 +1,7 @@
 """Configured cutter motion and observations, without transport success claims."""
 
 import logging
+from math import isfinite
 
 from .errors import format_error
 
@@ -97,14 +98,37 @@ class Cutter:
         for name in required:
             if getattr(cfg, name, None) is None:
                 raise ValueError("cutting requires configured %s" % name)
+        check = self.box.host_guard()
+        if (self._call(check, self.box.get_filament_sensor_detect) is False
+                or "x" not in self._homed(check)):
+            return
+        position = getattr(self.box.toolhead, "get_position", None)
+        if not callable(position):
+            raise RuntimeError("cut entry requires the current toolhead position")
+        current = self._call(check, position)
+        safe_y = getattr(cfg, "safe_pos_y", None)
+        if safe_y is None and cfg.has_extrude_pos != 1:
+            safe_y = getattr(cfg, "pre_cut_pos_y", None)
+        try:
+            current_y = current[1]
+        except (TypeError, IndexError, KeyError) as error:
+            raise RuntimeError("cut entry requires the current toolhead Y") from error
+        if (type(current_y) not in (int, float) or not isfinite(current_y)
+                or type(safe_y) not in (int, float) or not isfinite(safe_y)):
+            raise RuntimeError("cut entry requires finite current and configured safe Y")
+        if current_y > safe_y:
+            # The stock X-first approach requires its caller's completed clean
+            # route. Reject a rear entry rather than inventing a recovery move.
+            raise RuntimeError("cut entry requires Y at or before configured safe Y")
 
     def move_to_cut(self, report_error=True):
         """Run bounded strokes; True without a switch is only a motion result.
 
         The sensed branch retains the stock sticky observation and five return
         attempts. Failed sensing deliberately leaves the temporary limits set.
-        The approach withdraws Y before X; normal sensed completion withdraws
-        Y again and requires switch release before returning to a caller.
+        The stock approach is X-first from a validated entry. Normal sensed
+        completion stays at the cut position; the enclosing operation returns
+        the head afterward. This helper does not invent a release movement.
         """
         box, cfg = self.box, self.box.boxcfg
         check = box.host_guard()
@@ -114,19 +138,13 @@ class Cutter:
             self._run(check, "G28 X Y")
             self._run(check, "BED_MESH_CLEAR")
             self._run(check, "M400")
+            self._preflight_cut()
         if self._call(check, box.get_filament_sensor_detect) is False:
             logging.warning("No filament found.")
             return True
         if cfg.has_extrude_pos == 1:
             self._call(check, self.motion.z_move)
-            self._run(check, "M400")
-        # A caller may leave the head at a rear extrusion position. Reaching
-        # individually valid endpoints does not make an X sweep there safe.
-        # Complete the Y withdrawal before any transverse cutter approach.
-        self._run(check, "G90")
-        self._run(check, "G0 Y%.2f F%.2f" % (cfg.pre_cut_pos_y, cfg.cut_velocity))
-        self._run(check, "M400")
-        if cfg.has_extrude_pos == 1:
+            self._run(check, "G90")
             self._run(check, "G0 X%.2f F%.2f" % (cfg.pre_cut_pos_x, cfg.cut_velocity))
             self._run(check, "G0 X%.2f Y%.2f F%.2f" % (
                 cfg.pre_cut_pos_x, cfg.pre_cut_pos_y, cfg.cut_velocity))
@@ -188,22 +206,6 @@ class Cutter:
                 return False
             self.sensor.clear_cut_happened()
             self._call(check, box.gcode.respond_info, "Cut sensor triggered.")
-            # Release the cutter before any caller can retract filament or
-            # cross the rear service area in X. This is a normal-success tail,
-            # never speculative movement from a failed/unknown physical state.
-            self._run(check, "G90")
-            self._run(check, "G0 Y%.2f F%.2f" % (cfg.pre_cut_pos_y, cfg.cut_velocity))
-            self._run(check, "M400")
-            for _ in range(20):
-                self._require_sensor()
-                if self.sensor.cut_present == 0:
-                    break
-                self._pause(check, 0.05)
-            self._require_sensor()
-            if self.sensor.cut_present != 0:
-                # Several retained recovery callers ignore a False cut result.
-                # A held blade must abort those callers before any retraction.
-                raise RuntimeError("cut sensor did not release; further actions blocked")
         self._restore_limits(check, limits)
         return True
 

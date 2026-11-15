@@ -416,7 +416,11 @@ class Box:
         def register(name, handler):
             # Reject before a handler can change queues, flags or tool hints.
             if self.lifecycle is not None and self.lifecycle.passive:
-                handler = self._reject_passive_host_command
+                action = handler
+                def handler(gcmd, name=name, action=action):
+                    if not self.material_trial.allows_command(name, gcmd):
+                        return self._reject_passive_host_command(gcmd)
+                    return self.material_trial.call_command(action, gcmd)
             self.gcode.register_command(name, handler)
 
         for name, method in Motion.COMMANDS.items():

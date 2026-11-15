@@ -236,8 +236,8 @@ baseline unit and retained host runtime, not another firmware/hardware pairing.
 That version was installed passively and its cutter approach caused mechanical
 contact during the reference unload trial. The operator reported skipped steps
 and minor damage. Physical position is untrusted; do not use old command
-coordinates to home, retry, extrude or recover automatically. The local cutter
-correction described below has not been installed or retested on hardware.
+coordinates to home, retry, extrude or recover automatically. The current complete
+workflow and cutter revision below has not been installed or tested on hardware.
 The stock `serial_485.so`, MCU firmware, configuration and macros remain unchanged.
 
 ### Recorded results and correction scope
@@ -256,15 +256,18 @@ shutdown. A later read-only capture found a new ready host process with heater
 targets at zero; that externally changed state is not evidence of physical
 recovery. No further hardware trial is accepted by that readiness.
 
-The local common-cutter correction completes any required Z lift, withdraws Y
-to the configured pre-cut position and waits with `M400` before transverse X.
-After normal sensed cutting it withdraws Y again, waits and requires switch
-release within one second before returning success or allowing retraction.
-A failed release raises before callers can proceed. It adds no retreat from
-a failed/unknown state in `finally`. Endpoint limits alone did not establish a
-safe trajectory. The revised path has PC checks only; physical condition and
-position must be re-established before hardware testing can resume. The earlier
-four-slot preload results remain separate valid history.
+The earlier published `fd337ef` added Y-before-X and a sensed-release tail; it
+was not installed. Subsequent reconstruction identified missing caller context:
+the old transport-only load omitted the normal clean/flush/restore tail and left
+the head at the rear extrusion Y. The current PC revision restores that complete
+workflow and the stock X-first cutter order, with no added release move or wait.
+Before fan or cutter motion, the shared entry check rejects a loaded, X-homed
+head behind configured safe Y or an unavailable/nonfinite Y. Without a tray it
+uses pre-cut Y only when safe Y is absent. It never invents a retreat from an
+unknown position. The entry check runs again after optional homing before the
+first X move. These are admission checks, not a guarantee of
+physical clearance. Hardware tests remain held; the earlier four-slot preload
+results remain separate valid history.
 
 The following describes the command interface and admission checks, not permission
 to run the affected version or to resume held hardware testing.
@@ -281,8 +284,12 @@ CFS_TEST_UNLOAD TNN=T1A CONFIRM=1
 
 Each command grants only its own invocation. Loading does not chain unloading,
 and unloading does not start another load. Confirmation is explicit invocation,
-not authentication. Existing load wrappers and their missing `TNN` forwarding
-are preserved; this path does not repair or accept those wrappers.
+not authentication. The trial reads `gcode` from the configured
+`BOX_LOAD_MATERIAL_WITH_MATERIAL` or `BOX_QUIT_MATERIAL` section and requires the
+known bare phase order before effects. It preserves the macros and supplies
+`TNN` only to the two feed phases, as the retained LAN service does. Custom
+recipes or arguments require separate admission and are rejected here. This
+does not execute or certify the external service itself.
 
 Both commands require one connected/online CFS with confirmed cfs0 MCU **1.1.3**,
 host encoding 1, ready/standby, inactive virtual SD, no pause or resume, no active
@@ -291,9 +298,11 @@ head sensor is required. XYZ must already be homed; the trial does not home or
 clear the bed mesh. Configured positions are validated against mechanical
 `stepper_*` travel, including service positions beyond slicer limits. Feed values,
 speeds, temperatures and iteration counts are checked before heat, motion or
-native writes. The target temperature must allow extrusion within the heater's
+native writes, including clean-right X and the clean stroke at extrusion Y−10.
+The target temperature must allow extrusion within the heater's
 configured limits. Unloading requires a configured active cutter switch,
-initially released. These checks do not validate the entire physical trajectory.
+initially released, and current Y must be at or before configured safe Y.
+These checks do not validate the entire physical trajectory.
 The configuration is pinned for the operation.
 
 | Observation | LOAD | UNLOAD |
@@ -305,20 +314,24 @@ The configuration is pinned for the operation.
 | Fresh initial buffer | Empty `2` | A normal valid observation |
 | Required final result | Head present, selected CONNECTIONS, mode `2`, buffer not full and matching source bookkeeping | Head absent, CONNECTIONS zero, mode `0`, empty buffer `2`, released cutter and cleared source bookkeeping |
 
-The load command moves to the configured extrusion position and reuses the
-existing complete transport phases: CFS feed, actual head arrival with the head
-feed/stage-6 callback, final extruder/buffer feed, PRINT mode and source
-bookkeeping. It also clears the normal `filament_useup` latch. The unload command
-heats as required, performs configured sensed cutting, then uses the known-source
-retraction path with recovery disabled and returns to the configured box
-extrusion position. The `WITH_TNN` diagnostic route is not used because its
-ignored returns cannot establish successful unloading. These commands cover
-transport to the head and back, including cutting on unload. Purging, nozzle
-cleaning, complete user macro cycles, tool changes and printing retain separate
-acceptance cases.
+LOAD executes the configured material-present recipe: initial `M104`, homing
+check, error/material checks, initial cut/retract, extrusion positioning and
+nozzle cleaning, CFS loading, extruder phase, standalone flush and
+`RESTORE_POSITION`. Initial cut/retract have no filament to remove under this
+trial's empty-head precondition. The extruder phase clears `filament_useup`;
+the standalone flush performs the configured E action and cleaning. Missing
+`LEN` retains `Tn_retrude`; no positive purge length is invented. UNLOAD executes
+the configured quit checks, sensed cut, known-source retraction and return
+position. The `WITH_TNN` diagnostic is not used. Ordinary `BOX_*` commands remain
+phases, so the external service does not cause a second flush. End-to-end PC
+tests include loaded-source replacement through ordinary phase dispatch; this
+bounded hardware admission still requires LOAD to begin without a loaded source.
+Tool changes, printing and physical nozzle-flow acceptance remain separate.
 
 Permission belongs to one operation context, lifecycle/binding/device generations
-and the owning cooperative dispatch. Only an armed load's real head-arrival
+and the owning cooperative dispatch. Each registered recipe phase has its own
+one-use command scope; retained aliases must preserve its exact parameters.
+Ordinary commands cannot inherit that permission. Only an armed load's real head-arrival
 callback receives temporary additional permission. Other head/slot/runout/error
 callbacks, ordinary host commands and automatic startup paths remain gated.
 Only the selected CFS and normal-route typed request bodies are admitted; raw
@@ -328,17 +341,24 @@ Every scoped reply must be fresh, normal and well formed before decoder effects.
 Validation follows the command and feed stage: successful `0x10` stage 0 carries
 one mode byte, stage 5 carries four wheel bytes, and stages 4/6/7 are empty.
 An empty ACK is therefore not a substitute for every successful stage reply.
-The first failure stops the trial before automatic loading recovery, another
+Unlike the ordinary service queue, which can advance after an error reply, the
+trial revokes its grant on the first phase error, including exceptions swallowed
+by a nested macro dispatcher. It stops before automatic loading recovery, another
 sensed cutting attempt or unload recovery. Host CRC/LENGTH resends are disabled
 and native requests pass `retries_en=False`. The cooperative operation budget is
 900 seconds; own reads use at most two seconds, and other requests are bounded
 by their native timeout and the remaining budget. These limits cannot interrupt
 stock-library retries/waits, an MCU action or already queued Klipper motion.
 
-After normal phase completion, the trial waits with `M400`, checks fresh final
-observations and requests `M104 S0`. A failure does not automatically cut, stop,
+After normal recipe completion, the trial checks fresh final observations. It
+adds no `M400` or `M104 S0`: the stock restore tail can leave Z queued, and the
+recipe does not promise heater shutdown. Neither final observations nor command
+return establishes completion of queued motion or nozzle flow. A failure does not automatically cut, stop,
 unload or restore heat, fans, movement modes or position. Recorded source/data
 changes are retained rather than replaced with stale cache values. Inspect the
 actual state before deciding any further operation; a failed load may leave
 material in the path without an accepted loaded-source result. Physical
 observation remains required even when ACKs and final observations are normal.
+Fresh observation requirements, ownership cleanup and duplicate-event rejection
+are retained admission policies; the implementation does not reproduce the
+original's stale-cache fallback or leaked callback permissions on exceptions.

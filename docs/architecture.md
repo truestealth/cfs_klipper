@@ -43,6 +43,7 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | `tests/test_native.py`, `test_protocol.py`, `test_firmware.py`, `test_box_native.py` | Native boundary, decoding, identity and integration scenarios | Synthetic frames, borrowed API and reactor substitutes |
 | `tests/test_lifecycle.py`, `test_operations.py`, `test_errors.py` | Lifecycle, operation ownership and reporting | Controlled cooperative reactor, native replies, waits and callbacks |
 | `tests/test_motion.py`, `test_extrusion.py`, `test_cutting.py`, `test_host_actions.py` | Host actions and their registration/integration | Synthetic G-code, heaters, fans, buttons and wheel replies; no hardware |
+| `tests/test_material_workflow.py` | Complete service-ordered load/quit cycles | One evolving XYZ/E/source state, retained-style macro aliases, replies and injected failures |
 | `docs/contract-matrix.json` | Full implementation checklist and acceptance cases | Per-requirement and check-family implementation status |
 | `docs/` | Architecture, protocol and compatibility, in English and Russian | Draft specifications |
 
@@ -115,16 +116,21 @@ This bounded check does not accept ordinary loading, cutting, tool changes,
 printing or recovery. The [reference results](installation.md#reference-trial-results)
 keep hardware observations separate from PC fault/ownership checks.
 
-The separate [material trial](installation.md#material-operation-trial) reuses
-Loading and Cutter/Retraction under one operation context. Only the owning
-dispatch and an armed load head callback receive scoped permission; startup and
-ordinary commands stay passive. Fresh pre/postconditions bind a physical source,
-and trial failures stop before automatic recovery. The deployed `5a32ac8` trial
+The separate [material trial](installation.md#material-operation-trial) reads the
+configured load/quit recipe and calls its registered phases in order, including
+pre-clean, flush and position restoration. The phase commands remain independent
+for retained clients. Only the owning dispatch, one current recipe command and
+an armed load head callback receive scoped permission; startup and ordinary
+commands stay passive. Fresh pre/postconditions bind a physical source, and
+trial failures revoke permission before automatic recovery, even when a nested
+macro swallows an exception. The deployed `5a32ac8` trial
 failed hardware acceptance: no nozzle output was observed after loading, and
 the cutter approach caused mechanical contact during unloading. Hardware tests
-are held. The local correction withdraws Y before transverse X and requires
-cutter release on normal sensed completion; it has not been installed or
-retested on hardware. Endpoint bounds alone do not validate a trajectory.
+are held. The current PC revision restores the stock X-first/no-release cutter
+sequence and rejects a loaded rear or unknown entry before effects. Its normal
+caller reaches safe Y through the complete clean/flush/restore tail. It adds no
+final wait or heater-off command beyond the recipe. This revision has not been
+installed or tested on hardware; endpoint bounds do not validate a trajectory.
 
 Operations coordinate host actions with separately observed CFS, buffer and
 toolhead state. An ACK, last T-command or cached material record cannot establish

@@ -13,7 +13,7 @@ an implemented or hardware-verified one.
 | Klipper import layout | Implemented | PC regression tests and passive deployment on the reference K1C |
 | Passive Klipper startup | Implemented | Real load_config, dependencies and data root; reference MCU 1.1.3 trial reached ready with host actions blocked |
 | Explicit single-operation preload trial | Implemented; bounded reference check | One normal invocation per T1A–T1D on MCU 1.1.3, fresh RFID/remaining replies and operator observations; default lifecycle stays passive |
-| Explicit load/unload trial admission | Implemented; hardware acceptance failed | Deployed `5a32ac8`: no observed nozzle output after loading; unloading caused mechanical contact before retraction. Hardware checks held; local correction not deployed |
+| Explicit load/unload trial admission | Complete configured recipes and PC end-to-end checks; hardware acceptance failed | Deployed `5a32ac8` failed; current pre-clean/flush/restore and stock cutter revision is not deployed; hardware checks held |
 | Full contract inventory and check bindings | Stage 1 complete | Real test references, partial families and remaining acceptance cases are tracked |
 | State, configuration and compatible storage | Stage 2 components implemented | Synthetic state, all 54 options, 21 endpoint fields and temporary-file tests |
 | Native `serial_485` calls | Stage 3 primitives implemented | PC request/retry checks plus real reads and selected preload RUN through the unchanged target library |
@@ -27,19 +27,25 @@ an implemented or hardware-verified one.
 | Stock G-code and status interfaces | Partial | All 103 names registered, including two conditional Hall commands and one blocked legacy feed command; endpoint and snapshots tested |
 | RFID, remaining length, saved materials | Partial | Fresh 40-byte MCU records and remaining replies after explicit T1A–T1D preload; normal physical behavior and both interfaces confirmed; fault/full-cycle acceptance remains pending |
 | Reversible development-file installation | Implemented | Modern/sibling bytecode backup and scoped restore; PC failure/tamper checks and actual target file/cache rollback while stopped, followed by passive reinstallation |
-| Python 3.8 | Project and CI default | 639 methods run: 635 passed, 4 Windows symlink-privilege skips on Python 3.8.20; passive target runtime 3.8.2 checked separately |
+| Python 3.8 | Project and CI default | 660 methods run: 656 passed, 4 Windows symlink-privilege skips on Python 3.8.20; passive target runtime 3.8.2 checked separately |
 
-The 639-method total is the public suite only. Separate local runs passed 14
+The 660-method total is the public suite only. Separate local runs passed 14
 retained-module checks, 13 saved-macro checks and the 17 public macro checks
 using the retained renderer. They are additional evidence, not extra public
 test methods. The four skips require Windows native symlink privileges;
 platform-independent reparse rejection is checked. The retained checks include
 the actual virtual-SD worker after a passive diagnostic: it does not dispatch PAUSE.
 
-Four new PC methods extend the published 635-method baseline: three trajectory/
-composed-path regressions and one held cutter-release check. They validate the
-local correction's approach and normal release gates, not physical clearance or
-hardware recovery after the failed reference trial.
+PC regressions now check the restored X-first approach from a valid entry and
+the original sensed-cut tail, together with rejection of rear/unknown entries.
+Nine end-to-end methods execute the complete service-ordered load/quit sequence
+on one XYZ/E/source state, including replacement, aliases, defaults and failures.
+Trial tests separately check configured recipes, one-use phase permissions and
+revocation when nested macros swallow or omit their base handler. These checks
+do not establish physical clearance or recovery after the failed reference trial.
+
+One further PC method checks the original standalone flush temperature bounds,
+including both endpoints and invalid-value fallback.
 
 PC admission adds 30 public methods: 10 bootstrap, 15 passive lifecycle and five
 composed failure-state checks. Caller-boundary False/None returns are injected
@@ -190,8 +196,8 @@ composes the real host phases in PC tests. Its deployed reference check did not
 accept loading or unloading: nozzle output was not observed, and the cutter
 approach caused mechanical contact. The first missed cutter observation stopped
 the path before `0x11` retraction; this did not prevent the preceding contact.
-Hardware checks are held. The local trajectory/release correction has not been
-installed or rerun on hardware; successful PC tests do not accept the correction.
+Hardware checks are held. The current complete workflow/stock cutter revision
+has not been installed or tested on hardware; successful PC tests do not accept it.
 
 Checks cover all 25 named reply statuses and their contextual outcomes, normal
 data/cache updates, missing-response distinctions, communication-test byte zero
@@ -216,6 +222,14 @@ before retained macro aliases provides 101 unconditional commands, including
 one blocked legacy command, plus two Hall commands when `switch_pin` is truthy. Cleaning uses four fixed strokes; `clean_run_count` is
 retained as configuration without changing that routine. Cutter current state
 and the sticky observed event remain separate; blind motion is not a measured cut.
+
+Standalone `BOX_MATERIAL_FLUSH` accepts `180 <= TEMP <= 300`, with invalid values
+falling back to `Tn_extrude_temp`. An omitted `LEN` preserves `Tn_retrude`, even
+when negative: retained Klipper returns a missing parameter's default before
+checking explicit-input bounds. Explicit `LEN` remains restricted to 0..200.
+The handler passes `tnn=None`; a retained macro's optional `M109` does not supply
+missing native arguments. These parameter checks do not establish a complete
+client-driven loading or purge sequence.
 
 Colour purge volume uses the retained Klipper `chelper.get_ffi()` interface,
 `rgb_t` structures and `get_flushing_volume`. PC substitutes verify that call
@@ -330,10 +344,18 @@ replay clears its target after any normal command return, including False, but
 an exception retains the hint; neither outcome certifies physical loading.
 
 Both examined saved material-present/material-absent load wrappers omit the
-physical `TNN` required by `BOX_EXTRUDE_MATERIAL`. Static reconstruction predicts
-the same original-handler failure; the original binary was not executed.
-`GAP-MACRO-LOAD-TARGET` records this observed behavior and does not establish
-successful loading.
+physical `TNN` required by `BOX_EXTRUDE_MATERIAL` when invoked directly. The
+retained-template/replacement check fails on that direct path; the original
+binary was not executed. The reference LAN service instead reads the
+material-present wrapper's command list and supplies `TNN` to the two feed
+commands before dispatch. Missing forwarding in the macro text therefore does
+not establish a missing target in the interface path. Its cached command list
+can retain earlier parameter overrides. Full service sequencing, error handling
+and physical completion remain unaccepted under `GAP-MACRO-LOAD-TARGET`.
+Static reconstruction also shows that the retained worker advances after a
+matched error reply. An individual handler exception therefore does not itself
+guarantee cancellation of later service commands; external abort paths are
+separate.
 
 **Current phase: reproduce the reference behavior.** Keep the existing
 `START_PRINT` mapping check and missing `TNN` forwarding in both load wrappers

@@ -127,6 +127,26 @@ class ArrayCommandTests(unittest.TestCase):
 
 
 class MaterialFlushTests(unittest.TestCase):
+    def test_flush_temperature_keeps_inclusive_original_boundaries(self):
+        for value, expected in (("180", 180.0), ("300", 300.0),
+                                ("179.9", 220), ("300.1", 220),
+                                ("nan", 220), ("inf", 220), ("bad", 220)):
+            with self.subTest(value=value):
+                calls = []
+                cfg = SimpleNamespace(Tn_retrude=-20, Tn_extrude_velocity=(40,),
+                    Tn_extrude_temp=220, Tn_extrude_percent=(1,),
+                    extrude_pos_x=1, extrude_pos_y=2, safe_pos_y=3)
+                box = SimpleNamespace(boxcfg=cfg, host_guard=lambda: lambda: None,
+                    if_in_resume=lambda: False, gcode_move=SimpleNamespace(absolute_coord=True),
+                    Tn_Extrude=lambda *args, **kwargs: calls.append(args),
+                    nozzle_clean=lambda: None,
+                    gcode=SimpleNamespace(run_script_from_command=lambda script: None,
+                                          respond_info=lambda message: None))
+                command = SimpleNamespace(get_int=lambda *args, **kwargs: 10,
+                    get_command_parameters=lambda: {"TEMP": value})
+                Extrusion(box).cmd_material_flush(command)
+                self.assertEqual(calls[0][2], expected)
+
     def test_configured_flush_order_and_coordinate_restore(self):
         calls = []
         cfg = SimpleNamespace(Tn_retrude=-20, Tn_extrude_velocity=(40,),
@@ -273,7 +293,7 @@ class FlushFallbackTests(unittest.TestCase):
             Tn_Extrude=lambda *args, **kwargs: calls.append((args, kwargs)),
             nozzle_clean=lambda: None)
         cmd = SimpleNamespace(get_int=lambda *args, **kwargs: 40,
-                              get_command_parameters=lambda: {'VELOCITY': 'bad', 'TEMP': '300', 'PERCENT': 'oops'})
+                              get_command_parameters=lambda: {'VELOCITY': 'bad', 'TEMP': '301', 'PERCENT': 'oops'})
         Extrusion(box).cmd_material_flush(cmd)
         self.assertIn(((40, (50,), 220, (1,)), {'tnn': None, 'error_report': True}), calls)
         self.assertEqual(calls[:2], ['warning: get velocity failed, velocity: None',

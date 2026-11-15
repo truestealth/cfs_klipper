@@ -8,6 +8,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cfs.cutting import CutSensor, Cutter
+from test_material_trial import PoseReplay
 
 
 class CuttingTests(unittest.TestCase):
@@ -17,6 +18,7 @@ class CuttingTests(unittest.TestCase):
         self.epoch = 0
         self.head = True
         self.actual_head = True
+        self.position = [120, 200, 25, 0]
         self.buttons = SimpleNamespace(register_buttons=self.register_buttons)
         self.gcode = SimpleNamespace(run_script_from_command=self.run_script,
                                      respond_info=self.messages.append,
@@ -45,6 +47,7 @@ class CuttingTests(unittest.TestCase):
             _reactor=SimpleNamespace(monotonic=lambda: 10, pause=self.pause),
             toolhead=SimpleNamespace(max_accel=1000, max_accel_to_decel=500,
                 get_status=lambda now: {"homed_axes": "xyz"},
+                get_position=lambda: list(self.position),
                 extruder=SimpleNamespace(get_heater=lambda: heater)),
             gcode_move=SimpleNamespace(last_position=[4, 224.3, 25, 0]),
             get_filament_sensor_detect=lambda: self.head,
@@ -111,12 +114,13 @@ class CuttingTests(unittest.TestCase):
         self.assertFalse(self.sensor.cut_happened)
         self.assertEqual(self.scripts[-1], "SET_VELOCITY_LIMIT ACCEL=1000.000 ACCEL_TO_DECEL=500.000")
 
-    def test_blind_cut_does_not_require_unrelated_tray_positions(self):
+    def test_blind_cut_uses_pre_cut_entry_limit_without_a_tray(self):
         self.sensor.switch_pin = None
+        self.box.boxcfg.has_extrude_pos = 0
         for name in ("extrude_pos_z", "safe_pos_y", "retrude_position_x", "retrude_position_y"):
             delattr(self.box.boxcfg, name)
         self.assertTrue(self.cutter.move_to_cut())
-        self.assertIn("Z_MOVE", self.scripts)
+        self.assertNotIn("Z_MOVE", self.scripts)
 
     def test_cleaning_missing_coordinates_prevents_all_effects(self):
         del self.box.boxcfg.safe_pos_y
@@ -129,25 +133,94 @@ class CuttingTests(unittest.TestCase):
 
     def test_sensed_fresh_latch_success_restores_limits(self):
         self.on_pause = lambda: self.button_callback(11, 1)
-        def release_after_withdrawal(script):
-            if script == "G0 Y210.00 F6000.00" and self.sensor.cut_present:
-                self.button_callback(11.1, 0)
-        self.on_script = release_after_withdrawal
         self.assertTrue(self.cutter.move_to_cut())
         self.assertEqual(self.scripts.count("G0 Y225.50 F6000.00\n M400"), 2)
         self.assertEqual(self.pauses, [11])
         self.assertFalse(self.sensor.cut_happened)
         self.assertEqual(self.scripts[-1], "SET_VELOCITY_LIMIT ACCEL=1000.000 ACCEL_TO_DECEL=500.000")
 
-    def test_cut_event_without_release_does_not_accept_cutting(self):
+    def test_cut_event_keeps_original_cut_position_until_the_caller_returns(self):
+        replay = PoseReplay(self.position)
+        self.on_script = replay.run
         self.on_pause = lambda: self.button_callback(11, 1)
-        with self.assertRaisesRegex(RuntimeError, "cut sensor did not release"):
-            self.cutter.move_to_cut()
-        self.assertEqual(self.scripts[-1], "M400")
-        self.assertEqual(self.scripts[-2], "G0 Y210.00 F6000.00")
+        self.assertTrue(self.cutter.move_to_cut())
+        self.assertEqual(self.position[:2], [4, 225.5])
+        self.assertEqual(self.pauses, [11])
         self.assertTrue(self.sensor.cut_present)
         self.assertNotIn("BOX_POSITION", self.scripts)
-        self.assertFalse(any("ACCEL=1000" in script for script in self.scripts))
+        self.assertEqual(self.scripts[-1], "SET_VELOCITY_LIMIT ACCEL=1000.000 ACCEL_TO_DECEL=500.000")
+
+    def test_first_x_keeps_original_entry_y_without_an_added_withdrawal(self):
+        replay = PoseReplay(self.position)
+        self.on_script = replay.run
+        self.on_pause = lambda: self.button_callback(11, 1)
+        self.assertTrue(self.cutter.move_to_cut())
+        first_x = next(move for move in replay.moves if move["before"][0] != move["after"][0])
+        self.assertEqual(first_x["before"][1], self.box.boxcfg.safe_pos_y)
+        self.assertEqual(self.scripts[:4], ["Z_MOVE", "G90", "G0 X4.00 F6000.00",
+                                          "G0 X4.00 Y210.00 F6000.00"])
+
+    def test_rear_entry_is_rejected_before_fan_or_motion(self):
+        for tray in (0, 1):
+            self.box.boxcfg.has_extrude_pos = tray
+            self.position[1] = self.box.boxcfg.safe_pos_y + 1
+            for action in (self.cutter.move_to_cut, self.cutter.cut_material):
+                with self.subTest(tray=tray, action=action.__name__):
+                    with self.assertRaisesRegex(RuntimeError, "configured safe Y"):
+                        action()
+                    self.assertEqual(self.scripts, [])
+
+    def test_trayless_entry_uses_pre_cut_y_when_safe_y_is_absent(self):
+        self.box.boxcfg.has_extrude_pos = 0
+        del self.box.boxcfg.safe_pos_y
+        self.position[1] = self.box.boxcfg.pre_cut_pos_y + 1
+        with self.assertRaisesRegex(RuntimeError, "configured safe Y"):
+            self.cutter.cut_material()
+        self.assertEqual(self.scripts, [])
+
+    def test_unknown_entry_or_limit_is_not_replaced_with_gcode_coordinates(self):
+        for y in (None, float("nan"), float("inf"), "200"):
+            self.position[1] = y
+            with self.subTest(y=y):
+                with self.assertRaisesRegex(RuntimeError, "finite current"):
+                    self.cutter.cut_material()
+                self.assertEqual(self.scripts, [])
+        self.position[1] = 200
+        for limit in (None, float("nan"), float("inf"), "200"):
+            self.box.boxcfg.safe_pos_y = limit
+            with self.subTest(limit=limit):
+                with self.assertRaisesRegex(RuntimeError, "finite current"):
+                    self.cutter.cut_material()
+                self.assertEqual(self.scripts, [])
+        self.box.boxcfg.safe_pos_y = 200
+        for current in (None, [], {}):
+            self.box.toolhead.get_position = lambda: current
+            with self.subTest(position=current):
+                with self.assertRaisesRegex(RuntimeError, "current toolhead Y"):
+                    self.cutter.cut_material()
+                self.assertEqual(self.scripts, [])
+        del self.box.toolhead.get_position
+        with self.assertRaisesRegex(RuntimeError, "current toolhead position"):
+            self.cutter.cut_material()
+        self.assertEqual(self.scripts, [])
+
+    def test_no_filament_skips_entry_gate_without_a_recovery_move(self):
+        self.head = False
+        self.position[1] = 226
+        self.assertTrue(self.cutter.move_to_cut())
+        self.assertEqual(self.scripts, [])
+
+    def test_entry_is_rechecked_after_optional_homing(self):
+        homed = [""]
+        self.box.toolhead.get_status = lambda now: {"homed_axes": homed[0]}
+        def homing(script):
+            if script == "G28 X Y":
+                homed[0] = "xy"
+                self.position[1] = self.box.boxcfg.safe_pos_y + 1
+        self.on_script = homing
+        with self.assertRaisesRegex(RuntimeError, "configured safe Y"):
+            self.cutter.move_to_cut()
+        self.assertEqual(self.scripts, ["G28 X Y", "BED_MESH_CLEAR", "M400"])
 
     def test_stale_latch_cleared_and_failure_does_not_restore_limits(self):
         self.sensor.cut_happened = True

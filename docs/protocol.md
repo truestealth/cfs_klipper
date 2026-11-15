@@ -324,8 +324,13 @@ hub, buffer, mode and source bookkeeping are checked separately from ACKs;
 neither matching replies nor reached sensor postconditions establish nozzle
 extrusion. The reference load produced no observed nozzle output. The unload
 attempt caused cutter-approach contact and stopped before any `0x11` retraction.
-The local Y-before-X approach and cutter-release correction have not been
-installed or rerun on hardware; protocol ACKs cannot validate a motion trajectory.
+The current PC revision executes the complete configured recipe, including
+clean/flush/restore, and restores the stock cutter order while rejecting rear
+or unknown cutter entries. It has not been installed or tested on hardware;
+protocol ACKs cannot validate a motion trajectory. The limited trial retains
+fresh-observation, dispatch/command ownership, cleanup and duplicate-event gates
+and revokes on the first failure. It does not copy the ordinary service's
+continue-after-error behavior or the original stale-cache failure branches.
 
 Successful baseline 1.1.3 `0x10` replies have stage-specific `DATA`, rather than
 a universal empty ACK. The trial validates these bodies before decoder effects:

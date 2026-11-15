@@ -24,8 +24,9 @@ with substituted hardware effects; public CI uses synthetic fixtures.
 Its cutter approach caused mechanical contact in the reference trial; the
 operator reported skipped steps and minor damage. Loading reached the head
 sensor but produced no observed nozzle output. The full load/unload trial
-failed acceptance. A local trajectory correction has not been installed or
-retested on hardware; the printer's physical position is untrusted.
+failed acceptance. The current PC revision restores the complete configured
+workflow and stock cutter order, rejecting a rear or unknown cutter entry.
+It has not been installed or tested on hardware; physical position is untrusted.
 
 `load_config` now initializes `[box]` in **passive admission mode**: identity and
 telemetry reads are available, while ordinary host actions and native writes are
@@ -45,9 +46,16 @@ four slots grey or undefined in the touchscreen and Creality Print. Restoring
 the exact pre-query spool cache and restarting passively restored both displays,
 as confirmed by the user. This earlier check verified cached display; the later
 explicit preload trials obtained fresh 40-byte RFID records from the MCU.
-Two examined saved load wrappers omit the required physical `TNN`; they fail
-before loading. The current phase preserves the observed `START_PRINT` mapping
-check and both load wrappers' argument forwarding for behavior parity.
+Two examined saved load wrappers omit the required physical `TNN` on direct
+invocation; the replacement rejects that direct path. The reference LAN service
+supplies `TNN` to the two feed commands while dispatching the material-present
+wrapper's command list. PC end-to-end checks now cover that ordered load/quit
+cycle, including cleaning, standalone flush, position restoration and failures.
+The explicit trial reads the configured recipe without changing user macros;
+ordinary Box commands remain individual phases. Hardware compatibility remains
+unaccepted, and passive startup remains the default.
+The current phase preserves the observed `START_PRINT` mapping check and both
+load wrappers' argument forwarding for behavior parity.
 Optimization and corrections will be considered later if needed. These recorded
 outcomes do not establish successful printing or loading.
 

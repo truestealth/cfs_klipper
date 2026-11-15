@@ -226,8 +226,9 @@ Clearing host error state does not assert that the physical route has rolled bac
 **PC result:** public synthetic Jinja/consumer tests, configuration/encoding
 preflight and temporary-tree install/rollback tests are present. Separate local
 checks execute pinned retained modules and saved macros. Both examined saved
-load wrappers omit required `TNN`; their unchanged successful load remains
-blocked. The baseline live include/override fingerprints have been compared;
+load wrappers omit required `TNN` on direct invocation. The reference LAN service
+supplies it while dispatching the material-present command list; full service
+compatibility still needs validation. The baseline live include/override fingerprints have been compared;
 future trials must recheck their environment. Hardware acceptance remains
 required. The installer deploys the passive admission bootstrap.
 
@@ -283,12 +284,13 @@ The [load/unload trial](installation.md#material-operation-trial) was deployed a
 `5a32ac8` and failed reference acceptance. Loading reached its sensor/protocol
 postconditions without observed nozzle output; unloading caused mechanical
 contact at the cutter approach and stopped before retraction. All hardware
-checks are held with physical position untrusted. The current work is PC
-correction and trajectory/release testing, not another mechanical attempt.
-The local Y-before-X approach and normal sensed release check have not been
-installed or retested on hardware. Resume acceptance only after physical
-condition and position are independently re-established; purging, nozzle
-cleaning, a complete macro cycle and printing remain separate cases.
+checks are held with physical position untrusted. The current PC revision
+restores complete configured load/quit recipes, including cleaning, flush and
+restore, and the stock cutter sequence with a rejection gate for rear/unknown
+entries. End-to-end tests cover ordinary and replaced sources, macro aliases,
+defaults and failures; scoped trials retain first-failure revocation. No new
+mechanical attempt or installation was made. Physical condition/position, nozzle
+flow, complete printing and recovery still need separate hardware acceptance.
 
 Then validate other targeted versions separately. Record results for the number
 of physical CFS units actually tested; PC simulation of four boxes does not
