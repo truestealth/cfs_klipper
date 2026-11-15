@@ -6,8 +6,10 @@ English | [Русский](architecture.ru.md)
 and per-device versions are implemented with PC tests. Lifecycle, cooperative
 operation context, common errors and configured mechanical primitives are also
 PC-tested, as are stage 8 drain, refill, recovery and resume components. The
-bootstrap initializes passive admission without host mechanics; hardware acceptance remains pending. Stage 9
-adds synthetic Jinja/retained-boundary tests and reversible development-file deployment.
+bootstrap initializes passive admission without ordinary host mechanics. The
+explicit preload trial has a bounded normal check on one baseline unit; full
+hardware acceptance remains pending. Stage 9 adds synthetic Jinja/retained-boundary
+tests and reversible development-file deployment.
 
 ## Scope
 
@@ -22,16 +24,16 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | Path | Responsibility | Current state |
 | --- | --- | --- |
 | `klipper/box.py` | Thin Klipper entry point | Imports the passive bootstrap |
-| `src/cfs/box.py` | Shared data, endpoint, status, metadata hook and handler integration | PC-tested initialization, typed-read admission and host-action gates |
+| `src/cfs/box.py` | Shared data, endpoint, status, metadata hook and handler integration | PC gates plus reference passive startup and explicit preload admission |
 | `src/cfs/state.py` | Shared live state, snapshots, tool maps and grouping | Implemented; decoded observations share this state |
 | `src/cfs/configuration.py` | Loader, UI values and MODIFY/SAVE | Implemented with explicit preservation rules |
 | `src/cfs/storage.py` | Spool cache, recovery hints and read-only material database | Implemented; recovery uses validated hints |
-| `src/cfs/native.py` | Request bodies, reply validation and borrowed native API | Exact bodies, timeouts, sender retries and admission filters PC-tested |
-| `src/cfs/protocol.py` | Command/status decoding and ordered effects | Common errors and slot/refill/drain effects are bound; PC substitutes only |
+| `src/cfs/native.py` | Request bodies, reply validation and borrowed native API | PC bodies/retry checks and bounded normal baseline API-return observations |
+| `src/cfs/protocol.py` | Command/status decoding and ordered effects | Normal baseline trial data checked; error/slot/refill/drain effects retain PC scope |
 | `src/cfs/events.py`, `runout.py`, `recovery.py`, `resume.py` | Slot events, drain/refill, recovery and resume | PC substitute checks; physical behavior unverified |
 | `src/cfs/firmware.py` | Per-address identity, explicit family and exact version profiles | Mixed versions and identity invalidation PC-tested |
 | `src/cfs/lifecycle.py` | Ready/shutdown, configured dependencies, reconnect, heartbeat and pause wait | Own work is removed or invalidated; borrowed transport stays with stock serial |
-| `src/cfs/operations.py` | Source/target ownership, cooperative waits, head-result latch and explicit preload trial | Phase callbacks, cancellation and one-operation request ownership PC-tested |
+| `src/cfs/operations.py` | Source/target ownership, cooperative waits, head-result latch and explicit preload trial | PC ownership/cancellation checks plus four observed normal baseline preload trials |
 | `src/cfs/errors.py` | Client reports, pause/restore ordering and saved error context | Duplicate/special-key behavior and caught-error exits PC-tested |
 | `src/cfs/motion.py`, `extrusion.py`, `cutting.py` | Configured motion, fans, heating, extrusion, cutting and calibration | Component checks with substitutes; hardware acceptance pending |
 | `src/cfs/feeding.py`, `loading.py`, `retraction.py` | Preload, staged loading and unloading | PC phase checks; hardware acceptance pending |
@@ -107,11 +109,17 @@ data paths and the permitted read commands.
 The separate [preload trial](installation.md#single-operation-trial) is an
 extension-only explicit command. It owns a narrowly checked RUN request while
 the lifecycle stays passive; ordinary host guards and automatic paths remain
-blocked. This new path has PC substitute checks only.
+blocked. Four separate T1A–T1D normal runs on one MCU 1.1.3 unit returned fresh
+RFID/remaining data, with operator-observed activity and correct client display.
+This bounded check does not accept ordinary loading, cutting, tool changes,
+printing or recovery. The [reference results](installation.md#reference-trial-results)
+keep hardware observations separate from PC fault/ownership checks.
 
 Operations coordinate host actions with separately observed CFS, buffer and
 toolhead state. An ACK, last T-command or cached material record cannot establish
-physical load completion. Unknown observations remain unknown.
+physical load completion. The ordinary mode field is not the separate preload
+FSM busy predicate; even ACK plus mode `0` requires independent physical
+observation. Unknown observations remain unknown.
 
 Retained Python modules also use specific `box` attributes and a metadata hook.
 These paths are listed in the [contract matrix](contract-matrix.md) and share

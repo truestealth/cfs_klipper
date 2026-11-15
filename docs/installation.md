@@ -128,23 +128,25 @@ caches were removed. The stock Box process was not started between restoration
 and reinstallation, avoiding its automatic startup actions. Passive boots after
 installation remained ready. Fresh version 3 backups use the main installer for
 this layout without a separate legacy-cache adapter. This verifies filesystem
-rollback; a stock-runtime restart and mechanical acceptance remain untested.
+rollback; a stock-runtime restart and full mechanical acceptance remain untested.
 
 After direct RFID/remaining reads, the touchscreen and Creality Print recognized
 CFS but showed all four slots as grey or undefined. The changed cache was backed
 up before the exact pre-query spool cache was restored with Klipper stopped.
 A passive start of the same sources restored slot display in both interfaces,
 as confirmed by the user. No decoder/runtime fix or repeated RFID/remaining
-query was involved. This verifies cached display, not fresh physical RFID
+query was involved. That earlier check verified cached display, not fresh physical RFID
 acquisition; RFID and remaining values were restored together.
 
 <a id="single-operation-trial"></a>
 
 ## Explicit single-operation preload trial
 
-This path is prepared and checked on a PC only. It has not been deployed or run
-on the printer. A future installation and mechanical trial require separate
-authorization and physical preparation. The default lifecycle remains passive.
+This path has PC tests and a bounded authorized trial on the reference K1C with
+cfs0 MCU 1.1.3. One invocation per T1A–T1D slot returned fresh RFID/remaining
+data, with physical activity observed by the operator. Full mechanical acceptance
+remains separate. Further installations and trials require authorization and
+physical preparation. The default lifecycle remains passive.
 Preserve a spool-cache backup before any authorized future trial.
 
 The extension-only command is `CFS_TEST_PRELOAD TNN=T1A CONFIRM=1`. `TNN` must be
@@ -182,6 +184,9 @@ The zero CONNECTIONS requirement avoids the observed occupied-channel retraction
 branch at that snapshot; it does not guarantee physical isolation or disable
 autonomous MCU behavior. The RUN ACK can follow an expired internal wait, so it
 is not physical-completion proof; the subsequent fresh IDLE reply is mandatory.
+That IDLE reply is also only an observation: ordinary state telemetry does not
+expose the separate preload FSM busy predicate. Physical observation is required;
+ACK plus mode `0` alone does not establish completion on timeout/failure paths.
 
 The host does not resend trial requests after MCU CRC/LENGTH errors. Passing
 `retries_en=False` cannot cancel retries already owned by the stock `.so`.
@@ -191,5 +196,34 @@ unverified CLOSE/STOP cleanup is sent. Results and cache writes retain the norma
 RFID/remaining semantics, including `unknown` and the baseline `100` fallback.
 If RFID metadata has been saved before a later remaining-value request fails,
 that fresh metadata stays saved; the trial does not restore old cache values.
-PC checks do not establish RFID acquisition, mechanical completion or hardware
-acceptance. Other host actions, heaters and toolhead motion receive no permission.
+PC checks do not establish hardware results. Other host actions, heaters and
+toolhead motion receive no permission.
+
+<a id="reference-trial-results"></a>
+
+### Bounded reference results
+
+Four separate explicitly confirmed invocations tested T1A, T1B, T1C and T1D once
+each, with no operator retry. A missing-confirmation invocation was rejected
+before the bus call. The 28 attributed API-return frames passed independent
+CRC/address/opcode/status, request-mask and sequence checks; concurrent background
+state replies were kept separate. Each slot returned a fresh 40-byte RFID record
+matching its saved ID and a valid selected-slot remaining percentage.
+
+Only the selected slot's remaining value changed in each affected cache record;
+the T1D trial had no semantic cache change. Other spool keys and the material
+database were preserved. The operator observed spool rotation/feed/retraction
+for T1A, reported normal behavior for T1B–T1D, and confirmed correct colours in
+both the touchscreen and Creality Print. Normal post-trial mode `0` accompanied
+these observations. Stock native libraries, MCU firmware, configurations and
+macros were retained; 52 protected files and all 25 installed sources matched
+their expected hashes. These normal baseline results do not accept fault/timeout
+paths, full loading/unloading, cutting, purging, printing, recovery or other MCU
+versions. Remaining values are MCU reports, not an independent measurement of
+the material on each spool.
+
+The captured startup/heartbeat window before the explicit tests contained only
+typed reads and no preload RUN. Final read-only checks left the printer ready
+with an absent head-filament observation, zero CONNECTIONS and zero heater
+targets; those reads did not change spool data. This evidence is for the same
+baseline unit and retained host runtime, not another firmware/hardware pairing.

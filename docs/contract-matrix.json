@@ -5590,11 +5590,11 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
       "code": 2,
-      "implementation_note": "Recovered request representation and applicable admission gates are PC-tested; reserved identifiers do not establish executable operations."
+      "implementation_note": "PC decoding checks remain. On the reference MCU 1.1.3, each selected A/B/C/D request returned a normal, independently CRC-checked 40-byte record after explicit RUN; other reply/fault/version paths remain separately unaccepted."
     },
     {
       "id": "WIRE-GET_REMAIN_LEN",
@@ -5610,11 +5610,11 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
       "code": 3,
-      "implementation_note": "Recovered request representation and applicable admission gates are PC-tested; reserved identifiers do not establish executable operations."
+      "implementation_note": "PC checks retain the percentage/sentinel schema and selected-slot persistence. All four selected-slot replies were observed on MCU 1.1.3, with FF in unselected positions; numerical accuracy and fault/version cycles remain unverified."
     },
     {
       "id": "WIRE-SET_BOX_MODE",
@@ -5650,11 +5650,11 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
       "code": 5,
-      "implementation_note": "Recovered request representation and applicable admission gates are PC-tested; reserved identifiers do not establish executable operations."
+      "implementation_note": "PC range/schema checks are supplemented by reference MCU 1.1.3 observations before and after preload. Final buffer value2 means empty; no public status field or full buffer/recovery acceptance is introduced."
     },
     {
       "id": "WIRE-CTRL_MATERIAL_MOTOR_ACTION",
@@ -5712,11 +5712,11 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
       "code": 8,
-      "implementation_note": "Recovered request representation and applicable admission gates are PC-tested; reserved identifiers do not establish executable operations."
+      "implementation_note": "Reference MCU 1.1.3 normal replies were checked for both MATERIAL and CONNECTIONS banks around the explicit trial. Full sensor transitions, fault handling and other MCU versions remain unaccepted."
     },
     {
       "id": "WIRE-SET_MOTOR_SPEED",
@@ -5754,11 +5754,11 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
       "code": 10,
-      "implementation_note": "Recovered request representation and applicable admission gates are PC-tested; reserved identifiers do not establish executable operations."
+      "implementation_note": "PC profile/layout checks and reference normal replies preserve temperature/humidity/mode types. Baseline DATA2 contains consumed pending driver diagnostics, not FSM busy; normal mode0 is not physical completion proof."
     },
     {
       "id": "WIRE-SET_PRE_LOADING",
@@ -5774,11 +5774,11 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
       "code": 13,
-      "implementation_note": "Recovered request representation and applicable admission gates are PC-tested; reserved identifiers do not establish executable operations."
+      "implementation_note": "Single-bit RUN requests for A/B/C/D and empty normal ACKs were observed on the reference MCU 1.1.3 through the explicit trial, with operator-reported feed/return. OPEN/CLOSE/TIGHT, all-slot RUN, faults and other versions are not accepted by this subset."
     },
     {
       "id": "WIRE-MEASURING_WHEEL",
@@ -5898,11 +5898,11 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
       "code": 20,
-      "implementation_note": "Recovered request representation and applicable admission gates are PC-tested; reserved identifiers do not establish executable operations."
+      "implementation_note": "Reference startup freshly identified MCU 1.1.3 through the unchanged native API. The family remains explicit cfs0 context; this normal-path observation does not accept replacement/fault/version cycles."
     },
     {
       "id": "WIRE-GET_HARDWARE_STATUS",
@@ -6433,10 +6433,10 @@
         "PC-NATIVE-REQUEST",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "Borrowed API behavior, ownership and request/reply boundaries are checked on substitutes; stock native code is not executed."
+      "implementation_note": "PC substitutes cover the API contract. Separately, target CPython 3.8.2/MIPS executed normal requests through the unchanged stock library, including trial calls with explicit False. Fault/timeout/retry behavior remains unaccepted."
     },
     {
       "id": "NATIVE-OWNERSHIP",
@@ -6450,10 +6450,10 @@
         "PC-NATIVE-OWNERSHIP",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "Borrowed API behavior, ownership and request/reply boundaries are checked on substitutes; stock native code is not executed."
+      "implementation_note": "Reference passive deployment and four preload cases borrowed the configured stock owner without replacing its binary. This supplements PC ownership checks, not full lifecycle/failure acceptance."
     },
     {
       "id": "NATIVE-RESPONSE-ADMISSION",
@@ -6487,7 +6487,7 @@
       "evidence": "static",
       "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "Borrowed API behavior, ownership and request/reply boundaries are checked on substitutes; stock native code is not executed."
+      "implementation_note": "The low-level raw boundary is PC-tested and remains unused by the scoped target trial. Observed hardware calls use the retained normal request API; raw send itself is not accepted."
     },
     {
       "id": "NATIVE-RETRY-LAYERS",
@@ -6501,10 +6501,10 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "Borrowed API behavior, ownership and request/reply boundaries are checked on substitutes; stock native code is not executed."
+      "implementation_note": "Host retry rules remain PC-tested. Target trial invocations disable host CRC/LENGTH resends and pass explicit False; actual internal native retry/transmission counts and injected fault outcomes are not established."
     },
     {
       "id": "NATIVE-TIMEOUT-SENTINEL",
@@ -6518,10 +6518,10 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "Borrowed API behavior, ownership and request/reply boundaries are checked on substitutes; stock native code is not executed."
+      "implementation_note": "PC checks retain the sentinel/default timeout contract. Target logs distinguish ordinary background 3600 from trial reads at most2 and bounded RUN; no hard interruption or actual timeout-fault acceptance is claimed."
     },
     {
       "id": "NATIVE-CONNECTION-STATE",
@@ -6536,10 +6536,10 @@
         "PC-OP-CONNECTION",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "Borrowed API behavior, ownership and request/reply boundaries are checked on substitutes; stock native code is not executed."
+      "implementation_note": "Reference ready/normal trials observed configured address presence and the retained connection flag under unchanged ownership. Divergent flags, disconnects and full recovery still need hardware checks."
     },
     {
       "id": "NATIVE-FRAME",
@@ -6553,10 +6553,10 @@
         "PC-REPLY-VALIDATION",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "Borrowed API behavior, ownership and request/reply boundaries are checked on substitutes; stock native code is not executed."
+      "implementation_note": "Synthetic checks are supplemented by 28 attributed normal API-return frames across four explicit selected-slot cases, independently checked for CRC/address/opcode/status. Full-wire uniqueness and fault admission are not established."
     },
     {
       "id": "OP-CONNECT",
@@ -7597,10 +7597,10 @@
         "PC-STATE-LAYOUTS",
         "HW-VERSION-CYCLE"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "Wire/schema/status behavior and bound lifecycle, slot, loading and recovery effects are PC-tested. Native binary execution and per-version hardware acceptance remain pending."
+      "implementation_note": "PC profile/operation checks are supplemented by reference passive startup, four explicit selected-slot preload/RFID/remaining cases and operator-reported physical/UI observations. Full loading, unloading, cutting, purging, printing and recovery remain unaccepted."
     },
     {
       "id": "FW-1.2.2",
@@ -8175,7 +8175,7 @@
       "blockers": [
         "GAP-MACRO-SNAPSHOT"
       ],
-      "implementation_note": "Synthetic public Jinja fixtures and separate local pinned-source checks cover selected behavior; no user macro is changed. Saved include copies are incomplete and do not establish current active includes/overrides. Preserve live aliases and obtain configuration fingerprints before activation (GAP-MACRO-SNAPSHOT). File preservation, command ownership and serialized status order are checked. External diagnostic/material shell services themselves are not executed or certified by these tests."
+      "implementation_note": "The reference active include chain/overrides were captured and compared, then fingerprints were freshly rechecked before and after the installed trial. Existing START_PRINT/load-wrapper behavior stays intentionally unchanged; complete macro operation cycles remain unaccepted."
     },
     {
       "id": "DEPENDENCY-CHELPER",
@@ -8629,7 +8629,8 @@
         "On the recorded host/MCU environment, validate required native exchanges, actual receive admission, timeouts and operation-specific responses; run mechanical commands only within the relevant prepared operation."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Observed subset: normal reference MCU 1.1.3 getter/RUN exchanges through the unchanged stock API. Required timeouts, faults and remaining mechanical routes are still pending."
     },
     {
       "id": "HW-CMD-DATA",
@@ -8638,7 +8639,8 @@
         "Verify the existing screen, status clients and slicer observe compatible identities, edits, sentinels, mapping and persisted settings across restart."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Observed subset: four fresh selected-slot records/percentage replies and correct screen/Creality Print display reported by the operator. Edits, mapping and full persistence/restart scenarios are not completed."
     },
     {
       "id": "HW-CMD-FILAMENT",
@@ -8647,7 +8649,8 @@
         "On baseline1.1.3, verify preload/pretension, complete loading/unloading and all required initial filament states with physical observations and retained user configuration."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Observed subset: one explicit normal preload per physical slot A/B/C/D on one baseline CFS. Operator reported ordinary feed/return. Complete load/unload and all starting conditions remain pending."
     },
     {
       "id": "HW-CMD-MOTION",
@@ -9004,7 +9007,7 @@
         "Check retained chelper get_ffi, rgb_t and get_flushing_volume call shape with a substitute.",
         "The real entry point resolves extras.base_info.base_dir and registers a passive lifecycle before macros; ready borrows the configured serial owner.",
         "Passive startup permits only typed identity/telemetry reads and blocks host actions, raw diagnostics, automatic motion, preload, pause, heating and sensor changes.",
-        "The extension-only CFS_TEST_PRELOAD command admits one confirmed physical target on MCU1.1.3 without changing passive mode; owner/generation/request guards, idle/head/material/hub preconditions and pre-persistence reply checks reject unrelated effects."
+        "The extension-only CFS_TEST_PRELOAD command admits one confirmed physical target on MCU 1.1.3 without changing passive mode; owner/generation/request guards, idle/head/material/hub preconditions and pre-persistence reply checks reject unrelated effects."
       ],
       "status": "partial",
       "test": [
@@ -9128,7 +9131,8 @@
         "Compare per-box sensor/mode transitions with the actual route and retain per-device identity."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Observed subset: reference T1 status and four fresh slot records remain consumable by both existing interfaces. Other devices, states, faults and complete sensor/mechanical transitions remain pending."
     },
     {
       "id": "HW-CONFIG-PRESERVATION",
@@ -9138,7 +9142,8 @@
         "Verify retained values after supported edit/save and restart operations."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Reference active configuration fingerprints remained unchanged through passive deployment and four preloads. This does not complete edit/save or all configured-coordinate/wrapper checks."
     },
     {
       "id": "HW-DATA-PRESERVATION",
@@ -9148,7 +9153,8 @@
         "Confirm screen-owned data and address-manager identity are retained."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Per-case snapshots verified changes restricted to selected metadata; other spool keys and database bytes were preserved. Mapping edits and recovery/power-loss data cycles remain pending."
     },
     {
       "id": "HW-DEPENDENCIES",
@@ -9159,7 +9165,8 @@
         "Verify the retained chelper interface and colour-volume calculation in the target host runtime."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Reference CPython 3.8.2/MIPS normal native execution, ready startup and configured head observation were checked. Complete dependency failures and retained-helper numerical/mechanical routes remain pending."
     },
     {
       "id": "PC-STATE-ORDER",
@@ -9790,17 +9797,19 @@
         "Confirm actual wire exchanges separately from the assertions about API calls made on a PC."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Observed subset: attributed normal wrapper-return frames on the reference target. Physical transmission counts, late untagged traffic, timeout/retry behavior and communication loss remain unaccepted."
     },
     {
       "id": "HW-BASELINE-CYCLE",
       "level": "hardware",
       "assertions": [
-        "On MCU1.1.3, accept loading, all unloading starting conditions, cutting, purging, full tool changes and actual print start/end.",
+        "On MCU 1.1.3, accept loading, all unloading starting conditions, cutting, purging, full tool changes and actual print start/end.",
         "Record physical sensor/mechanical outcomes and the actual number of attached CFS units."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Only the four selected-slot preload/RFID/remaining normal cases are observed. This is not the required full load/unload/cut/purge/tool-change/print cycle."
     },
     {
       "id": "HW-RECOVERY-CYCLE",
@@ -9820,7 +9829,8 @@
         "Verify client state, RFID updates, autonomous buffer behavior and full mechanical outcomes for the tested version."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Only reference cfs0 MCU 1.1.3 normal preload cases were exercised. No firmware update occurred; other versions and complete mechanical outcomes remain pending."
     },
     {
       "id": "PC-MACRO-INCLUDE",
@@ -10034,7 +10044,8 @@
         "Confirm user configuration and macro files remain unchanged after a full operation cycle."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Read-only display after fresh slot updates was reported correct in both interfaces. Startup/first-tool/load/end/cancel routes and preserved macro defects are not declared successful."
     },
     {
       "id": "HW-MACRO-RECOVERY",
@@ -10151,9 +10162,9 @@
     },
     {
       "id": "GAP-MACRO-SNAPSHOT",
-      "status": "open",
-      "observation": "Saved macro/configuration copies establish their contents, not the printer current include chain.",
-      "close_when": "Before printer activation/hardware acceptance, record and verify the live configuration fingerprints, active include chain, overrides and wrapper aliases. PC deployment into temporary trees or saved-source execution does not close this precondition.",
+      "status": "resolved",
+      "observation": "The reference active include chain, overrides and aliases were captured against runtime; subsequent fresh fingerprints matched before and after the installed baseline trial. This resolves the snapshot for that recorded environment, without repairing the intentionally preserved macro behavior.",
+      "close_when": "Resolved for the recorded reference environment. Recheck live configuration/includes/aliases before a later trial if firmware, configuration or host contents have changed; this is not mechanical or macro-cycle acceptance.",
       "items": [
         "MACRO-CONFIG-PRESERVATION"
       ]
@@ -10184,11 +10195,11 @@
     "host_actions": "Ordinary host handlers remain blocked before mutation. Raw requests and other opcodes stay blocked; only a trial-owned exact one-slot RUN Request is exempted within the explicit test command.",
     "metadata": "each passive initialization reads a fresh MATERIAL mask before applying saved labels to live state",
     "errors": "passive diagnostics use Lifecycle.last_error and leave the retained virtual-SD pause hint box.last_err unchanged",
-    "acceptance": "Published reference-printer results cover bounded passive startup/reads and cached display. The new single-operation trial is PC-tested only; no trial deployment or mechanical acceptance is claimed.",
+    "acceptance": "Reference deployment and four explicit selected-slot normal preload/RFID/remaining cases were observed on MCU 1.1.3/CPython 3.8.2/MIPS. Physical motion and correct interfaces were reported by the operator. Full hardware families, fault/recovery paths and other firmware versions remain pending.",
     "single_operation_trial": {
       "command": "CFS_TEST_PRELOAD TNN=<physical T1A..T4D> CONFIRM=1",
       "scope": "Extension-specific command, outside the 103-command original inventory; not operator authentication",
-      "baseline": "Explicit cfs0 MCU1.1.3 with host encoding1 only",
+      "baseline": "Explicit cfs0 MCU 1.1.3 with host encoding1 only",
       "preconditions": "Ready passive lifecycle, standby/inactive virtual SD/not paused, actual empty head sensor, no error or other operation",
       "sequence": [
         "Fresh normal 0A IDLE0",
@@ -10206,7 +10217,27 @@
       "checks": [
         "PC-INTEGRATION-DEPENDENCIES",
         "PC-INTEGRATION-EVENTS"
-      ]
+      ],
+      "reference_check": {
+        "implementation_commit": "f151820c9f74dd9f84fd0b1e86edc55422da5ddb",
+        "mcu": "1.1.3",
+        "host": "CPython 3.8.2/MIPS little-endian; unchanged stock serial library",
+        "cfs_units": 1,
+        "physical_slots": [
+          "T1A",
+          "T1B",
+          "T1C",
+          "T1D"
+        ],
+        "confirmed_invocations": 4,
+        "attributed_normal_api_return_frames": 28,
+        "fresh_record_bytes_per_slot": 40,
+        "remaining": "Normal selected-slot percentage replies; unselected wire positions FF; no independent mass-accuracy claim",
+        "preservation": "Changes restricted to selected metadata; other spool keys/database bytes and 52 protected file hashes preserved; 25 installed source hashes verified",
+        "operator_reports": "Ordinary feed/return and correct native-screen/Creality Print display",
+        "final_observations": "Ready/standby, head absent, MATERIAL=15, CONNECTIONS=0, buffer=2 (empty), heater targets=0",
+        "limits": "Normal ACK and mode0 are observations, not unqualified physical completion proof. Internal retries and full-wire uniqueness are not established."
+      }
     }
   }
 }

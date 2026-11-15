@@ -5,10 +5,10 @@ English | [Русский](protocol.ru.md)
 **Status:** borrowed-native calls, reply decoding, per-device version selection,
 and stage 4 lifecycle, error and operation-context components are tested with PC
 substitutes. The package is `cfs`; the Klipper object remains `box`. The bootstrap
-initializes passive identity/telemetry admission. An explicit single-operation
-trial is prepared on PC separately from the earlier passive target observations;
-it has not been deployed or mechanically accepted. A complete K1C replacement
-cycle remains unverified.
+initializes passive identity/telemetry admission. The explicit single-operation
+trial has PC tests and four individually observed normal baseline preload runs,
+with fresh MCU RFID/remaining replies. A complete K1C replacement cycle, fault
+paths and other firmware versions remain unverified.
 
 Stable section anchors allow implementation and tests to reference this document.
 Add a verified target command here before using it in an operation.
@@ -109,6 +109,16 @@ these getter replies can therefore replace previously saved metadata. The full
 RFID acquisition/estimation path can move motors and is not started by default
 passive admission. A saved tag ID or remaining value must be distinguished from a fresh
 MCU observation.
+
+For ordinary baseline 1.1.3 `0x0A` replies, `DATA[2]` contains pending motor-driver
+diagnostic flags consumed by the state read; mode is the separate `DATA[3]`.
+Static analysis maps bits 0–3 to channels A–D, bit 4 to an MS3791 driver condition and
+bit 7 to the priority persistent-condition branch. These are not direct physical
+switch readings, preload stages or the separate FSM busy predicate; the trial
+does not exercise every flag. A background heartbeat can consume an indication
+before another read. Neither a low bit alone nor a zero byte establishes a jam,
+absence of faults or physical completion. A normal post-RUN mode `0` is required
+by the trial but, even with an ACK, needs separate physical observation.
 
 The following operation policies describe the active component contract tested
 with explicit PC construction. Registration provides 101 unconditional commands
@@ -215,9 +225,10 @@ acceptance must identify the exact version combination they cover.
 
 ## Frame format
 
-**Evidence: partial for the target.** Frame geometry and CRC have been checked
-offline against saved reference data. Target native-API operation and physical
-completion have not been verified by this package.
+**Evidence: partial for the target.** Frame geometry and CRC have offline checks
+and bounded normal baseline API-return checks, including 28 attributed frames
+from four preload trials. These are not a count of all physical wire
+transmissions. Full operation/fault acceptance remains separate.
 
 | Field | Size | Meaning |
 | --- | --- | --- |
@@ -245,13 +256,15 @@ operations. Mechanical units and stage transitions require their own acceptance.
 
 ## Native API
 
-**Evidence:** recovered from the retained library and exercised through PC
-substitutes. Actual target ABI, admission and timing remain unverified.
+**Evidence:** recovered from the retained library, exercised through PC
+substitutes and the unchanged reference library on MCU 1.1.3. Passive reads and
+four normal explicit preload paths were observed. Other command combinations,
+fault admission, retries and deadline behavior still need target checks.
 
 | Item | Reviewed boundary | Remaining verification |
 | --- | --- | --- |
-| Object | Existing Klipper object for the configured `serial_485` bus | Initialization order and availability on the target |
-| Request method | `cmd_send_data_with_response(data, timeout, retries_en=True)` | Target ABI and actual behavior for each required command |
+| Object | Existing Klipper object for the configured `serial_485` bus | Ownership and availability across other configurations/failure paths |
+| Request method | `cmd_send_data_with_response(data, timeout, retries_en=True)` | Per-command behavior outside the observed baseline paths |
 | Request bytes | ADDR, LEN, STATUS, CMD, DATA; native code adds SYNC/CRC | Validate target command and length handling |
 | Reply | Full framed bytes on response, `None` after exhaustion; exceptions may propagate | Late replies, negative status and disconnect paths on the target |
 | Retries | Native code may repeat selected commands even with `retries_en=False` | Actual transmission count and timeout budget per command |
@@ -296,7 +309,7 @@ RUN and slot-event actions. The explicit trial checks baseline mode and fresh
 MATERIAL/CONNECTIONS observations before its selected RUN, then requires another
 normal IDLE reply before selected-slot RFID/remaining reads. Its predecode RFID
 validation excludes additional/duplicate records before metadata persistence.
-An ACK alone is not mechanical-completion proof. The trial disables host
+An ACK or ordinary mode `0` alone is not mechanical-completion proof. The trial disables host
 CRC/LENGTH resends; retained `.so` retries and an in-flight MCU operation cannot
 be stopped by revoking host permission.
 
@@ -307,8 +320,8 @@ be stopped by revoking host permission.
 Record transaction timeout, possible native retransmissions, total operation
 deadline, expected reply hold and sensor wait separately. Use the reactor's
 monotonic clock and cooperative waits for operation coordination. Request
-timeouts are encoded and PC-tested; actual operation deadlines and recovery
-timing remain unverified for the target route.
+timeouts are encoded and PC-tested; normal baseline trial observations do not
+validate deadline expiry, in-flight cancellation or recovery timing on target.
 
 Unknown sensor state must not become a successful load. A configured material,
 cached active slot or ACK must not override contradictory physical observations.

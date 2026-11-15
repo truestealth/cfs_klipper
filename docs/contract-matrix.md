@@ -148,10 +148,10 @@ context-specific pause/after-pause effects.
 | `GAP-SERIAL-NAME` | Resolved: use only the configured bus; omit the historical redundant fixed-name lookup. Baseline and alternate names are PC-tested |
 | `GAP-HEAD-SENSOR-NAME` | Resolved: use the configured sensor for lookup and every enable path. Without a configured sensor, retain the distinct True fallback and emit no sensor-enable G-code |
 | `GAP-RESERVED-WIRE` | Keep three reserved identifiers separate from invented direct APIs; recover a required path before using it |
-| `GAP-MACRO-SNAPSHOT` | Identify the active include chain and configuration fingerprints before printer activation/acceptance; saved copies and temporary-tree deployment do not close it |
+| `GAP-MACRO-SNAPSHOT` | Resolved for the recorded reference environment: active includes/aliases were captured and fingerprints rechecked on target; recheck after configuration, firmware or host changes |
 | `GAP-MACRO-LOAD-TARGET` | Preserve the observed missing TNN forwarding for current behavior parity; revisit a correction later if needed, without guessing a spool or silently rewriting macros |
 
-Five gaps remain open; serial and head-sensor lookup policies are resolved. Open gaps gate
+Five gaps remain open; serial/head-sensor lookup and the recorded configuration snapshot are resolved. Open gaps gate
 their affected paths. Recording a gap completes the inventory entry; it does not
 complete implementation or grant a mechanical path success.
 
@@ -209,27 +209,29 @@ resolution, passive ready/heartbeat/restart and failure cleanup. Composed failur
 checks assert the actual motion/source/error context after nested phases and all
 eight recovery leaves. None executes the stock binary or operates equipment.
 
-The installer family now binds 27 tests, including legacy sibling `.pyc` files
-and modern caches. Separate checks on one baseline printer confirmed original
-entry/cache bytes, modes and modification times after restoration with Klipper
-stopped, followed by passive reinstall and ready startup. Fresh buffer, RFID
-and remaining-value replies were also validated; RFID returned `unknown` for
-all four slots. These observations do not complete a hardware family or
-establish successful mechanics or a restored stock-process startup.
+The installer family binds 27 tests for legacy sibling/modern caches. Separate
+target checks verified original entry/cache bytes, modes and modification times
+after stopped restoration, followed by passive reinstallation and ready startup.
+The restored stock process was not booted.
 
-After the direct RFID/remaining reads, both interfaces recognized CFS but showed
-all four slots as grey or undefined. Restoring the exact pre-query cache and
-restarting the passive host restored the colours in both interfaces, as confirmed
-by the operator. Cached display is therefore checked; fresh physical tag
-acquisition and the client's precise rendering condition remain unverified.
+An earlier passive getter check returned RFID `unknown`; exact cache restoration
+restored both interfaces. This established cached display separately from the
+subsequent [reference trial](installation.md#reference-trial-results).
+
+That trial completed one explicit preload for each physical T1A–T1D on MCU 1.1.3.
+All 28 attributed normal API-return frames were checked, including four fresh
+40-byte records and selected percentage replies. The operator reported ordinary
+feed/return and correct display in both interfaces. Other spool metadata,
+database bytes and protected files were preserved. Full load/unload/print/
+recovery cases and other firmware versions remain pending.
+
+The extension-only [single-operation trial](installation.md#single-operation-trial)
+is outside the original 103-command inventory. Its 19 PC methods are bound to
+`PC-INTEGRATION-DEPENDENCIES` and relevant event checks;
+`admission_policy.single_operation_trial` records its exact scope. The lifecycle
+stays passive during the operation. Target observations are separate evidence in
+that policy and hardware-family validation notes; the full hardware families
+remain planned until their remaining assertions are accepted.
 
 See [compatibility.md](compatibility.md) for implementation/validation status
 and [protocol.md](protocol.md) for the native API boundary.
-
-The extension-only [single-operation trial](installation.md#single-operation-trial)
-adds an explicit confirmed preload command outside the original 103-command
-inventory. Its 19 PC methods are bound to `PC-INTEGRATION-DEPENDENCIES` and the
-relevant event checks; `admission_policy.single_operation_trial` records the
-exact scope. The default lifecycle stays passive during the operation. These
-substitute-based checks do not accept the trial on a printer or close a hardware
-family.

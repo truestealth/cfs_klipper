@@ -12,19 +12,19 @@ an implemented or hardware-verified one.
 | --- | --- | --- |
 | Klipper import layout | Implemented | PC regression tests and passive deployment on the reference K1C |
 | Passive Klipper startup | Implemented | Real load_config, dependencies and data root; reference MCU 1.1.3 trial reached ready with host actions blocked |
-| Explicit single-operation preload trial | Prepared on PC | Narrow dispatch/request ownership and fresh baseline checks; not deployed or mechanically accepted; default lifecycle stays passive |
+| Explicit single-operation preload trial | Implemented; bounded reference check | One normal invocation per T1A–T1D on MCU 1.1.3, fresh RFID/remaining replies and operator observations; default lifecycle stays passive |
 | Full contract inventory and check bindings | Stage 1 complete | Real test references, partial families and remaining acceptance cases are tracked |
 | State, configuration and compatible storage | Stage 2 components implemented | Synthetic state, all 54 options, 21 endpoint fields and temporary-file tests |
-| Native `serial_485` calls | Stage 3 primitives implemented | PC request/retry checks plus real identity/state/sensor reads through the unchanged target library |
-| Wire contract | Request bodies and reply validation implemented | Synthetic checks plus 103 valid reference native replies; mechanical commands and fault cases remain unaccepted |
+| Native `serial_485` calls | Stage 3 primitives implemented | PC request/retry checks plus real reads and selected preload RUN through the unchanged target library |
+| Wire contract | Request bodies and reply validation implemented | Synthetic checks, earlier passive replies and 28 attributed normal preload-trial API-return frames; full operation/fault acceptance remains pending |
 | Per-device firmware selection | Implemented for six exact cfs0 versions | Independent identities, profiles and four-/six-byte layouts tested on a PC |
 | Lifecycle, shared errors and operation context | Component implementation | Cooperative reactor and substitute tests; physical operations remain incomplete |
 | Configured motion, heating, cutting and cleaning | Stage 5 components implemented | Synthetic G-code, fan, heater and sensor checks; hardware acceptance pending |
-| Preload, loading and unloading | Stage 6 components implemented | Synthetic phase checks; hardware acceptance pending |
+| Preload, loading and unloading | Stage 6 components implemented | Synthetic phases and bounded normal explicit preload; full loading/unloading acceptance pending |
 | Tool change and print lifecycle | Partial | PC substitutes cover tool changes and ending-material drain; hardware acceptance pending |
 | Pause/resume and recovery | Stage 8 components | PC substitutes cover recovery, refill, resume and persisted hints; bounded retained-source checks supplement CI; hardware unverified |
 | Stock G-code and status interfaces | Partial | All 103 names registered, including two conditional Hall commands and one blocked legacy feed command; endpoint and snapshots tested |
-| RFID, remaining length, saved materials | Partial | PC metadata/cache/grouping checks plus target buffer, RFID-unknown and remaining replies; both interfaces display saved slots again after exact cache rollback; fresh RFID acquisition and mechanical slot acceptance remain pending |
+| RFID, remaining length, saved materials | Partial | Fresh 40-byte MCU records and remaining replies after explicit T1A–T1D preload; normal physical behavior and both interfaces confirmed; fault/full-cycle acceptance remains pending |
 | Reversible development-file installation | Implemented | Modern/sibling bytecode backup and scoped restore; PC failure/tamper checks and actual target file/cache rollback while stopped, followed by passive reinstallation |
 | Python 3.8 | Project and CI default | 605 methods run: 601 passed, 4 Windows symlink-privilege skips on Python 3.8.20; passive target runtime 3.8.2 checked separately |
 
@@ -48,9 +48,9 @@ in the separate Linux portability run; the project-default run remains Python 3.
 
 The single-operation preload admission adds 19 public PC methods for explicit
 confirmation, request/dispatch ownership, fresh observations, blocked background
-effects, reply validation and revocation after failures. This addition has not
-been tested on Linux or the printer; the earlier installer portability result
-does not validate the new trial.
+effects, reply validation and revocation after failures. The published Python 3.8
+CI also passed on Ubuntu. Separate reference-printer trials exercised the normal
+baseline path below; CI does not establish those physical results.
 
 The first authorized reference trial used the unchanged stock native transport
 on CFS MCU 1.1.3 and printer Python 3.8.2. It reached ready/standby, preserved all 54
@@ -89,6 +89,20 @@ the current material database were preserved. This verifies display of saved
 slot data, not fresh physical RFID acquisition. RFID and remaining values were
 restored together, so the check does not isolate a client display condition or
 establish a permanent RFID solution.
+
+Later, the published trial code was installed with the same reversible procedure
+and without booting the restored stock Box process. One explicit invocation per
+T1A–T1D produced 28 independently checked normal API-return frames. All four fresh
+40-byte RFID records matched saved IDs; selected remaining percentages were valid.
+Only selected-slot remaining values changed;
+the other spool keys, material database, 52 protected files and 25 installed
+sources were preserved. The operator reported normal activity for all four
+trials and correct display in both interfaces. See the
+[bounded reference results](installation.md#reference-trial-results).
+This accepts a normal explicit preload path on one baseline unit, with physical
+observations; it does not accept the full filament/print/recovery cycle, native
+fault handling, timeout completion or another firmware version. A normal mode
+`0` is a required observation, not a direct read of the preload FSM busy state.
 
 Coverage records local component checks. Hosted results for each commit are
 available in [GitHub Actions](https://github.com/truestealth/cfs_klipper/actions).
@@ -158,12 +172,14 @@ object, command-specific reply decoding and per-address identity/profile selecti
 Explicit binding borrows the object without connecting or disconnecting it.
 The PC suite uses substitutes. Separately, the reference passive trial exercised
 the stock binary in its intended target process for identity/state/sensor reads.
-This does not validate mechanical commands, injected transport faults or the
-other MCU versions.
+This passive check does not validate mechanical commands, injected transport
+faults or other MCU versions. The later explicit preload checks add only the
+bounded normal baseline path; fault and full-operation paths remain separate.
 `load_config()` retains passive identity/telemetry admission. The separate
 [explicit preload trial](installation.md#single-operation-trial) grants one
 selected RUN path without enabling ordinary host actions or automatic mechanics.
-Its PC preparation is separate from the earlier passive target observations.
+Its PC tests, normal baseline trials and earlier passive target observations
+have distinct evidence scopes.
 
 Checks cover all 25 named reply statuses and their contextual outcomes, normal
 data/cache updates, missing-response distinctions, communication-test byte zero
@@ -313,8 +329,9 @@ unchanged. They are recorded compatibility observations; correcting them is
 outside this phase. Optimization and fixes will be considered later if needed.
 Do not infer a spool or change status/macro interfaces to bypass these outcomes.
 Preserving them does not establish successful printing/loading or hardware
-acceptance. Active include fingerprints and physical acceptance remain separate
-checks tracked by the matrix.
+acceptance. Active include fingerprints were verified for the recorded reference
+context and must be rechecked after changes; physical acceptance remains separate
+and is tracked by the matrix.
 
 Stage 9 adds preflight for unsupported loading encodings and required movement
 positions. Explicit encoding-0 loading/tool changes stop before heating or
@@ -343,7 +360,7 @@ pending.
 
 | CFS MCU firmware | Project target | Replacement validation |
 | --- | --- | --- |
-| 1.1.3 | Baseline; current reference CFS firmware | PC contract/profile checks and reference passive startup/reads; mechanical acceptance pending |
+| 1.1.3 | Baseline; current reference CFS firmware | PC checks, passive startup/reads and four individually observed normal preload trials; full mechanical acceptance pending |
 | 1.2.2, 1.4.2, 1.5.0 | Intermediate reference versions | Static cfs0/G32 comparison and PC profile/layout checks; no replacement hardware acceptance |
 | 1.5.2 | Additional compatibility target | Static comparison and PC profile/layout checks; target hardware validation pending |
 | 1.5.3 | Additional compatibility target | Ordinary paths match examined 1.5.2; exact identity/profile tested on a PC; target hardware validation pending |

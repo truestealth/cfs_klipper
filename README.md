@@ -24,7 +24,9 @@ with substituted hardware effects; public CI uses synthetic fixtures.
 telemetry reads are available, while ordinary host actions and native writes are
 blocked. There is no general switch to enable mechanics. An explicit
 [single-operation preload trial](docs/installation.md#single-operation-trial)
-is prepared on the PC; it has not been deployed or run on the printer.
+has a bounded reference-printer check: one invocation for each T1A–T1D slot on
+MCU 1.1.3, fresh RFID/remaining replies, observed mechanical activity and correct
+display in both interfaces. Full loading, tool changes and print acceptance remain pending.
 A reference K1C trial verified the live configuration and sustained passive reads
 on CFS MCU 1.1.3 with printer Python 3.8.2. Mechanical acceptance remains pending.
 The main installer also completed file/cache rollback with Klipper stopped and
@@ -32,8 +34,8 @@ passive reinstallation, including sibling `.pyc` files. Buffer, RFID `unknown`
 and remaining-value replies were checked. Direct RFID/remaining reads made all
 four slots grey or undefined in the touchscreen and Creality Print. Restoring
 the exact pre-query spool cache and restarting passively restored both displays,
-as confirmed by the user. This verifies cached display; fresh physical RFID
-acquisition remains unverified.
+as confirmed by the user. This earlier check verified cached display; the later
+explicit preload trials obtained fresh 40-byte RFID records from the MCU.
 Two examined saved load wrappers omit the required physical `TNN`; they fail
 before loading. The current phase preserves the observed `START_PRINT` mapping
 check and both load wrappers' argument forwarding for behavior parity.
@@ -78,7 +80,7 @@ Tests run directly from the checkout using standard-library `unittest`. Install
 rendering; the extension itself is not installed as a package. **Python 3.8 is the
 project default**, recorded in [.python-version](.python-version). Create a local
 environment with CPython 3.8 before running the tests. Native MIPS identity/state
-reads have a bounded reference-printer check; mechanical compatibility remains
+reads have a bounded reference-printer check; full mechanical compatibility remains
 unverified.
 
 Windows / PowerShell:

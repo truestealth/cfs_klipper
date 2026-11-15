@@ -9,9 +9,10 @@ and reversible development-file installation. Explicit unresolved paths remain
 in the matrix, including the missing physical target in two examined saved load
 wrappers. PC admission provides real initialization and passive identity/
 telemetry startup. The reference printer's live configuration, passive reads,
-file/cache rollback and cached display have bounded checks. A single-operation
-preload admission path is now prepared on PC without printer contact; it has not
-been deployed or mechanically accepted. Full hardware acceptance remains pending.
+file/cache rollback and cached display have bounded checks. The single-operation
+preload admission path has four individually observed normal runs on MCU 1.1.3,
+with fresh RFID/remaining replies and correct client display. Full hardware
+acceptance remains pending.
 
 ## Target and design
 
@@ -266,14 +267,17 @@ configuration, CFS hardware and MCU identity. Validate **1.1.3 first**:
 6. Controlled failures, disconnect/reconnect, runout/refill, restart and
    power-loss recovery; settings/spool data and rollback preservation.
 
-The PC preparation for step 2 is the separate
+The bounded path for step 2 is the separate
 [single-operation trial](installation.md#single-operation-trial). It grants one
 selected RUN request without switching the lifecycle to active. Ordinary client
 commands and automatic actions remain blocked; ownership is revoked on return,
 failure or stale context. The stock native library and MCU remain unchanged.
-This preparation does not authorize deployment or mechanics. A zero CONNECTIONS
-snapshot and a normal IDLE reply after RUN are mandatory; neither a one-bit
-selector nor an ACK establishes physical isolation/completion.
+Further deployment or mechanics require authorization and physical preparation.
+A zero CONNECTIONS snapshot and a normal IDLE reply after RUN are mandatory;
+neither a one-bit selector, an ACK nor mode `0` establishes physical isolation
+or completion. The four observed T1A–T1D normal trials confirm only this baseline
+path on one CFS, not full loading/unloading, cutting, purging, printing, recovery
+or failure/timeout behavior.
 
 Then validate other targeted versions separately. Record results for the number
 of physical CFS units actually tested; PC simulation of four boxes does not
