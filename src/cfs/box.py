@@ -29,7 +29,7 @@ from .errors import format_error
 from .lifecycle import Lifecycle
 from .motion import Motion
 from .native import NativeSerial, Request, UnsupportedRequest, build_request, diagnostic_request, slot_mask
-from .operations import OperationContext, PreloadTrial
+from .operations import MaterialTrial, OperationContext, PreloadTrial
 from .protocol import DecodeContext, decode_reply
 from .state import BoxState
 from .storage import SpoolStore
@@ -104,6 +104,7 @@ class Box:
         self.slot_events = {}
         self.operations = OperationContext(self)
         self.preload_trial = PreloadTrial(self)
+        self.material_trial = MaterialTrial(self)
         self.speed_factor = None
         self.start_print_retraction_distance = 0
         self.error_next_macro = []
@@ -130,7 +131,7 @@ class Box:
         if self.lifecycle is None or not self.lifecycle.running:
             raise RuntimeError("the CFS host lifecycle is not ready")
         if self.lifecycle.passive:
-            raise RuntimeError("CFS admission mode blocks host actions")
+            return self.material_trial.guard(address)
         guard = self.lifecycle._report_guard(address)
         guard()
         return guard
@@ -598,6 +599,7 @@ class Box:
         if self.lifecycle is not None and self.lifecycle.running:
             self.lifecycle.shutdown()
         self.preload_trial.cancel()
+        self.material_trial.cancel()
         self.operations.cancel()
         self._binding_generation += 1
         self._printer = printer
@@ -614,6 +616,7 @@ class Box:
     def unbind_native(self):
         """Invalidate own pending work without closing the borrowed transport."""
         self.preload_trial.cancel()
+        self.material_trial.cancel()
         self._binding_generation += 1
         self.operations.cancel()
         for address in range(1, 5):
@@ -626,6 +629,8 @@ class Box:
         self.slot_events.clear()
 
     def invalidate_device(self, address, raw_reply=None):
+        if self.material_trial.active and self.material_trial.address == address:
+            self.material_trial.cancel()
         if self.preload_trial.active and self.preload_trial.address == address:
             self.preload_trial.cancel()
         self.device_versions.invalidate(address, raw_reply=raw_reply)
@@ -644,6 +649,8 @@ class Box:
             self.state_extensions.pop(address, None)
             raise
         if self.device_versions.generation(address) != previous:
+            if self.material_trial.active and self.material_trial.address == address:
+                self.material_trial.cancel()
             if self.preload_trial.active and self.preload_trial.address == address:
                 self.preload_trial.cancel()
             self.state_extensions.pop(address, None)
@@ -695,9 +702,14 @@ class Box:
             raise ValueError("native calls require a built Request")
         trial_guard = (self.preload_trial.admit(request)
                        if self.lifecycle is not None and self.lifecycle.passive else None)
+        material_guard = (self.material_trial.admit(request)
+                          if self.lifecycle is not None and self.lifecycle.passive else None)
+        if material_guard is not None:
+            request = self.material_trial.bounded_request(request)
+            retries_en = False
         if (self.lifecycle is not None and self.lifecycle.passive
                 and (request.diagnostic or request.command not in (0x02, 0x03, 0x05, 0x08, 0x0A, 0x14))
-                and trial_guard is None):
+                and trial_guard is None and material_guard is None):
             raise UnsupportedRequest("CFS admission mode permits only typed identity and telemetry reads")
         if request.address not in range(1, 5):
             raise UnsupportedRequest("unaddressed diagnostics have no confirmed CFS context")
@@ -711,6 +723,8 @@ class Box:
         def check_context():
             if trial_guard is not None:
                 trial_guard()
+            if material_guard is not None:
+                material_guard()
             if self.lifecycle is not None and self.lifecycle.running:
                 self.lifecycle.guard_device(address)
             if (binding != self._binding_generation
@@ -719,7 +733,7 @@ class Box:
 
         try:
             options = {"retries_en": retries_en, "check_context": check_context}
-            if trial_guard is not None:
+            if trial_guard is not None or material_guard is not None:
                 options["retry_errors"] = False
             frame = self.native.exchange(request, **options)
         except StaleReplyError:
@@ -735,6 +749,8 @@ class Box:
         self.last_replies[address] = frame
         if trial_guard is not None:
             self.preload_trial.validate_reply(request, frame)
+        if material_guard is not None:
+            self.material_trial.validate_reply(request, frame)
         if request.command == 0x14 and (frame is None or frame.status != 0):
             self.invalidate_device(address, raw_reply=frame.raw if frame else None)
             generation = self.device_versions.generation(address)
@@ -791,6 +807,16 @@ class Box:
         except (OSError, ValueError, RuntimeError) as error:
             raise gcmd.error("cfs: test preload: %s" % error) from error
         self.gcode.respond_info("CFS test preload observations: %s" % result)
+        return result
+
+    def cmd_test_material(self, gcmd, action):
+        try:
+            result = self.material_trial.run(action,
+                gcmd.get_command_parameters().get("TNN"),
+                confirmed=gcmd.get_int("CONFIRM", 0) == 1)
+        except (OSError, ValueError, RuntimeError, AttributeError, KeyError) as error:
+            raise gcmd.error("cfs: test %s: %s" % (action.lower(), error)) from error
+        self.gcode.respond_info("CFS test material observations: %s" % result)
         return result
 
     def register_native_commands(self, gcode):

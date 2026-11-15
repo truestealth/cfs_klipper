@@ -313,6 +313,34 @@ An ACK or ordinary mode `0` alone is not mechanical-completion proof. The trial 
 CRC/LENGTH resends; retained `.so` retries and an in-flight MCU operation cannot
 be stopped by revoking host permission.
 
+The separate [load/unload trial](installation.md#material-operation-trial) is
+PC-only preparation. Loading admits typed `0x0F`, selected `0x10` stages 0/4/5/6/7,
+`0x04` PRINT and fresh `0x0A`/`0x08`/`0x05` observations. Stage 6 belongs only to
+the armed head callback. Unloading uses the configured cutter and known-source
+`0x04` IDLE/`0x11` BUFFER/MATERIAL path. Neither route admits preload RUN, raw
+diagnostics, another CFS or an automatic recovery sequence. Fresh final head,
+hub, buffer, mode and source bookkeeping are checked separately from ACKs;
+these PC checks do not establish physical completion.
+
+Successful baseline 1.1.3 `0x10` replies have stage-specific `DATA`, rather than
+a universal empty ACK. The trial validates these bodies before decoder effects:
+
+| Request stage | DATA size | Successful reply data |
+| --- | --- | --- |
+| `0` | 1 byte | Mode `0` after normal baseline initialization |
+| `5` | 4 bytes | Measuring-wheel float32, big-endian |
+| `4`, `6`, `7` | 0 bytes | Empty payload |
+
+Normal reply status and the matching body are required together. The mode byte
+or wheel data does not replace the trial's separate final sensor checks.
+
+Stage `4` acknowledges before its feed loop completes; the head-arrival stage
+`6` and subsequent observations remain necessary. Replies carry no stage echo
+or transaction ID. The retained native transport orders requests and matching
+address/command completions, but these fields cannot establish the origin of
+every late same-command reply. Stage-specific payload checks reject mismatched
+shapes; they do not add transaction identity or prove mechanical completion.
+
 <a id="timing"></a>
 
 ## Timing, retries and failures

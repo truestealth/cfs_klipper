@@ -235,3 +235,11 @@ remain planned until their remaining assertions are accepted.
 
 See [compatibility.md](compatibility.md) for implementation/validation status
 and [protocol.md](protocol.md) for the native API boundary.
+
+The separate [load/unload trial preparation](installation.md#material-operation-trial)
+reuses the complete transport phases with explicit confirmation and a root
+operation context. Its PC tests are bound to the same dependency/event families:
+fresh pre/post observations, actual-head callback admission, sensed cutting,
+service positioning, first-failure stopping and revocation. These commands are
+also outside the original inventory. They have not been deployed or run on the
+reference printer; the earlier four preload observations do not accept them.

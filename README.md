@@ -26,7 +26,9 @@ blocked. There is no general switch to enable mechanics. An explicit
 [single-operation preload trial](docs/installation.md#single-operation-trial)
 has a bounded reference-printer check: one invocation for each T1A–T1D slot on
 MCU 1.1.3, fresh RFID/remaining replies, observed mechanical activity and correct
-display in both interfaces. Full loading, tool changes and print acceptance remain pending.
+display in both interfaces. Separate [load/unload trial admission](docs/installation.md#material-operation-trial)
+is prepared on the PC and has not been installed or run on the printer. Full
+loading, tool changes and print acceptance remain pending.
 A reference K1C trial verified the live configuration and sustained passive reads
 on CFS MCU 1.1.3 with printer Python 3.8.2. Mechanical acceptance remains pending.
 The main installer also completed file/cache rollback with Klipper stopped and
@@ -61,8 +63,9 @@ handlers. Stage 6 adds preload, loading and unloading phases. Stage 7 adds tool
 changes and print lifecycle routes. Stage 8 adds runout, recovery and resume paths.
 Stage 9 tests integration and reversible file deployment.
 All 103 original command names are registered: 101 unconditional and two conditional Hall
-commands. The extension-only `CFS_TEST_PRELOAD` command is separate from that
-inventory. The legacy feed command remains deliberately blocked; encoding 0,
+commands. The extension-only `CFS_TEST_PRELOAD`, `CFS_TEST_LOAD` and
+`CFS_TEST_UNLOAD` commands are separate from that inventory. The legacy feed
+command remains deliberately blocked; encoding 0,
 wire stages above seven, reserved operations and unaddressed diagnostics remain
 unsupported. See the matrix for the exact open paths.
 

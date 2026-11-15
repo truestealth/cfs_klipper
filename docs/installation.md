@@ -91,7 +91,7 @@ error/runout/head events cannot trigger pause, motion restoration, heating,
 tightening or sensor-enable G-code. Automatic preload permission and power-on
 RUN are suppressed. Existing macros can encounter these explicit admission
 errors; this mode is not suitable for printing. There is no general option to
-enable mechanics. The separate explicit trial below grants one operation without
+enable mechanics. Separate explicit trials below grant one operation without
 changing the passive lifecycle.
 
 Use direct typed read commands for telemetry. `BOX_INFO_REFRESH` invokes preload
@@ -227,3 +227,85 @@ typed reads and no preload RUN. Final read-only checks left the printer ready
 with an absent head-filament observation, zero CONNECTIONS and zero heater
 targets; those reads did not change spool data. This evidence is for the same
 baseline unit and retained host runtime, not another firmware/hardware pairing.
+
+<a id="material-operation-trial"></a>
+
+## Explicit load and unload trial preparation
+
+This admission is prepared and tested on the PC only. It has not been installed
+or run on the printer. The earlier four-slot preload results do not accept this
+longer route. The stock `serial_485.so`, MCU firmware, configuration and macros
+remain unchanged; startup and ordinary commands remain passive.
+
+Two separate commands select a physical slot, bypassing logical tool mapping:
+
+```gcode
+CFS_TEST_LOAD TNN=T1A CONFIRM=1
+```
+
+```gcode
+CFS_TEST_UNLOAD TNN=T1A CONFIRM=1
+```
+
+Each command grants only its own invocation. Loading does not chain unloading,
+and unloading does not start another load. Confirmation is explicit invocation,
+not authentication. Existing load wrappers and their missing `TNN` forwarding
+are preserved; this path does not repair or accept those wrappers.
+
+Both commands require one connected/online CFS with confirmed cfs0 MCU **1.1.3**,
+host encoding 1, ready/standby, inactive virtual SD, no pause or resume, no active
+error, refill, ending-material drain, operation or other trial. A real configured
+head sensor is required. XYZ must already be homed; the trial does not home or
+clear the bed mesh. Configured positions are validated against mechanical
+`stepper_*` travel, including service positions beyond slicer limits. Feed values,
+speeds, temperatures and iteration counts are checked before heat, motion or
+native writes. The target temperature must allow extrusion within the heater's
+configured limits. Unloading requires a configured active cutter switch,
+initially released. The configuration is pinned for the operation.
+
+| Observation | LOAD | UNLOAD |
+| --- | --- | --- |
+| Initial head/source | Head absent, no loaded source | Head present; `last_cmd` and saved filament source both match `TNN` |
+| Fresh initial mode | IDLE `0` | IDLE `0` or PRINTING `2` |
+| Fresh MATERIAL | Selected bit present | Selected bit present |
+| Fresh CONNECTIONS | Entire mask zero | Exactly the selected bit |
+| Fresh initial buffer | Empty `2` | A normal valid observation |
+| Required final result | Head present, selected CONNECTIONS, mode `2`, buffer not full and matching source bookkeeping | Head absent, CONNECTIONS zero, mode `0`, empty buffer `2`, released cutter and cleared source bookkeeping |
+
+The load command moves to the configured extrusion position and reuses the
+existing complete transport phases: CFS feed, actual head arrival with the head
+feed/stage-6 callback, final extruder/buffer feed, PRINT mode and source
+bookkeeping. It also clears the normal `filament_useup` latch. The unload command
+heats as required, performs configured sensed cutting, then uses the known-source
+retraction path with recovery disabled and returns to the configured box
+extrusion position. The `WITH_TNN` diagnostic route is not used because its
+ignored returns cannot establish successful unloading. These commands cover
+transport to the head and back, including cutting on unload. Purging, nozzle
+cleaning, complete user macro cycles, tool changes and printing retain separate
+acceptance cases.
+
+Permission belongs to one operation context, lifecycle/binding/device generations
+and the owning cooperative dispatch. Only an armed load's real head-arrival
+callback receives temporary additional permission. Other head/slot/runout/error
+callbacks, ordinary host commands and automatic startup paths remain gated.
+Only the selected CFS and normal-route typed request bodies are admitted; raw
+diagnostics and preload RUN remain blocked.
+
+Every scoped reply must be fresh, normal and well formed before decoder effects.
+Validation follows the command and feed stage: successful `0x10` stage 0 carries
+one mode byte, stage 5 carries four wheel bytes, and stages 4/6/7 are empty.
+An empty ACK is therefore not a substitute for every successful stage reply.
+The first failure stops the trial before automatic loading recovery, another
+sensed cutting attempt or unload recovery. Host CRC/LENGTH resends are disabled
+and native requests pass `retries_en=False`. The cooperative operation budget is
+900 seconds; own reads use at most two seconds, and other requests are bounded
+by their native timeout and the remaining budget. These limits cannot interrupt
+stock-library retries/waits, an MCU action or already queued Klipper motion.
+
+After normal phase completion, the trial waits with `M400`, checks fresh final
+observations and requests `M104 S0`. A failure does not automatically cut, stop,
+unload or restore heat, fans, movement modes or position. Recorded source/data
+changes are retained rather than replaced with stale cache values. Inspect the
+actual state before deciding any further operation; a failed load may leave
+material in the path without an accepted loaded-source result. Physical
+observation remains required even when ACKs and final observations are normal.

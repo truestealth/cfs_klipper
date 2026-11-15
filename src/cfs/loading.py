@@ -113,6 +113,10 @@ class Loading:
     def extrude_process_auto_retry_process(self, tnn, retry_type, retry):
         """Run the source's reason-specific loading recovery sequence."""
         box = self.box
+        trial = getattr(box, "material_trial", None)
+        if trial is not None and trial.active:
+            trial.guard()
+            raise RuntimeError("material trial stops before automatic loading recovery")
         content = box.box_state.get_Tnn_content(tnn)
         address, slot = content["addr"], content["num"]
         guard = box.host_guard(address)

@@ -1,6 +1,7 @@
 """Ownership of cooperative operation waits and head-event results."""
 
 from copy import deepcopy
+from dataclasses import replace
 from math import isfinite
 
 from .native import UnsupportedRequest, build_request, slot_mask
@@ -88,7 +89,7 @@ class PreloadTrial:
         box, lifecycle = self.box, self.box.lifecycle
         if confirmed is not True or not isinstance(tnn, str) or tnn not in box.box_state.Tnn_content:
             raise ValueError("test preload requires a physical TNN and explicit CONFIRM=1")
-        if self.active:
+        if self.active or box.material_trial.active:
             raise RuntimeError("a test preload is already running")
         if lifecycle is None or not lifecycle.passive:
             raise RuntimeError("test preload requires the passive lifecycle")
@@ -156,6 +157,331 @@ class PreloadTrial:
         finally:
             self.cancel()
             self._request = self._token = None
+
+
+class MaterialTrial:
+    """Own one confirmed baseline load or cut/unload while startup stays passive.
+
+    Existing phase executors supply the mechanics. Only their owning dispatch
+    and one armed head callback may use the scoped host/native permission.
+    Faults stop before automatic recovery; revocation cannot interrupt a native
+    call, an MCU action or already queued Klipper motion.
+    """
+
+    def __init__(self, box):
+        self.box = box
+        self._token = self._head_owner = None
+        self._cancelled = self._root_done = False
+        self.address = None
+
+    @property
+    def active(self):
+        return self._token is not None
+
+    def cancel(self):
+        self._cancelled = True
+
+    def owns_dispatch(self):
+        lifecycle = self.box.lifecycle
+        if not self.active or lifecycle is not self._lifecycle:
+            return False
+        current = lifecycle.current_dispatch()
+        return current is self._owner or (self._head_owner is not None and current is self._head_owner)
+
+    def guard(self, address=None):
+        if not self.active:
+            raise RuntimeError("CFS admission mode blocks host actions")
+        if not self.owns_dispatch():
+            raise RuntimeError("this dispatch does not own the material trial")
+        if address is not None and address != self.address:
+            raise UnsupportedRequest("the material trial owns only its selected CFS")
+        self._guard()
+        return self._guard
+
+    def admit(self, request):
+        if not self.owns_dispatch():
+            return None
+        self._guard()
+        mask = self.mask
+        read = {0x0A: (b"",), 0x05: (b"",), 0x08: (b"\x00", b"\x01")}
+        allowed = request.data in read.get(request.command, ())
+        if self._phase == "load":
+            allowed |= (request.command == 0x0F and request.data in (b"\x00", b"\x01"))
+            allowed |= (request.command == 0x04 and request.data == bytes((mask, 0)))
+            allowed |= (request.command == 0x10 and len(request.data) == 3
+                        and request.data[0] == mask and request.data[1] in (0, 4, 5, 7)
+                        and request.data[2] == (int(self.box.boxcfg.extrude_material_len_for_box)
+                                                if request.data[1] == 7 else 0))
+        elif self._phase == "unload":
+            allowed |= (request.command == 0x04 and request.data == b"\x00\x01")
+            allowed |= (request.command == 0x11 and request.data in
+                        (bytes((mask, 0)), bytes((mask, 1))))
+        if self.box.lifecycle.current_dispatch() is self._head_owner:
+            allowed = request.command == 0x10 and request.data == bytes((mask, 6, 0))
+        if (request.diagnostic or request.request_state != 0xFF
+                or request.address != self.address or not allowed
+                or (self._phase in ("before", "after") and request is not self._reading)):
+            raise UnsupportedRequest("request is outside the selected material trial phase")
+        return self._guard
+
+    def bounded_request(self, request):
+        limit = 2 if request.command in (0x05, 0x08, 0x0A) else request.timeout
+        return replace(request, timeout=min(limit, self._deadline - self.box._reactor.monotonic()))
+
+    def validate_reply(self, request, frame):
+        self._guard()
+        valid = frame is not None and frame.status == 0
+        if valid:
+            if request.command == 0x0A:
+                valid = len(frame.data) == 4 and frame.data[3] in (0, 2)
+            elif request.command == 0x08:
+                valid = len(frame.data) == 1 and frame.data[0] <= 15
+            elif request.command == 0x05:
+                valid = len(frame.data) == 1 and frame.data[0] in (0, 1, 2)
+            elif request.command == 0x10:
+                # Baseline feed stages have different successful reply bodies:
+                # 0 carries mode, 5 carries four wheel bytes, 4/6/7 are empty.
+                stage = request.data[1]
+                valid = len(frame.data) == {0: 1, 5: 4}.get(stage, 0)
+                if valid and stage == 0:
+                    valid = frame.data == b"\x00"
+            else:
+                valid = frame.data == b""
+        if not valid:
+            self.cancel()
+            raise RuntimeError("material trial stopped at a missing, abnormal or malformed reply")
+
+    def head_event(self):
+        """Permit only the current load's first real, armed head arrival."""
+        box = self.box
+        if (not self.active or self._cancelled or self.action != "LOAD"
+                or self._phase != "load" or self._head_owner is not None
+                or not box.operations.active or not box.filament_sensor_enable
+                or box.extrude_process_stage7_flag or box.operations._head_running
+                or self._lifecycle.head_sensor.runout_helper.filament_present != 1):
+            return
+        self._head_owner = self._lifecycle.current_dispatch()
+        self._head_started = True
+        try:
+            self._guard()
+            box.operations.head(self._lifecycle.move_head, self._lifecycle.stage6)
+        except Exception:
+            self.cancel()
+            # A reactor head callback has no command caller to receive this
+            # failure. Its revoked scope stops the owning command at its next
+            # guard instead of running any recovery from the callback.
+            return
+        finally:
+            self._head_owner = None
+            if self._root_done:
+                self._token = None
+
+    def _read(self, command, data=b""):
+        self._guard()
+        self._reading = request = build_request(self.address, command, data, timeout=2)
+        previous = self.box.last_replies.get(self.address)
+        try:
+            result = self.box.send_native(request)
+            self._guard()
+            frame = self.box.last_replies.get(self.address)
+            if result is not True or frame is None or frame is previous:
+                raise RuntimeError("a fresh material-trial observation is required")
+            return frame.data
+        finally:
+            self._reading = None
+
+    def _geometry(self):
+        """Check the complete normal route before heat, motion or native writes."""
+        box, cfg = self.box, self.box.boxcfg
+        status = box.toolhead.get_status(box._reactor.monotonic())
+        if not set("xyz").issubset(status["homed_axes"]):
+            raise RuntimeError("material trial requires already homed XYZ; it does not home")
+        position = box.toolhead.get_position()
+        for index, axis in enumerate("xyz"):
+            section = cfg.config.getsection("stepper_" + axis)
+            low, high = section.getfloat("position_min"), section.getfloat("position_max")
+            names = {"x": ("extrude_pos_x", "pre_cut_pos_x", "retrude_position_x"),
+                     "y": ("safe_pos_y", "extrude_pos_y", "pre_cut_pos_y", "retrude_position_y"),
+                     "z": ()}[axis]
+            values = [position[index]] + [getattr(cfg, name) for name in names]
+            if axis == "y":
+                values.append(cfg.get_real_cut_pos_y())
+            if axis == "z":
+                values.extend((25, 50))
+            if (not all(type(value) in (int, float) and isfinite(value) for value in [low, high] + values)
+                    or low >= high or any(not low <= value <= high for value in values)):
+                raise ValueError("material-trial coordinates exceed configured %s travel" % axis)
+        positive = (cfg.clean_velocity, cfg.cut_velocity, cfg.cut_accel, cfg.cut_accel_to_decel,
+                    cfg.extrude_material_len_for_extruder, cfg.extrude_material_velocity)
+        if not all(type(value) in (int, float) and isfinite(value) and value > 0 for value in positive):
+            raise ValueError("material-trial speeds and feed lengths must be finite and positive")
+        amount = cfg.extrude_material_len_for_box
+        if (type(amount) not in (int, float) or not isfinite(amount)
+                or not 0 <= amount <= 255 or amount != int(amount)):
+            raise ValueError("material-trial box feed must be an integral byte")
+        if (type(cfg.extrude_material_times) is not int or cfg.extrude_material_times <= 0
+                or type(cfg.cut_run_count) is not int or cfg.cut_run_count <= 0):
+            raise ValueError("material-trial iteration counts must be positive integers")
+        velocities, _ = box.get_flush_velocity(self.source, self.target)
+        if not all(type(value) in (int, float) and isfinite(value) and value > 0 for value in velocities):
+            raise ValueError("material-trial extrusion velocities must be finite and positive")
+        heater = box.toolhead.extruder.get_heater()
+        temperatures = [cfg.Tn_extrude_temp, box.get_material_target_temp(self.source),
+                        box.get_material_target_temp(self.target)]
+        if not all(type(value) in (int, float) and isfinite(value)
+                   and heater.min_temp < value < heater.max_temp for value in temperatures):
+            raise ValueError("material-trial temperature exceeds configured heater limits")
+        _, _, temperature = box.get_flush_temp(self.source, self.target)
+        if (type(temperature) not in (int, float) or not isfinite(temperature)
+                or not heater.min_temp < temperature < heater.max_temp
+                or temperature < heater.min_extrude_temp):
+            raise ValueError("material-trial temperature exceeds configured heater limits")
+        box.cutter._preflight_cut()
+        if self.action == "UNLOAD":
+            box.cutter._require_sensor()
+            if box.cut_sensor.cut_present != 0:
+                raise RuntimeError("material trial requires an initially released cutter switch")
+
+    def run(self, action, tnn, confirmed=False):
+        box, lifecycle = self.box, self.box.lifecycle
+        if (action not in ("LOAD", "UNLOAD") or confirmed is not True
+                or not isinstance(tnn, str) or tnn not in box.box_state.Tnn_content):
+            raise ValueError("material trial needs LOAD/UNLOAD, physical TNN and CONFIRM=1")
+        if self.active or box.preload_trial.active or box.operations.active:
+            raise RuntimeError("another CFS trial or operation is still owned")
+        if lifecycle is None or not lifecycle.passive:
+            raise RuntimeError("material trial requires the passive lifecycle")
+        lifecycle.check()
+        address = box.box_state.Tnn_content[tnn]["addr"]
+        if (box.native is None or box.boxcfg.version != 1
+                or box.device_versions.require_supported(address).version != "1.1.3"):
+            raise RuntimeError("material trial requires confirmed cfs0 MCU 1.1.3 and encoding 1")
+        pause = box._printer.lookup_object("pause_resume", None)
+        owner = lifecycle.current_dispatch()
+        if pause is None or owner is None:
+            raise RuntimeError("material trial requires retained pause state and a dispatch owner")
+        context = lifecycle._report_guard(address, operation=False)
+        self._lifecycle, self._owner = lifecycle, owner
+        self.address, self.target, self.action = address, tnn, action
+        self.mask = slot_mask(tnn[2])
+        self._deadline = lifecycle.reactor.monotonic() + 900
+        self._phase, self._reading = "before", None
+        self._head_started = False
+        configuration = {key: deepcopy(value) for key, value in vars(box.boxcfg).items() if key != "config"}
+        token = self._token = object()
+        self._cancelled = self._root_done = False
+        serial = None
+
+        def check():
+            context()
+            lifecycle.guard_device(address)
+            context()
+            try:
+                unsafe = (self._token is not token or self._cancelled
+                    or box.lifecycle is not lifecycle or not lifecycle.passive
+                    or not self.owns_dispatch() or box.boxcfg.version != 1
+                    or configuration != {key: value for key, value in vars(box.boxcfg).items() if key != "config"}
+                    or lifecycle.reactor.monotonic() >= self._deadline
+                    or box.box_state.get_Tn_data(address, "state") != "connect"
+                    or not lifecycle.online(address) or not box.native.is_connected
+                    or any(lifecycle.online(other) or box.box_state.get_Tn_data(other, "state") == "connect"
+                           for other in range(1, 5) if other != address)
+                    or box.error is not None or box.inside_error or box.box_state.extrude_err
+                    or box.is_use_ending_material or box.inside_auto_refill or box.inside_extrusion_all_materials
+                    or box.print_stats.state != "standby" or box.virtual_sdcard.is_active()
+                    or box.virtual_sdcard.do_resume_status or pause.is_paused
+                    or lifecycle.head_sensor is None
+                    or lifecycle.head_sensor.runout_helper.filament_present not in (0, 1)
+                    or (action == "LOAD" and not self._head_started
+                        and not box.filament_sensor_enable
+                        and lifecycle.head_sensor.runout_helper.filament_present != 0)
+                    or (action == "LOAD" and self._head_started
+                        and lifecycle.head_sensor.runout_helper.filament_present != 1)
+                    or (action == "UNLOAD" and not box.cut_sensor.active)
+                    or (action == "LOAD" and box.last_cmd not in (None, tnn))
+                    or not set("xyz").issubset(box.toolhead.get_status(lifecycle.reactor.monotonic())["homed_axes"])
+                    or (serial is not None and (not box.operations.active or box.operations._serial != serial)))
+            except (AttributeError, TypeError, KeyError):
+                self.cancel()
+                raise OperationCancelled("material-trial observations became unavailable")
+            if unsafe:
+                self.cancel()
+                raise OperationCancelled("material-trial ownership or idle observations changed")
+
+        self._guard = check
+        try:
+            check()
+            loaded = action == "UNLOAD"
+            if (lifecycle.head_sensor.runout_helper.filament_present != int(loaded)
+                    or box.last_cmd != (tnn if loaded else None)
+                    or (not loaded and box.box_state.get_Tn_data(address, "filament") not in (None, "None"))
+                    or (loaded and box.box_state.get_Tn_data(address, "filament") != tnn)):
+                raise RuntimeError("material-trial head/source observations do not match its action")
+            self.source = tnn if loaded else box.last_cmd_tmp
+            box.operations.begin(self.source, tnn, address)
+            serial = box.operations._serial
+            self._geometry()
+            check()
+            mode = self._read("GET_BOX_STATE")[3]
+            material = self._read("GET_FILAMENT_SENSOR_STATE", b"\x00")[0]
+            connections = self._read("GET_FILAMENT_SENSOR_STATE", b"\x01")[0]
+            buffer = self._read("GET_BUFFER_STATE")[0]
+            if (mode not in ((0, 2) if loaded else (0,)) or not material & self.mask
+                    or connections != (self.mask if loaded else 0) or (not loaded and buffer != 2)):
+                raise RuntimeError("fresh material-trial preconditions do not match the selected path")
+            if (lifecycle.head_sensor.runout_helper.filament_present != int(loaded)
+                    or box.last_cmd != (tnn if loaded else None)
+                    or (loaded and box.box_state.get_Tn_data(address, "filament") != tnn)):
+                raise RuntimeError("material-trial source changed during the fresh preflight reads")
+            self._phase = "unload" if loaded else "load"
+            if loaded:
+                box.quickly_wait_heating(box.get_flush_temp(tnn, tnn)[2])
+                check()
+                if box.cutter.cut_material() is not True:
+                    raise RuntimeError("material-trial cutting did not complete normally")
+                check()
+                result = box.box_retrude_material(report_error=False)
+            else:
+                # Loading's retained Y shortcut does not distinguish a tray
+                # position from the cutter. Always park explicitly for a trial.
+                box.motion.go_to_extrude_pos()
+                check()
+                result = box.box_extrude_material(tnn)
+            check()
+            if result is not True:
+                raise RuntimeError("material phase did not complete normally; no automatic retry")
+            if not loaded:
+                box.extruder_extrude(tnn)
+                check()
+            else:
+                box.motion.go_to_box_extrude_pos()
+                check()
+            self._phase = "after"
+            box.gcode.run_script_from_command("M400")
+            check()
+            mode = self._read("GET_BOX_STATE")[3]
+            material = self._read("GET_FILAMENT_SENSOR_STATE", b"\x00")[0]
+            connections = self._read("GET_FILAMENT_SENSOR_STATE", b"\x01")[0]
+            buffer = self._read("GET_BUFFER_STATE")[0]
+            expected = None if loaded else tnn
+            if (mode != (0 if loaded else 2) or connections != (0 if loaded else self.mask)
+                    or not material & self.mask or buffer == 1 or (loaded and buffer != 2)
+                    or lifecycle.head_sensor.runout_helper.filament_present != int(not loaded)
+                    or (loaded and box.cut_sensor.cut_present != 0)
+                    or box.last_cmd != expected
+                    or box.box_state.get_Tn_data(address, "filament") != ("None" if loaded else tnn)):
+                raise RuntimeError("material-trial final observations do not establish its requested result")
+            box.gcode.run_script_from_command("M104 S0")
+            check()
+            return {"action": action, "target": tnn, "mode": mode,
+                    "material": material, "connections": connections, "buffer": buffer}
+        finally:
+            self.cancel()
+            self._root_done = True
+            if serial is not None and box.operations.active and box.operations._serial == serial:
+                box.operations.cancel()
+            if self._head_owner is None:
+                self._token = None
 
 
 class OperationContext:

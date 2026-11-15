@@ -279,6 +279,14 @@ or completion. The four observed T1A–T1D normal trials confirm only this basel
 path on one CFS, not full loading/unloading, cutting, purging, printing, recovery
 or failure/timeout behavior.
 
+The next [load/unload trial admission](installation.md#material-operation-trial)
+is prepared on the PC, without deployment or mechanics. It composes existing
+loading and cut/known-source retraction as separate confirmed commands, keeping
+the lifecycle passive. Fresh pre/postconditions, a scoped head callback and
+stop-before-recovery behavior have PC checks. Transport to the head and back
+must be observed before accepting those cases; this does not accept purging,
+nozzle cleaning, a complete macro cycle or printing.
+
 Then validate other targeted versions separately. Record results for the number
 of physical CFS units actually tested; PC simulation of four boxes does not
 establish hardware acceptance of four boxes.

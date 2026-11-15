@@ -50,6 +50,8 @@ class Lifecycle:
         box.gcode.register_command("DO_AFTER_PAUSE", box.cmd_do_after_pause)
         if self.passive:
             box.gcode.register_command("CFS_TEST_PRELOAD", box.cmd_test_preload)
+            box.gcode.register_command("CFS_TEST_LOAD", lambda gcmd: box.cmd_test_material(gcmd, "LOAD"))
+            box.gcode.register_command("CFS_TEST_UNLOAD", lambda gcmd: box.cmd_test_material(gcmd, "UNLOAD"))
         self.printer.register_event_handler("klippy:ready", self.ready)
         self.printer.register_event_handler("klippy:shutdown", self.shutdown)
         self.printer.register_event_handler("box:extrude_process_stage7", self.head_event)
@@ -403,9 +405,12 @@ class Lifecycle:
         self.box.gcode.run_script_from_command("WAIT_PAUSE")
 
     def head_event(self):
-        if not self.running or self.passive:
+        if not self.running:
             return
         try:
+            if self.passive:
+                self.box.material_trial.head_event()
+                return
             self.box.operations.head(self.move_head, self.stage6)
         except OperationCancelled:
             return

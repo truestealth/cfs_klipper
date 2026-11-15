@@ -9007,7 +9007,8 @@
         "Check retained chelper get_ffi, rgb_t and get_flushing_volume call shape with a substitute.",
         "The real entry point resolves extras.base_info.base_dir and registers a passive lifecycle before macros; ready borrows the configured serial owner.",
         "Passive startup permits only typed identity/telemetry reads and blocks host actions, raw diagnostics, automatic motion, preload, pause, heating and sensor changes.",
-        "The extension-only CFS_TEST_PRELOAD command admits one confirmed physical target on MCU 1.1.3 without changing passive mode; owner/generation/request guards, idle/head/material/hub preconditions and pre-persistence reply checks reject unrelated effects."
+        "The extension-only CFS_TEST_PRELOAD command admits one confirmed physical target on MCU 1.1.3 without changing passive mode; owner/generation/request guards, idle/head/material/hub preconditions and pre-persistence reply checks reject unrelated effects.",
+        "Separate confirmed CFS_TEST_LOAD/UNLOAD commands reuse baseline transport phases while the lifecycle remains passive; real head/cutter observations, fresh masks, known-source unloading, checked geometry and phase-owned requests gate mechanics. PC substitutes do not establish target completion."
       ],
       "status": "partial",
       "test": [
@@ -9073,9 +9074,39 @@
         "tests/test_preload_trial.py::PreloadTrialTests.test_shutdown_unbind_disconnect_and_identity_change_revoke_inflight_permission",
         "tests/test_preload_trial.py::PreloadTrialTests.test_error_idle_head_owner_and_deadline_changes_stop_followup_requests",
         "tests/test_preload_trial.py::PreloadTrialTests.test_cancellation_keeps_the_old_native_call_owned_until_it_returns",
-        "tests/test_preload_trial.py::PreloadTrialTests.test_native_exception_unwinds_admission_without_mechanical_cleanup"
+        "tests/test_preload_trial.py::PreloadTrialTests.test_native_exception_unwinds_admission_without_mechanical_cleanup",
+        "tests/test_material_trial.py::MaterialTrialTests.test_passive_registration_and_confirmation_do_not_enable_ordinary_commands",
+        "tests/test_material_trial.py::MaterialTrialTests.test_complete_load_uses_real_head_phase_and_physical_target_without_unloading",
+        "tests/test_material_trial.py::MaterialTrialTests.test_complete_unload_cuts_before_retraction_and_uses_only_the_known_source",
+        "tests/test_material_trial.py::MaterialTrialTests.test_full_buffer_final_feed_keeps_the_integral_configured_amount",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unsafe_host_states_fail_before_requests_or_physical_gcode",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unload_never_guesses_a_missing_or_conflicting_source",
+        "tests/test_material_trial.py::MaterialTrialTests.test_missing_observations_fail_closed_before_requests",
+        "tests/test_material_trial.py::MaterialTrialTests.test_invalid_geometry_amounts_and_temperature_fail_before_effects",
+        "tests/test_material_trial.py::MaterialTrialTests.test_fresh_preflight_masks_modes_and_buffer_gate_all_writes",
+        "tests/test_material_trial.py::MaterialTrialTests.test_bad_normal_or_event_reply_is_rejected_before_decode_or_mechanics",
+        "tests/test_material_trial.py::MaterialTrialTests.test_first_feed_failure_stops_without_retry_cut_or_retraction",
+        "tests/test_material_trial.py::MaterialTrialTests.test_phase_false_results_do_not_enter_connection_or_gear_recovery",
+        "tests/test_material_trial.py::MaterialTrialTests.test_first_missed_cut_switch_stops_before_repositioning_or_retraction",
+        "tests/test_material_trial.py::MaterialTrialTests.test_head_callback_failure_revokes_main_phase_without_followup_motion",
+        "tests/test_material_trial.py::MaterialTrialTests.test_native_crc_error_is_not_resent_and_does_not_start_recovery",
+        "tests/test_material_trial.py::MaterialTrialTests.test_remaining_cooperative_budget_bounds_later_native_waits",
+        "tests/test_material_trial.py::MaterialTrialTests.test_ordinary_commands_other_dispatch_and_raw_requests_cannot_inherit_scope",
+        "tests/test_material_trial.py::MaterialTrialTests.test_context_changes_revoke_permission_before_any_followup_effect",
+        "tests/test_material_trial.py::MaterialTrialTests.test_cancelled_native_call_keeps_admission_occupied_until_it_unwinds",
+        "tests/test_material_trial.py::MaterialTrialTests.test_transport_exception_preserves_observed_source_without_cleanup",
+        "tests/test_material_trial.py::MaterialTrialTests.test_present_head_after_retract_is_failure_without_an_automatic_retry",
+        "tests/test_material_trial.py::MaterialTrialTests.test_failed_final_load_observation_does_not_rewind_live_source_or_auto_unload",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unsolicited_head_events_do_not_move_a_passive_box",
+        "tests/test_material_trial.py::MaterialTrialTests.test_missing_inactive_or_stuck_cut_switch_rejects_unload_before_effects",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unreleased_cut_switch_after_return_cannot_claim_success",
+        "tests/test_material_trial.py::MaterialTrialTests.test_head_arrival_during_preflight_prevents_heating_and_native_writes",
+        "tests/test_material_trial.py::MaterialTrialTests.test_head_arrival_during_heating_prevents_first_feed",
+        "tests/test_material_trial.py::MaterialTrialTests.test_temperature_below_retained_extrusion_limit_rejects_before_effects",
+        "tests/test_material_trial.py::MaterialTrialTests.test_head_loss_during_final_feed_revokes_load_without_recovery",
+        "tests/test_material_trial.py::MaterialTrialTests.test_stage_zero_mode_and_stage_five_wheel_reply_shapes_are_required"
       ],
-      "remaining": "PC substitutes check real entry/dependency acquisition, passive defaults and the explicit one-operation trial. The published target check separately identified live configuration and bounded passive MIPS reads. Full dependency fault coverage, numerical retained-helper results and physical/mechanical acceptance of the new trial remain unverified."
+      "remaining": "PC substitutes cover entry/dependencies, passive defaults and explicit preload/load/unload trials. The reference target separately verified passive reads and four normal preloads. Full load/unload trials, dependency fault coverage, retained-helper numerical results and complete mechanical acceptance remain unverified."
     },
     {
       "id": "PC-INTEGRATION-EVENTS",
@@ -9084,7 +9115,8 @@
         "Register the required events and callbacks once with correct lifecycle/operation ownership.",
         "Exercise ready, reconnect-related observations and shutdown with pending work.",
         "Keep virtual-SD resume status distinct from paused print state and a queued tool target.",
-        "An explicit trial keeps background head/slot/runout/error actions passive and loses permission on owner, lifecycle, binding, identity, idle/head observation or deadline changes, with no automatic mechanical cleanup."
+        "An explicit trial keeps background head/slot/runout/error actions passive and loses permission on owner, lifecycle, binding, identity, idle/head observation or deadline changes, with no automatic mechanical cleanup.",
+        "A material trial admits only its armed head callback, keeps background runout/slot/pause effects passive, rejects automatic recovery and first-missed cutter retries, and revokes permission on owner/lifecycle/device/configuration/idle-state changes without speculative cleanup or cache rewind."
       ],
       "status": "implemented",
       "test": [
@@ -9119,7 +9151,26 @@
         "tests/test_preload_trial.py::PreloadTrialTests.test_shutdown_unbind_disconnect_and_identity_change_revoke_inflight_permission",
         "tests/test_preload_trial.py::PreloadTrialTests.test_error_idle_head_owner_and_deadline_changes_stop_followup_requests",
         "tests/test_preload_trial.py::PreloadTrialTests.test_cancellation_keeps_the_old_native_call_owned_until_it_returns",
-        "tests/test_preload_trial.py::PreloadTrialTests.test_native_exception_unwinds_admission_without_mechanical_cleanup"
+        "tests/test_preload_trial.py::PreloadTrialTests.test_native_exception_unwinds_admission_without_mechanical_cleanup",
+        "tests/test_material_trial.py::MaterialTrialTests.test_complete_load_uses_real_head_phase_and_physical_target_without_unloading",
+        "tests/test_material_trial.py::MaterialTrialTests.test_complete_unload_cuts_before_retraction_and_uses_only_the_known_source",
+        "tests/test_material_trial.py::MaterialTrialTests.test_first_feed_failure_stops_without_retry_cut_or_retraction",
+        "tests/test_material_trial.py::MaterialTrialTests.test_phase_false_results_do_not_enter_connection_or_gear_recovery",
+        "tests/test_material_trial.py::MaterialTrialTests.test_first_missed_cut_switch_stops_before_repositioning_or_retraction",
+        "tests/test_material_trial.py::MaterialTrialTests.test_head_callback_failure_revokes_main_phase_without_followup_motion",
+        "tests/test_material_trial.py::MaterialTrialTests.test_native_crc_error_is_not_resent_and_does_not_start_recovery",
+        "tests/test_material_trial.py::MaterialTrialTests.test_remaining_cooperative_budget_bounds_later_native_waits",
+        "tests/test_material_trial.py::MaterialTrialTests.test_ordinary_commands_other_dispatch_and_raw_requests_cannot_inherit_scope",
+        "tests/test_material_trial.py::MaterialTrialTests.test_context_changes_revoke_permission_before_any_followup_effect",
+        "tests/test_material_trial.py::MaterialTrialTests.test_cancelled_native_call_keeps_admission_occupied_until_it_unwinds",
+        "tests/test_material_trial.py::MaterialTrialTests.test_transport_exception_preserves_observed_source_without_cleanup",
+        "tests/test_material_trial.py::MaterialTrialTests.test_present_head_after_retract_is_failure_without_an_automatic_retry",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unsolicited_head_events_do_not_move_a_passive_box",
+        "tests/test_material_trial.py::MaterialTrialTests.test_missing_inactive_or_stuck_cut_switch_rejects_unload_before_effects",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unreleased_cut_switch_after_return_cannot_claim_success",
+        "tests/test_material_trial.py::MaterialTrialTests.test_head_arrival_during_preflight_prevents_heating_and_native_writes",
+        "tests/test_material_trial.py::MaterialTrialTests.test_head_arrival_during_heating_prevents_first_feed",
+        "tests/test_material_trial.py::MaterialTrialTests.test_head_loss_during_final_feed_revokes_load_without_recovery"
       ],
       "validation_note": "Public producer fixture verifies Box consumption and ownership. Additional local execution of pinned SwitchSensor/RunoutHelper verifies disabled/debounce/duplicate behavior inside stage4; this retained-source proof is separate from public CI."
     },
@@ -10192,7 +10243,7 @@
       10,
       20
     ],
-    "host_actions": "Ordinary host handlers remain blocked before mutation. Raw requests and other opcodes stay blocked; only a trial-owned exact one-slot RUN Request is exempted within the explicit test command.",
+    "host_actions": "Ordinary host commands remain blocked before mutation. Explicit preload grants one exact selected RUN request; separate confirmed load/unload grants only the owning phase, selected address/slot and armed head callback. Neither grant changes lifecycle.passive or enables background mechanics.",
     "metadata": "each passive initialization reads a fresh MATERIAL mask before applying saved labels to live state",
     "errors": "passive diagnostics use Lifecycle.last_error and leave the retained virtual-SD pause hint box.last_err unchanged",
     "acceptance": "Reference deployment and four explicit selected-slot normal preload/RFID/remaining cases were observed on MCU 1.1.3/CPython 3.8.2/MIPS. Physical motion and correct interfaces were reported by the operator. Full hardware families, fault/recovery paths and other firmware versions remain pending.",
@@ -10238,6 +10289,40 @@
         "final_observations": "Ready/standby, head absent, MATERIAL=15, CONNECTIONS=0, buffer=2 (empty), heater targets=0",
         "limits": "Normal ACK and mode0 are observations, not unqualified physical completion proof. Internal retries and full-wire uniqueness are not established."
       }
+    },
+    "material_operation_trial": {
+      "commands": [
+        "CFS_TEST_LOAD TNN=<physical T1A..T4D> CONFIRM=1",
+        "CFS_TEST_UNLOAD TNN=<physical T1A..T4D> CONFIRM=1"
+      ],
+      "scope": "Extension-only commands outside the original 103-command inventory; separate invocations, no automatic load/unload chain; PC preparation only, not deployed or run on target",
+      "baseline": "One attached/connected explicitly confirmed cfs0 MCU 1.1.3 with host encoding 1",
+      "preconditions": "Ready passive lifecycle, standby/inactive virtual SD/not paused/not resuming, no error/other operation or trial, real head sensor, already homed XYZ, valid mechanical travel/feed/count/temperature settings; unloading also requires an active released cutter switch",
+      "load": [
+        "Absent head and no known loaded source",
+        "Fresh normal mode 0, selected MATERIAL, zero CONNECTIONS and buffer 2",
+        "Explicit positioning, existing stages 0/4/5 and armed actual-head callback 6; normal buffer-driven stage 7 as needed",
+        "Existing PRINT/bookkeeping and filament-useup latch clear",
+        "M400, fresh mode 2/selected CONNECTIONS/non-full buffer/MATERIAL and present head/known selected source",
+        "M104 S0 only on success"
+      ],
+      "unload": [
+        "Present head and exact matching last_cmd/live filament source",
+        "Fresh normal mode 0 or 2, exactly selected CONNECTIONS and selected MATERIAL",
+        "Heat, existing sensed cut, known-source retraction with report_error=False, return from cutter to retained service position",
+        "M400, fresh mode 0/zero CONNECTIONS/buffer 2/MATERIAL and absent head/released cutter/cleared source",
+        "M104 S0 only on success"
+      ],
+      "ownership": "Root OperationContext, exact current dispatch and one armed actual-head callback; lifecycle/binding/device/configuration/idle-state snapshots; cancellation stays occupied while its native call or head callback unwinds",
+      "native_policy": "Only target-address typed phase bodies; normal reply shape/status before decoding; no trial host CRC/LENGTH resend, retries_en=False; reads at most 2 seconds and other requests bounded by native timeout/remaining 900-second cooperative budget",
+      "failure_policy": "Stop before loading recovery, failed-stage relief, repeated missed-switch cut or unload retry. No automatic STOP/CLOSE/cut/unload, heater/fan/mode/position restoration or cache rewind after failure. In-flight stock native waits/MCU actions/queued moves cannot be interrupted by host revocation.",
+      "limits": "Full transport to/from the head with sensed cutting and return positioning; separate purge/nozzle cleaning, slicer macros, printing, fault timing and target mechanical completion remain unaccepted. Known START_PRINT/missing-TNN wrappers remain unchanged.",
+      "checks": [
+        "PC-INTEGRATION-DEPENDENCIES",
+        "PC-INTEGRATION-EVENTS"
+      ],
+      "successful_feed_replies": "Baseline 0x10 stage 0: one mode byte equal to 0; stage 5: four measuring-wheel bytes; stages 4/6/7: empty body. Stage 4 ACK precedes feed completion.",
+      "reply_attribution_limit": "The stock native transport orders address/command completions, but the protocol carries no stage echo/transaction ID; payload checks cannot identify every late same-command reply or prove physical completion."
     }
   }
 }

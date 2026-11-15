@@ -165,6 +165,10 @@ class Cutter:
                 if self.sensor.cut_present:
                     self._call(check, box.gcode.respond_info, "[box] cut to return OK")
                     break
+                trial = getattr(box, "material_trial", None)
+                if trial is not None and trial.active:
+                    trial.guard()
+                    raise RuntimeError("material trial stops after the first missed cutter observation")
                 self._run(check, "G0 Y%.2f F%.2f" % (cfg.pre_cut_pos_y, cfg.cut_velocity))
                 self._call(check, box.gcode.respond_info, "[box] cut to return failed")
                 self._call(check, self.motion.go_to_box_extrude_pos)

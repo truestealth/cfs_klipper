@@ -33,7 +33,7 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | `src/cfs/events.py`, `runout.py`, `recovery.py`, `resume.py` | Slot events, drain/refill, recovery and resume | PC substitute checks; physical behavior unverified |
 | `src/cfs/firmware.py` | Per-address identity, explicit family and exact version profiles | Mixed versions and identity invalidation PC-tested |
 | `src/cfs/lifecycle.py` | Ready/shutdown, configured dependencies, reconnect, heartbeat and pause wait | Own work is removed or invalidated; borrowed transport stays with stock serial |
-| `src/cfs/operations.py` | Source/target ownership, cooperative waits, head-result latch and explicit preload trial | PC ownership/cancellation checks plus four observed normal baseline preload trials |
+| `src/cfs/operations.py` | Source/target ownership, cooperative waits, head-result latch and explicit trials | PC ownership/cancellation checks and load/unload admission; four observed normal baseline preload trials |
 | `src/cfs/errors.py` | Client reports, pause/restore ordering and saved error context | Duplicate/special-key behavior and caught-error exits PC-tested |
 | `src/cfs/motion.py`, `extrusion.py`, `cutting.py` | Configured motion, fans, heating, extrusion, cutting and calibration | Component checks with substitutes; hardware acceptance pending |
 | `src/cfs/feeding.py`, `loading.py`, `retraction.py` | Preload, staged loading and unloading | PC phase checks; hardware acceptance pending |
@@ -114,6 +114,13 @@ RFID/remaining data, with operator-observed activity and correct client display.
 This bounded check does not accept ordinary loading, cutting, tool changes,
 printing or recovery. The [reference results](installation.md#reference-trial-results)
 keep hardware observations separate from PC fault/ownership checks.
+
+The separate [material trial](installation.md#material-operation-trial) reuses
+Loading and Cutter/Retraction under one operation context. Only the owning
+dispatch and an armed load head callback receive scoped permission; startup and
+ordinary commands stay passive. Fresh pre/postconditions bind a physical source,
+and trial failures stop before automatic recovery. This preparation has PC
+checks only and has not been deployed or run on the printer.
 
 Operations coordinate host actions with separately observed CFS, buffer and
 toolhead state. An ACK, last T-command or cached material record cannot establish
