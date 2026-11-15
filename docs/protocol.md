@@ -79,8 +79,9 @@ do not turn an unknown payload into a verified typed operation, and optional
 
 The [native](../tests/test_native.py), [decoder](../tests/test_protocol.py),
 [firmware](../tests/test_firmware.py) and [integration](../tests/test_box_native.py)
-tests use synthetic frames and substitutes. Real native admission, transmission
-counts, scheduling and mechanical completion remain hardware acceptance work.
+tests use synthetic frames and substitutes. Separate reference-printer checks
+cover passive startup and reads; fault transmission counts, operation scheduling
+and mechanical completion remain hardware acceptance work.
 
 <a id="lifecycle-integration"></a>
 
@@ -93,6 +94,17 @@ Automatic preload/RUN, sensor toggles, head feed, runout tightening, pause and
 heating are suppressed. Reports retain their client text without executing
 mechanical error tails. No configuration/G-code opt-out is provided. See
 [startup dependencies and data paths](installation.md#passive-startup).
+
+On baseline MCU 1.1.3, `GET_RFID` (`0x02`) reads the available per-slot record;
+it does not perform physical RFID acquisition. A present slot without an
+available record can return `unknown`. In that case, `GET_REMAIN_LEN` (`0x03`)
+returns the fallback byte `100`, which does not confirm a full spool or a fresh
+remaining-material estimate. Both replies were observed on the reference unit.
+The host preserves known colours/materials while recording `vender=unknown`;
+these getter replies can therefore replace previously saved metadata. The full
+RFID acquisition/estimation path can move motors and remains outside passive
+admission. A saved tag ID or remaining value must be distinguished from a fresh
+MCU observation.
 
 The following operation policies describe the active component contract tested
 with explicit PC construction. Registration provides 101 unconditional commands

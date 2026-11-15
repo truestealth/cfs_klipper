@@ -209,5 +209,19 @@ resolution, passive ready/heartbeat/restart and failure cleanup. Composed failur
 checks assert the actual motion/source/error context after nested phases and all
 eight recovery leaves. None executes the stock binary or operates equipment.
 
+The installer family now binds 27 tests, including legacy sibling `.pyc` files
+and modern caches. Separate checks on one baseline printer confirmed original
+entry/cache bytes, modes and modification times after restoration with Klipper
+stopped, followed by passive reinstall and ready startup. Fresh buffer, RFID
+and remaining-value replies were also validated; RFID returned `unknown` for
+all four slots. These observations do not complete a hardware family or
+establish successful mechanics or a restored stock-process startup.
+
+After the direct RFID/remaining reads, both interfaces recognized CFS but showed
+all four slots as grey or undefined. Restoring the exact pre-query cache and
+restarting the passive host restored the colours in both interfaces, as confirmed
+by the operator. Cached display is therefore checked; fresh physical tag
+acquisition and the client's precise rendering condition remain unverified.
+
 See [compatibility.md](compatibility.md) for implementation/validation status
 and [protocol.md](protocol.md) for the native API boundary.

@@ -7707,7 +7707,7 @@
       "evidence": "static",
       "implementation": "implemented",
       "blockers": [],
-      "implementation_note": "Preview, scoped backup/install/restore, injected failures and tampering are tested in temporary trees. Only development files are deployed; bootstrap uses passive admission and printer installation is unverified."
+      "implementation_note": "Scoped backup/install/restore includes legacy sibling and modern caches with hash/mode/timestamp checks. Temporary-tree failure/tamper/import-collision tests pass. Original entry/cache restoration was also verified on one baseline printer while Klipper was stopped, then the replacement was passively reinstalled and reached ready. This does not establish a restored stock-process startup or mechanical acceptance."
     },
     {
       "id": "BUILD-PYTHON-TARGET",
@@ -9716,21 +9716,31 @@
         "tests/test_installation.py::InstallationTests.test_partial_install_rolls_back",
         "tests/test_installation.py::InstallationTests.test_partial_box_write_rolls_back",
         "tests/test_installation.py::InstallationTests.test_import_validates_configuration_then_restore_removes_bytecode",
+        "tests/test_installation.py::InstallationTests.test_entry_bytecode_collision_in_both_directions",
+        "tests/test_installation.py::InstallationTests.test_generated_entry_cache_removed_when_original_had_none",
+        "tests/test_installation.py::InstallationTests.test_mixed_cache_roundtrip_restores_original_bytes_mode_and_time",
+        "tests/test_installation.py::InstallationTests.test_legacy_import_collision_in_both_directions",
+        "tests/test_installation.py::InstallationTests.test_generated_legacy_caches_removed_when_original_had_none",
+        "tests/test_installation.py::InstallationTests.test_tampered_saved_legacy_cache_blocks_restore_before_changes",
+        "tests/test_installation.py::InstallationTests.test_unknown_legacy_package_cache_blocks_restore_before_changes",
+        "tests/test_installation.py::InstallationTests.test_legacy_cache_directories_rejected_before_changes",
+        "tests/test_installation.py::InstallationTests.test_version_two_modern_backup_remains_compatible",
+        "tests/test_installation.py::InstallationTests.test_version_two_backup_rejects_unrecorded_legacy_entry",
+        "tests/test_installation.py::InstallationTests.test_version_two_manifest_cannot_claim_a_legacy_cache_backup",
+        "tests/test_installation.py::InstallationTests.test_legacy_cache_symlinks_rejected_before_changes",
+        "tests/test_installation.py::InstallationTests.test_tampered_saved_cache_blocks_restore",
         "tests/test_installation.py::InstallationTests.test_unexpected_cache_entry_blocks_restore",
         "tests/test_installation.py::InstallationTests.test_linked_target_rejected",
         "tests/test_installation.py::InstallationTests.test_reparse_point_rejected",
         "tests/test_installation.py::InstallationTests.test_linked_cache_entry_rejected",
+        "tests/test_installation.py::InstallationTests.test_linked_entry_cache_rejected",
         "tests/test_installation.py::InstallationTests.test_allowlist_must_match_sources",
         "tests/test_installation.py::InstallationTests.test_tampering_and_extra_files_block_restore",
         "tests/test_installation.py::InstallationTests.test_backup_tampering_blocks_restore",
         "tests/test_installation.py::InstallationTests.test_collisions_and_nested_backup_rejected",
-        "tests/test_installation.py::InstallationTests.test_traversal_rejected",
-        "tests/test_installation.py::InstallationTests.test_entry_bytecode_collision_in_both_directions",
-        "tests/test_installation.py::InstallationTests.test_generated_entry_cache_removed_when_original_had_none",
-        "tests/test_installation.py::InstallationTests.test_tampered_saved_cache_blocks_restore",
-        "tests/test_installation.py::InstallationTests.test_linked_entry_cache_rejected"
+        "tests/test_installation.py::InstallationTests.test_traversal_rejected"
       ],
-      "validation_note": "Temporary trees only; the deployed bootstrap uses passive admission. Native symlink privilege cases are skipped on Windows when unavailable; reparse-point rejection has a separate platform-independent check."
+      "validation_note": "Temporary-tree checks cover legacy sibling and modern caches, import collisions, exact source/cache restoration, tampering, failure rollback and version-2 manifest compatibility. Native symlink cases skip on Windows when unavailable; reparse-point rejection has an independent check. On one baseline printer, version-3 restoration of original entry/cache bytes, modes and mtime_ns was verified with Klipper stopped, followed by a passive reinstall and ready startup. The restored stock process was not booted; mechanics and full hardware acceptance remain unverified."
     },
     {
       "id": "PC-PYTHON-COMPATIBILITY",

@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -65,6 +66,9 @@ class InstallationTests(unittest.TestCase):
         cache.mkdir()
         prior = cache / "box.cpython-38.pyc"
         prior.write_bytes(b"original cache")
+        legacy = self.extras / "box.pyc"
+        legacy.write_bytes(b"original legacy cache")
+        legacy_stat = legacy.stat()
         def fail_once(path, data):
             if path == self.box and not failed:
                 failed.append(True)
@@ -76,6 +80,8 @@ class InstallationTests(unittest.TestCase):
                 installer.install(self.extras, self.backup)
         self.assertEqual(self.box.read_bytes(), self.original)
         self.assertEqual(prior.read_bytes(), b"original cache")
+        self.assertEqual(legacy.read_bytes(), b"original legacy cache")
+        self.assertEqual(legacy.stat().st_mtime_ns, legacy_stat.st_mtime_ns)
         self.assertFalse((self.extras / "cfs").exists())
         self.assertEqual((self.backup / "box.py.original").read_bytes(), self.original)
 
@@ -135,6 +141,190 @@ class InstallationTests(unittest.TestCase):
         installer.restore(self.extras, self.backup)
         self.assertFalse(list(cache.glob("box.cpython-*.pyc")))
         self.assertEqual(other.read_bytes(), b"unrelated")
+
+    def test_mixed_cache_roundtrip_restores_original_bytes_mode_and_time(self):
+        legacy = self.extras / "box.pyc"
+        legacy.write_bytes(b"original legacy cache")
+        os.chmod(str(legacy), 0o600)
+        os.utime(str(legacy), ns=(1600000000123456700, 1600000000987654300))
+        legacy_stat = legacy.stat()
+        modern = self.extras / "__pycache__"
+        modern.mkdir()
+        prior = modern / "box.cpython-38.pyc"
+        prior.write_bytes(b"original modern cache")
+        prior_stat = prior.stat()
+        unrelated = self.extras / "other.pyc"
+        unrelated.write_bytes(b"user cache")
+        installer.install(self.extras, self.backup)
+        self.assertFalse(legacy.exists())
+        self.assertFalse(prior.exists())
+        manifest = json.loads((self.backup / "manifest.json").read_text())
+        self.assertEqual(manifest["version"], 3)
+        self.assertEqual(set(manifest["box_caches"]), {"box.pyc", prior.name})
+        legacy.write_bytes(b"replacement legacy cache")
+        prior.write_bytes(b"replacement modern cache")
+        package = self.extras / "cfs"
+        for name in installer.FILES:
+            (package / Path(name).with_suffix(".pyc")).write_bytes(b"replacement package cache")
+        (package / "__pycache__").mkdir()
+        (package / "__pycache__" / "box.cpython-38.pyc").write_bytes(b"modern package cache")
+        installer.restore(self.extras, self.backup)
+        self.assertEqual(legacy.read_bytes(), b"original legacy cache")
+        self.assertEqual(legacy.stat().st_mode, legacy_stat.st_mode)
+        self.assertEqual(legacy.stat().st_mtime_ns, legacy_stat.st_mtime_ns)
+        self.assertEqual(prior.read_bytes(), b"original modern cache")
+        self.assertEqual(prior.stat().st_mtime_ns, prior_stat.st_mtime_ns)
+        self.assertEqual(unrelated.read_bytes(), b"user cache")
+        self.assertFalse(package.exists())
+
+    def test_legacy_import_collision_in_both_directions(self):
+        source = (installer.ROOT / "klipper" / "box.py").read_bytes()
+        original = b"VALUE = 1\n" + b" " * (len(source) - len(b"VALUE = 1\n"))
+        self.box.write_bytes(original)
+        # Model the target's sibling-cache loader in a fresh process; installed
+        # sources and caches are genuinely imported instead of merely named.
+        code = """
+import importlib._bootstrap_external as external
+from pathlib import Path
+import sys
+root = Path(sys.argv[1])
+original = external.cache_from_source
+def sibling(path, *args, **kwargs):
+    if root / 'extras' in Path(path).parents:
+        return path + 'c'
+    return original(path, *args, **kwargs)
+external.cache_from_source = sibling
+sys.path.insert(0, str(root))
+import extras.box
+print(getattr(extras.box, 'VALUE', 'extension'))
+"""
+        def load():
+            return subprocess.check_output([sys.executable, "-c", code, str(self.root)], text=True).strip()
+        self.assertEqual(load(), "1")
+        cache = self.extras / "box.pyc"
+        original_cache = cache.read_bytes()
+        original_stat = cache.stat()
+        source_stat = self.box.stat()
+        installer.install(self.extras, self.backup)
+        os.utime(str(self.box), ns=(source_stat.st_atime_ns, source_stat.st_mtime_ns))
+        self.assertEqual(load(), "extension")
+        self.assertTrue(list((self.extras / "cfs").glob("*.pyc")))
+        installer.restore(self.extras, self.backup)
+        self.assertEqual(cache.read_bytes(), original_cache)
+        self.assertEqual(cache.stat().st_mtime_ns, original_stat.st_mtime_ns)
+        self.assertEqual(load(), "1")
+
+    def test_generated_legacy_caches_removed_when_original_had_none(self):
+        installer.install(self.extras, self.backup)
+        entry_cache = self.extras / "box.pyc"
+        entry_cache.write_bytes(b"generated entry cache")
+        for name in installer.FILES:
+            (self.extras / "cfs" / Path(name).with_suffix(".pyc")).write_bytes(b"generated package cache")
+        unrelated = self.extras / "other.pyc"
+        unrelated.write_bytes(b"user cache")
+        installer.restore(self.extras, self.backup)
+        self.assertFalse(entry_cache.exists())
+        self.assertFalse((self.extras / "cfs").exists())
+        self.assertFalse((self.extras / "__pycache__").exists())
+        self.assertEqual(unrelated.read_bytes(), b"user cache")
+
+    def test_tampered_saved_legacy_cache_blocks_restore_before_changes(self):
+        entry_cache = self.extras / "box.pyc"
+        entry_cache.write_bytes(b"original legacy cache")
+        installer.install(self.extras, self.backup)
+        entry_cache.write_bytes(b"generated entry cache")
+        package_cache = self.extras / "cfs" / "box.pyc"
+        package_cache.write_bytes(b"generated package cache")
+        installed = self.box.read_bytes()
+        (self.backup / "box-caches" / "box.pyc").write_bytes(b"tampered")
+        with self.assertRaisesRegex(ValueError, "backup cache"):
+            installer.restore(self.extras, self.backup)
+        self.assertEqual(self.box.read_bytes(), installed)
+        self.assertEqual(entry_cache.read_bytes(), b"generated entry cache")
+        self.assertEqual(package_cache.read_bytes(), b"generated package cache")
+
+    def test_unknown_legacy_package_cache_blocks_restore_before_changes(self):
+        installer.install(self.extras, self.backup)
+        own_cache = self.extras / "cfs" / "box.pyc"
+        own_cache.write_bytes(b"owned cache")
+        other_cache = self.extras / "cfs" / "other.pyc"
+        other_cache.write_bytes(b"user file")
+        installed = self.box.read_bytes()
+        with self.assertRaisesRegex(ValueError, "directory has changed"):
+            installer.restore(self.extras, self.backup)
+        self.assertEqual(self.box.read_bytes(), installed)
+        self.assertEqual(own_cache.read_bytes(), b"owned cache")
+        self.assertEqual(other_cache.read_bytes(), b"user file")
+
+    def test_legacy_cache_directories_rejected_before_changes(self):
+        legacy = self.extras / "box.pyc"
+        legacy.mkdir()
+        with self.assertRaisesRegex(ValueError, "legacy box bytecode cache"):
+            installer.prepare(self.extras, self.backup)
+        self.assertFalse(self.backup.exists())
+        legacy.rmdir()
+        installer.install(self.extras, self.backup)
+        (self.extras / "cfs" / "state.pyc").mkdir()
+        installed = self.box.read_bytes()
+        with self.assertRaisesRegex(ValueError, "legacy cfs bytecode cache"):
+            installer.restore(self.extras, self.backup)
+        self.assertEqual(self.box.read_bytes(), installed)
+
+    def test_version_two_modern_backup_remains_compatible(self):
+        cache = self.extras / "__pycache__"
+        cache.mkdir()
+        original_cache = cache / "box.cpython-38.pyc"
+        original_cache.write_bytes(b"version two modern cache")
+        installer.install(self.extras, self.backup)
+        path = self.backup / "manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest["version"] = 2
+        path.write_text(json.dumps(manifest))
+        installer.restore(self.extras, self.backup)
+        self.assertEqual(self.box.read_bytes(), self.original)
+        self.assertEqual(original_cache.read_bytes(), b"version two modern cache")
+
+    def test_version_two_backup_rejects_unrecorded_legacy_entry(self):
+        installer.install(self.extras, self.backup)
+        path = self.backup / "manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest["version"] = 2
+        path.write_text(json.dumps(manifest))
+        legacy = self.extras / "box.pyc"
+        legacy.write_bytes(b"unrecorded entry cache")
+        installed = self.box.read_bytes()
+        with self.assertRaisesRegex(ValueError, "version 2 backup"):
+            installer.restore(self.extras, self.backup)
+        self.assertEqual(self.box.read_bytes(), installed)
+        self.assertEqual(legacy.read_bytes(), b"unrecorded entry cache")
+
+    def test_version_two_manifest_cannot_claim_a_legacy_cache_backup(self):
+        (self.extras / "box.pyc").write_bytes(b"original legacy cache")
+        installer.install(self.extras, self.backup)
+        path = self.backup / "manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest["version"] = 2
+        path.write_text(json.dumps(manifest))
+        installed = self.box.read_bytes()
+        with self.assertRaisesRegex(ValueError, "backup cache manifest"):
+            installer.restore(self.extras, self.backup)
+        self.assertEqual(self.box.read_bytes(), installed)
+
+    def test_legacy_cache_symlinks_rejected_before_changes(self):
+        legacy = self.extras / "box.pyc"
+        try:
+            legacy.symlink_to(self.box)
+        except OSError as error:
+            self.skipTest("creating symlinks unavailable: " + str(error))
+        with self.assertRaises(ValueError):
+            installer.prepare(self.extras, self.backup)
+        legacy.unlink()
+        installer.install(self.extras, self.backup)
+        (self.extras / "cfs" / "box.pyc").symlink_to(self.box)
+        installed = self.box.read_bytes()
+        with self.assertRaises(ValueError):
+            installer.restore(self.extras, self.backup)
+        self.assertEqual(self.box.read_bytes(), installed)
 
     def test_tampered_saved_cache_blocks_restore(self):
         cache = self.extras / "__pycache__"

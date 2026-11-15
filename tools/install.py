@@ -79,13 +79,18 @@ def write_exclusive(path, data):
 
 
 def box_caches(extras):
-    """Return only regular CPython entry-point caches, leaving other files alone."""
+    """Return owned legacy/modern entry caches, leaving other files alone."""
+    paths = []
+    legacy = safe_path(extras / "box.pyc")
+    if legacy.exists():
+        if not legacy.is_file():
+            raise ValueError("invalid legacy box bytecode cache")
+        paths.append(legacy)
     cache = safe_path(extras / "__pycache__")
     if not cache.exists():
-        return False, []
+        return False, paths
     if not cache.is_dir():
         raise ValueError("extras bytecode cache is not a directory")
-    paths = []
     for path in cache.iterdir():
         if BOX_CACHE.fullmatch(path.name):
             safe_path(path)
@@ -93,6 +98,10 @@ def box_caches(extras):
                 raise ValueError("invalid box bytecode cache: " + path.name)
             paths.append(path)
     return True, sorted(paths)
+
+
+def entry_cache_path(extras, name):
+    return extras / name if name == "box.pyc" else extras / "__pycache__" / name
 
 
 def cache_snapshot(extras):
@@ -107,10 +116,10 @@ def cache_snapshot(extras):
 
 
 def put_caches(extras, saved):
-    if saved:
+    if any(name != "box.pyc" for name in saved):
         (extras / "__pycache__").mkdir(exist_ok=True)
     for name, (data, info) in saved.items():
-        path = extras / "__pycache__" / name
+        path = entry_cache_path(extras, name)
         path.write_bytes(data)
         os.chmod(str(path), info["mode"])
         os.utime(str(path), ns=(info["atime_ns"], info["mtime_ns"]))
@@ -119,7 +128,7 @@ def put_caches(extras, saved):
 def install(extras, backup):
     extras, backup, original, info, files = prepare(extras, backup)
     cache_existed, saved_cache = cache_snapshot(extras)
-    manifest = {"version": 2, "extras": str(extras), "original": digest(original),
+    manifest = {"version": 3, "extras": str(extras), "original": digest(original),
                 "mode": stat.S_IMODE(info.st_mode), "atime_ns": info.st_atime_ns,
                 "mtime_ns": info.st_mtime_ns,
                 "cache_existed": cache_existed,
@@ -149,7 +158,7 @@ def install(extras, backup):
                 output.write(files["cfs/" + name])
         # A same-second, same-size source can otherwise reuse the previous bytecode.
         for name in saved_cache:
-            path = extras / "__pycache__" / name
+            path = entry_cache_path(extras, name)
             path.unlink()
             removed_cache.append(name)
         box_changed = True
@@ -172,7 +181,8 @@ def restore(extras, backup):
     manifest = json.loads(safe_path(backup / "manifest.json").read_text(encoding="utf-8"))
     original = safe_path(backup / "box.py.original").read_bytes()
     names = {"box.py"} | {"cfs/" + name for name in FILES}
-    if (manifest.get("version") != 2 or manifest.get("extras") != str(extras)
+    if (type(manifest.get("version")) is not int or manifest["version"] not in (2, 3)
+            or manifest.get("extras") != str(extras)
             or set(manifest.get("installed", {})) != names
             or digest(original) != manifest.get("original")
             or not isinstance(manifest.get("cache_existed"), bool)
@@ -182,7 +192,8 @@ def restore(extras, backup):
         raise ValueError("invalid backup manifest or original")
     saved_cache = {}
     for name, metadata in manifest["box_caches"].items():
-        if (not isinstance(name, str) or not BOX_CACHE.fullmatch(name)
+        if (not isinstance(name, str)
+                or not (BOX_CACHE.fullmatch(name) or (manifest["version"] == 3 and name == "box.pyc"))
                 or not isinstance(metadata, dict)
                 or not all(isinstance(metadata.get(key), int) and metadata[key] >= 0
                            for key in ("mode", "atime_ns", "mtime_ns"))):
@@ -191,16 +202,24 @@ def restore(extras, backup):
         if digest(data) != metadata.get("sha256"):
             raise ValueError("backup cache has changed: " + name)
         saved_cache[name] = (data, metadata)
-    if saved_cache and not manifest["cache_existed"]:
+    if any(name != "box.pyc" for name in saved_cache) and not manifest["cache_existed"]:
         raise ValueError("invalid backup cache state")
     _, current_caches = box_caches(extras)
+    if manifest["version"] == 2 and any(path.name == "box.pyc" for path in current_caches):
+        raise ValueError("version 2 backup does not describe the legacy box.pyc cache")
     cfs = safe_path(extras / "cfs")
     if not cfs.is_dir():
         raise ValueError("installed cfs directory has changed")
     entries = {p.name for p in cfs.iterdir()}
-    if entries - {"__pycache__"} != set(FILES):
+    legacy_names = {Path(name).with_suffix(".pyc").name for name in FILES}
+    if entries - {"__pycache__"} - legacy_names != set(FILES):
         raise ValueError("installed cfs directory has changed")
     cache_files = []
+    for name in entries & legacy_names:
+        path = safe_path(cfs / name)
+        if not path.is_file():
+            raise ValueError("invalid legacy cfs bytecode cache: " + name)
+        cache_files.append(path)
     if "__pycache__" in entries:
         cache = safe_path(cfs / "__pycache__")
         if not cache.is_dir():
