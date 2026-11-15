@@ -129,11 +129,25 @@ class CuttingTests(unittest.TestCase):
 
     def test_sensed_fresh_latch_success_restores_limits(self):
         self.on_pause = lambda: self.button_callback(11, 1)
+        def release_after_withdrawal(script):
+            if script == "G0 Y210.00 F6000.00" and self.sensor.cut_present:
+                self.button_callback(11.1, 0)
+        self.on_script = release_after_withdrawal
         self.assertTrue(self.cutter.move_to_cut())
         self.assertEqual(self.scripts.count("G0 Y225.50 F6000.00\n M400"), 2)
         self.assertEqual(self.pauses, [11])
         self.assertFalse(self.sensor.cut_happened)
         self.assertEqual(self.scripts[-1], "SET_VELOCITY_LIMIT ACCEL=1000.000 ACCEL_TO_DECEL=500.000")
+
+    def test_cut_event_without_release_does_not_accept_cutting(self):
+        self.on_pause = lambda: self.button_callback(11, 1)
+        with self.assertRaisesRegex(RuntimeError, "cut sensor did not release"):
+            self.cutter.move_to_cut()
+        self.assertEqual(self.scripts[-1], "M400")
+        self.assertEqual(self.scripts[-2], "G0 Y210.00 F6000.00")
+        self.assertTrue(self.sensor.cut_present)
+        self.assertNotIn("BOX_POSITION", self.scripts)
+        self.assertFalse(any("ACCEL=1000" in script for script in self.scripts))
 
     def test_stale_latch_cleared_and_failure_does_not_restore_limits(self):
         self.sensor.cut_happened = True

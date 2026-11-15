@@ -241,5 +241,10 @@ reuses the complete transport phases with explicit confirmation and a root
 operation context. Its PC tests are bound to the same dependency/event families:
 fresh pre/post observations, actual-head callback admission, sensed cutting,
 service positioning, first-failure stopping and revocation. These commands are
-also outside the original inventory. They have not been deployed or run on the
-reference printer; the earlier four preload observations do not accept them.
+also outside the original inventory. The reference full trial failed: normal
+head/transport observations did not establish nozzle output, and an X-first
+cutter approach caused reported carriage contact. No retraction was issued.
+The corrected common route completes Y withdrawal before X and releases the
+cutter before any retraction. It is checked with composed XYZ/M400 regressions
+on the PC; it has not been installed or mechanically rerun. Hardware tests are
+held. The earlier four preload observations do not accept the full cycle.

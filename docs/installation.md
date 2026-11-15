@@ -230,12 +230,44 @@ baseline unit and retained host runtime, not another firmware/hardware pairing.
 
 <a id="material-operation-trial"></a>
 
-## Explicit load and unload trial preparation
+## Load/unload trial: failed reference check
 
-This admission is prepared and tested on the PC only. It has not been installed
-or run on the printer. The earlier four-slot preload results do not accept this
-longer route. The stock `serial_485.so`, MCU firmware, configuration and macros
-remain unchanged; startup and ordinary commands remain passive.
+**Hardware checks are held. Do not run `CFS_TEST_UNLOAD` from `5a32ac8`.**
+That version was installed passively and its cutter approach caused mechanical
+contact during the reference unload trial. The operator reported skipped steps
+and minor damage. Physical position is untrusted; do not use old command
+coordinates to home, retry, extrude or recover automatically. The local cutter
+correction described below has not been installed or retested on hardware.
+The stock `serial_485.so`, MCU firmware, configuration and macros remain unchanged.
+
+### Recorded results and correction scope
+
+Preparation replies were normal. Loading then reached normal protocol and head/
+hub/buffer/source postconditions, but the operator observed no nozzle output.
+A separate diagnostic extrusion through retained Klipper also produced no
+observed output; it was not the Box purge path, and extruder-shaft rotation was
+not observed. Full loading/nozzle acceptance therefore failed.
+
+The unload approach moved transversely in X before withdrawing Y from the
+extrusion position, causing the reported contact. The first missed cutter
+observation stopped the trial before any `0x11` retraction; unloading did not
+complete. Emergency stop was accepted and all four printer MCUs reported
+shutdown. A later read-only capture found a new ready host process with heater
+targets at zero; that externally changed state is not evidence of physical
+recovery. No further hardware trial is accepted by that readiness.
+
+The local common-cutter correction completes any required Z lift, withdraws Y
+to the configured pre-cut position and waits with `M400` before transverse X.
+After normal sensed cutting it withdraws Y again, waits and requires switch
+release within one second before returning success or allowing retraction.
+A failed release raises before callers can proceed. It adds no retreat from
+a failed/unknown state in `finally`. Endpoint limits alone did not establish a
+safe trajectory. The revised path has PC checks only; physical condition and
+position must be re-established before hardware testing can resume. The earlier
+four-slot preload results remain separate valid history.
+
+The following describes the command interface and admission checks, not permission
+to run the affected version or to resume held hardware testing.
 
 Two separate commands select a physical slot, bypassing logical tool mapping:
 
@@ -261,7 +293,8 @@ clear the bed mesh. Configured positions are validated against mechanical
 speeds, temperatures and iteration counts are checked before heat, motion or
 native writes. The target temperature must allow extrusion within the heater's
 configured limits. Unloading requires a configured active cutter switch,
-initially released. The configuration is pinned for the operation.
+initially released. These checks do not validate the entire physical trajectory.
+The configuration is pinned for the operation.
 
 | Observation | LOAD | UNLOAD |
 | --- | --- | --- |

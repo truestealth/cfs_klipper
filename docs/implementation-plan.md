@@ -279,13 +279,16 @@ or completion. The four observed T1A–T1D normal trials confirm only this basel
 path on one CFS, not full loading/unloading, cutting, purging, printing, recovery
 or failure/timeout behavior.
 
-The next [load/unload trial admission](installation.md#material-operation-trial)
-is prepared on the PC, without deployment or mechanics. It composes existing
-loading and cut/known-source retraction as separate confirmed commands, keeping
-the lifecycle passive. Fresh pre/postconditions, a scoped head callback and
-stop-before-recovery behavior have PC checks. Transport to the head and back
-must be observed before accepting those cases; this does not accept purging,
-nozzle cleaning, a complete macro cycle or printing.
+The [load/unload trial](installation.md#material-operation-trial) was deployed as
+`5a32ac8` and failed reference acceptance. Loading reached its sensor/protocol
+postconditions without observed nozzle output; unloading caused mechanical
+contact at the cutter approach and stopped before retraction. All hardware
+checks are held with physical position untrusted. The current work is PC
+correction and trajectory/release testing, not another mechanical attempt.
+The local Y-before-X approach and normal sensed release check have not been
+installed or retested on hardware. Resume acceptance only after physical
+condition and position are independently re-established; purging, nozzle
+cleaning, a complete macro cycle and printing remain separate cases.
 
 Then validate other targeted versions separately. Record results for the number
 of physical CFS units actually tested; PC simulation of four boxes does not

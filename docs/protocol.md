@@ -313,14 +313,19 @@ An ACK or ordinary mode `0` alone is not mechanical-completion proof. The trial 
 CRC/LENGTH resends; retained `.so` retries and an in-flight MCU operation cannot
 be stopped by revoking host permission.
 
-The separate [load/unload trial](installation.md#material-operation-trial) is
-PC-only preparation. Loading admits typed `0x0F`, selected `0x10` stages 0/4/5/6/7,
+The separate [load/unload trial](installation.md#material-operation-trial) failed
+hardware acceptance on deployed `5a32ac8`; further hardware checks are held.
+Loading admits typed `0x0F`, selected `0x10` stages 0/4/5/6/7,
 `0x04` PRINT and fresh `0x0A`/`0x08`/`0x05` observations. Stage 6 belongs only to
 the armed head callback. Unloading uses the configured cutter and known-source
 `0x04` IDLE/`0x11` BUFFER/MATERIAL path. Neither route admits preload RUN, raw
 diagnostics, another CFS or an automatic recovery sequence. Fresh final head,
 hub, buffer, mode and source bookkeeping are checked separately from ACKs;
-these PC checks do not establish physical completion.
+neither matching replies nor reached sensor postconditions establish nozzle
+extrusion. The reference load produced no observed nozzle output. The unload
+attempt caused cutter-approach contact and stopped before any `0x11` retraction.
+The local Y-before-X approach and cutter-release correction have not been
+installed or rerun on hardware; protocol ACKs cannot validate a motion trajectory.
 
 Successful baseline 1.1.3 `0x10` replies have stage-specific `DATA`, rather than
 a universal empty ACK. The trial validates these bodies before decoder effects:

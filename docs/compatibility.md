@@ -13,7 +13,7 @@ an implemented or hardware-verified one.
 | Klipper import layout | Implemented | PC regression tests and passive deployment on the reference K1C |
 | Passive Klipper startup | Implemented | Real load_config, dependencies and data root; reference MCU 1.1.3 trial reached ready with host actions blocked |
 | Explicit single-operation preload trial | Implemented; bounded reference check | One normal invocation per T1A–T1D on MCU 1.1.3, fresh RFID/remaining replies and operator observations; default lifecycle stays passive |
-| Explicit load/unload trial admission | PC preparation | Separate confirmed physical-target commands compose existing loading and cut/retraction phases; not installed or run on the printer |
+| Explicit load/unload trial admission | Implemented; hardware acceptance failed | Deployed `5a32ac8`: no observed nozzle output after loading; unloading caused mechanical contact before retraction. Hardware checks held; local correction not deployed |
 | Full contract inventory and check bindings | Stage 1 complete | Real test references, partial families and remaining acceptance cases are tracked |
 | State, configuration and compatible storage | Stage 2 components implemented | Synthetic state, all 54 options, 21 endpoint fields and temporary-file tests |
 | Native `serial_485` calls | Stage 3 primitives implemented | PC request/retry checks plus real reads and selected preload RUN through the unchanged target library |
@@ -27,14 +27,19 @@ an implemented or hardware-verified one.
 | Stock G-code and status interfaces | Partial | All 103 names registered, including two conditional Hall commands and one blocked legacy feed command; endpoint and snapshots tested |
 | RFID, remaining length, saved materials | Partial | Fresh 40-byte MCU records and remaining replies after explicit T1A–T1D preload; normal physical behavior and both interfaces confirmed; fault/full-cycle acceptance remains pending |
 | Reversible development-file installation | Implemented | Modern/sibling bytecode backup and scoped restore; PC failure/tamper checks and actual target file/cache rollback while stopped, followed by passive reinstallation |
-| Python 3.8 | Project and CI default | 635 methods run: 631 passed, 4 Windows symlink-privilege skips on Python 3.8.20; passive target runtime 3.8.2 checked separately |
+| Python 3.8 | Project and CI default | 639 methods run: 635 passed, 4 Windows symlink-privilege skips on Python 3.8.20; passive target runtime 3.8.2 checked separately |
 
-The 635-method total is the public suite only. Separate local runs passed 14
+The 639-method total is the public suite only. Separate local runs passed 14
 retained-module checks, 13 saved-macro checks and the 17 public macro checks
 using the retained renderer. They are additional evidence, not extra public
 test methods. The four skips require Windows native symlink privileges;
 platform-independent reparse rejection is checked. The retained checks include
 the actual virtual-SD worker after a passive diagnostic: it does not dispatch PAUSE.
+
+Four new PC methods extend the published 635-method baseline: three trajectory/
+composed-path regressions and one held cutter-release check. They validate the
+local correction's approach and normal release gates, not physical clearance or
+hardware recovery after the failed reference trial.
 
 PC admission adds 30 public methods: 10 bootstrap, 15 passive lifecycle and five
 composed failure-state checks. Caller-boundary False/None returns are injected
@@ -181,9 +186,12 @@ bounded normal baseline path; fault and full-operation paths remain separate.
 selected RUN path without enabling ordinary host actions or automatic mechanics.
 Its PC tests, normal baseline trials and earlier passive target observations
 have distinct evidence scopes. Separate [material trial admission](installation.md#material-operation-trial)
-composes the real host phases in PC tests. It retains passive startup, scopes
-the head callback and stops before automatic recovery; full transport, cutting
-and failure behavior still need printer checks.
+composes the real host phases in PC tests. Its deployed reference check did not
+accept loading or unloading: nozzle output was not observed, and the cutter
+approach caused mechanical contact. The first missed cutter observation stopped
+the path before `0x11` retraction; this did not prevent the preceding contact.
+Hardware checks are held. The local trajectory/release correction has not been
+installed or rerun on hardware; successful PC tests do not accept the correction.
 
 Checks cover all 25 named reply statuses and their contextual outcomes, normal
 data/cache updates, missing-response distinctions, communication-test byte zero

@@ -103,6 +103,8 @@ class Cutter:
 
         The sensed branch retains the stock sticky observation and five return
         attempts. Failed sensing deliberately leaves the temporary limits set.
+        The approach withdraws Y before X; normal sensed completion withdraws
+        Y again and requires switch release before returning to a caller.
         """
         box, cfg = self.box, self.box.boxcfg
         check = box.host_guard()
@@ -117,7 +119,14 @@ class Cutter:
             return True
         if cfg.has_extrude_pos == 1:
             self._call(check, self.motion.z_move)
-            self._run(check, "G90")
+            self._run(check, "M400")
+        # A caller may leave the head at a rear extrusion position. Reaching
+        # individually valid endpoints does not make an X sweep there safe.
+        # Complete the Y withdrawal before any transverse cutter approach.
+        self._run(check, "G90")
+        self._run(check, "G0 Y%.2f F%.2f" % (cfg.pre_cut_pos_y, cfg.cut_velocity))
+        self._run(check, "M400")
+        if cfg.has_extrude_pos == 1:
             self._run(check, "G0 X%.2f F%.2f" % (cfg.pre_cut_pos_x, cfg.cut_velocity))
             self._run(check, "G0 X%.2f Y%.2f F%.2f" % (
                 cfg.pre_cut_pos_x, cfg.pre_cut_pos_y, cfg.cut_velocity))
@@ -179,6 +188,22 @@ class Cutter:
                 return False
             self.sensor.clear_cut_happened()
             self._call(check, box.gcode.respond_info, "Cut sensor triggered.")
+            # Release the cutter before any caller can retract filament or
+            # cross the rear service area in X. This is a normal-success tail,
+            # never speculative movement from a failed/unknown physical state.
+            self._run(check, "G90")
+            self._run(check, "G0 Y%.2f F%.2f" % (cfg.pre_cut_pos_y, cfg.cut_velocity))
+            self._run(check, "M400")
+            for _ in range(20):
+                self._require_sensor()
+                if self.sensor.cut_present == 0:
+                    break
+                self._pause(check, 0.05)
+            self._require_sensor()
+            if self.sensor.cut_present != 0:
+                # Several retained recovery callers ignore a False cut result.
+                # A held blade must abort those callers before any retraction.
+                raise RuntimeError("cut sensor did not release; further actions blocked")
         self._restore_limits(check, limits)
         return True
 

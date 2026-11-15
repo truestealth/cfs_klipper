@@ -5630,11 +5630,11 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
       "code": 4,
-      "implementation_note": "Recovered request representation and applicable admission gates are PC-tested; reserved identifiers do not establish executable operations."
+      "implementation_note": "Recovered request representation and applicable admission gates are PC-tested; reserved identifiers do not establish executable operations. A bounded reference transport-load path returned normal selected PRINT replies; full mechanical acceptance failed later during cutting and nozzle output was not established."
     },
     {
       "id": "WIRE-GET_BUFFER_STATE",
@@ -5814,11 +5814,11 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "implemented",
       "blockers": [],
       "code": 15,
-      "implementation_note": "Recovered request representation and applicable admission gates are PC-tested; reserved identifiers do not establish executable operations."
+      "implementation_note": "Recovered request representation and applicable admission gates are PC-tested; reserved identifiers do not establish executable operations. A bounded reference transport-load path returned normal selected tighten disable/enable replies through the retained library; full cycle not accepted."
     },
     {
       "id": "WIRE-EXTRUDE_PROCESS",
@@ -5834,13 +5834,13 @@
         "PC-NATIVE-RETRY",
         "HW-NATIVE-BOUNDARY"
       ],
-      "evidence": "static",
+      "evidence": "partial",
       "implementation": "partial",
       "blockers": [
         "GAP-STAGES"
       ],
       "code": 16,
-      "implementation_note": "Recovered bytes/timeouts are represented and tested. Opcode 13, encoding-0 feed and unsupported wire stages are blocked before native execution until their operation route is resolved."
+      "implementation_note": "Recovered bytes/timeouts are represented and tested. Opcode 13, encoding-0 feed and unsupported wire stages are blocked before native execution until their operation route is resolved. A bounded reference transport-load path checked normal stage 0/4/5/6 replies and physical head arrival. No nozzle output was reported, and the subsequent cutting trial failed; no full operation acceptance."
     },
     {
       "id": "WIRE-RETRUDE_PROCESS",
@@ -8564,7 +8564,8 @@
         "tests/test_cutting.py::CuttingTests.test_loaded_counts_do_not_inherit_ui_limits",
         "tests/test_cutting.py::CuttingTests.test_missing_cut_fallback_coordinates_prevent_all_effects",
         "tests/test_cutting.py::CuttingTests.test_blind_cut_does_not_require_unrelated_tray_positions",
-        "tests/test_host_actions.py::HostActionTests.test_stage5_registration_alias_and_truthy_hall_condition_before_ready"
+        "tests/test_host_actions.py::HostActionTests.test_stage5_registration_alias_and_truthy_hall_condition_before_ready",
+        "tests/test_cutting.py::CuttingTests.test_cut_event_without_release_does_not_accept_cutting"
       ]
     },
     {
@@ -8580,7 +8581,8 @@
         "tests/test_motion.py::MotionTests.test_fan_restore_failure_retains_saved_value",
         "tests/test_cutting.py::CuttingTests.test_nozzle_sequence_preserves_four_strokes_and_fan_units",
         "tests/test_host_actions.py::HostActionTests.test_fan_context_is_shared_with_cut_and_restored_once",
-        "tests/test_motion.py::MotionTests.test_optional_fan_combinations_and_empty_restore"
+        "tests/test_motion.py::MotionTests.test_optional_fan_combinations_and_empty_restore",
+        "tests/test_cutting.py::CuttingTests.test_cut_event_without_release_does_not_accept_cutting"
       ]
     },
     {
@@ -8619,7 +8621,8 @@
         "tests/test_cutting.py::CuttingTests.test_calibration_checks_actual_candidate_not_entire_search",
         "tests/test_cutting.py::CuttingTests.test_calibration_initial_positions_are_checked_before_motion",
         "tests/test_cutting.py::CuttingTests.test_calibration_failure_does_not_save_or_restore",
-        "tests/test_cutting.py::CuttingTests.test_hall_zero_cannot_search_beyond_configured_x_minimum"
+        "tests/test_cutting.py::CuttingTests.test_hall_zero_cannot_search_beyond_configured_x_minimum",
+        "tests/test_cutting.py::CuttingTests.test_cut_event_without_release_does_not_accept_cutting"
       ]
     },
     {
@@ -8668,7 +8671,8 @@
         "Validate cutter operation and calibration with the configured sensor variant, including the documented failure observation and retained coordinates."
       ],
       "status": "planned",
-      "test": null
+      "test": null,
+      "validation_note": "Reference full trial failed: transport head observations did not establish nozzle output; cutting approach caused reported carriage contact and no retraction was issued. Common trajectory/release correction is PC-tested only; hardware tests held and full family remains planned."
     },
     {
       "id": "HW-CMD-PRINT",
@@ -8840,7 +8844,8 @@
         "tests/test_failure_states.py::FailureStateTests.test_tool_none_reaches_success_tail_and_clears_shared_motion_context",
         "tests/test_failure_states.py::FailureStateTests.test_nested_tool_exceptions_release_ownership_without_motion_rollback",
         "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_has_its_own_successful_shared_context_tail",
-        "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_exception_preserves_the_state_at_its_failure"
+        "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_exception_preserves_the_state_at_its_failure",
+        "tests/test_cutting.py::CuttingTests.test_cut_event_without_release_does_not_accept_cutting"
       ],
       "validation_note": "Actual composed Python components now assert shared Z/velocity/acceleration, fan/source/error hints and operation/head/heartbeat ownership after nested cut/load/flush False, None and exceptions, plus the distinct normal and exception tails of all eight recovery leaves. False/None caller-boundary returns follow real phase execution; separate effect injections interrupt actual phases with exceptions. Physical rollback is not inferred."
     },
@@ -9008,7 +9013,8 @@
         "The real entry point resolves extras.base_info.base_dir and registers a passive lifecycle before macros; ready borrows the configured serial owner.",
         "Passive startup permits only typed identity/telemetry reads and blocks host actions, raw diagnostics, automatic motion, preload, pause, heating and sensor changes.",
         "The extension-only CFS_TEST_PRELOAD command admits one confirmed physical target on MCU 1.1.3 without changing passive mode; owner/generation/request guards, idle/head/material/hub preconditions and pre-persistence reply checks reject unrelated effects.",
-        "Separate confirmed CFS_TEST_LOAD/UNLOAD commands reuse baseline transport phases while the lifecycle remains passive; real head/cutter observations, fresh masks, known-source unloading, checked geometry and phase-owned requests gate mechanics. PC substitutes do not establish target completion."
+        "Separate confirmed CFS_TEST_LOAD/UNLOAD commands reuse baseline transport phases while the lifecycle remains passive; real head/cutter observations, fresh masks, known-source unloading, checked geometry and phase-owned requests gate mechanics. PC substitutes do not establish target completion.",
+        "Cutter entry completes optional Z lift and Y withdrawal before transverse X; sensed success withdraws Y and requires release before retraction. Composed LOAD-to-UNLOAD tests preserve/replay requested and completed XYZ with M400 boundaries. A held release raises, including for callers that ignore old False results."
       ],
       "status": "partial",
       "test": [
@@ -9099,12 +9105,15 @@
         "tests/test_material_trial.py::MaterialTrialTests.test_failed_final_load_observation_does_not_rewind_live_source_or_auto_unload",
         "tests/test_material_trial.py::MaterialTrialTests.test_unsolicited_head_events_do_not_move_a_passive_box",
         "tests/test_material_trial.py::MaterialTrialTests.test_missing_inactive_or_stuck_cut_switch_rejects_unload_before_effects",
-        "tests/test_material_trial.py::MaterialTrialTests.test_unreleased_cut_switch_after_return_cannot_claim_success",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unreleased_cut_switch_stops_before_retraction_and_preserves_source",
         "tests/test_material_trial.py::MaterialTrialTests.test_head_arrival_during_preflight_prevents_heating_and_native_writes",
         "tests/test_material_trial.py::MaterialTrialTests.test_head_arrival_during_heating_prevents_first_feed",
         "tests/test_material_trial.py::MaterialTrialTests.test_temperature_below_retained_extrusion_limit_rejects_before_effects",
         "tests/test_material_trial.py::MaterialTrialTests.test_head_loss_during_final_feed_revokes_load_without_recovery",
-        "tests/test_material_trial.py::MaterialTrialTests.test_stage_zero_mode_and_stage_five_wheel_reply_shapes_are_required"
+        "tests/test_material_trial.py::MaterialTrialTests.test_stage_zero_mode_and_stage_five_wheel_reply_shapes_are_required",
+        "tests/test_material_trial.py::MaterialTrialTests.test_load_then_unload_withdraws_from_the_same_rear_service_pose_before_x",
+        "tests/test_material_trial.py::MaterialTrialTests.test_standalone_cutter_withdraws_before_x_with_and_without_a_tray",
+        "tests/test_material_trial.py::MaterialTrialTests.test_cutter_withdrawal_uses_absolute_coordinates_before_lateral_travel"
       ],
       "remaining": "PC substitutes cover entry/dependencies, passive defaults and explicit preload/load/unload trials. The reference target separately verified passive reads and four normal preloads. Full load/unload trials, dependency fault coverage, retained-helper numerical results and complete mechanical acceptance remain unverified."
     },
@@ -9116,7 +9125,8 @@
         "Exercise ready, reconnect-related observations and shutdown with pending work.",
         "Keep virtual-SD resume status distinct from paused print state and a queued tool target.",
         "An explicit trial keeps background head/slot/runout/error actions passive and loses permission on owner, lifecycle, binding, identity, idle/head observation or deadline changes, with no automatic mechanical cleanup.",
-        "A material trial admits only its armed head callback, keeps background runout/slot/pause effects passive, rejects automatic recovery and first-missed cutter retries, and revokes permission on owner/lifecycle/device/configuration/idle-state changes without speculative cleanup or cache rewind."
+        "A material trial admits only its armed head callback, keeps background runout/slot/pause effects passive, rejects automatic recovery and first-missed cutter retries, and revokes permission on owner/lifecycle/device/configuration/idle-state changes without speculative cleanup or cache rewind.",
+        "Cutter entry completes optional Z lift and Y withdrawal before transverse X; sensed success withdraws Y and requires release before retraction. Composed LOAD-to-UNLOAD tests preserve/replay requested and completed XYZ with M400 boundaries. A held release raises, including for callers that ignore old False results."
       ],
       "status": "implemented",
       "test": [
@@ -9167,10 +9177,15 @@
         "tests/test_material_trial.py::MaterialTrialTests.test_present_head_after_retract_is_failure_without_an_automatic_retry",
         "tests/test_material_trial.py::MaterialTrialTests.test_unsolicited_head_events_do_not_move_a_passive_box",
         "tests/test_material_trial.py::MaterialTrialTests.test_missing_inactive_or_stuck_cut_switch_rejects_unload_before_effects",
-        "tests/test_material_trial.py::MaterialTrialTests.test_unreleased_cut_switch_after_return_cannot_claim_success",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unreleased_cut_switch_stops_before_retraction_and_preserves_source",
         "tests/test_material_trial.py::MaterialTrialTests.test_head_arrival_during_preflight_prevents_heating_and_native_writes",
         "tests/test_material_trial.py::MaterialTrialTests.test_head_arrival_during_heating_prevents_first_feed",
-        "tests/test_material_trial.py::MaterialTrialTests.test_head_loss_during_final_feed_revokes_load_without_recovery"
+        "tests/test_material_trial.py::MaterialTrialTests.test_head_loss_during_final_feed_revokes_load_without_recovery",
+        "tests/test_material_trial.py::MaterialTrialTests.test_load_then_unload_withdraws_from_the_same_rear_service_pose_before_x",
+        "tests/test_material_trial.py::MaterialTrialTests.test_standalone_cutter_withdraws_before_x_with_and_without_a_tray",
+        "tests/test_material_trial.py::MaterialTrialTests.test_cutter_withdrawal_uses_absolute_coordinates_before_lateral_travel",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unload_never_guesses_a_missing_or_conflicting_source",
+        "tests/test_material_trial.py::MaterialTrialTests.test_failed_final_load_observation_does_not_rewind_live_source_or_auto_unload"
       ],
       "validation_note": "Public producer fixture verifies Box consumption and ownership. Additional local execution of pinned SwitchSensor/RunoutHelper verifies disabled/debounce/duplicate behavior inside stage4; this retained-source proof is separate from public CI."
     },
@@ -9546,7 +9561,8 @@
         "tests/test_pc_integration.py::PCIntegrationTests.test_position_disabled_commands_fail_before_affected_effects",
         "tests/test_pc_integration.py::PCIntegrationTests.test_position_disabled_resume_and_continuation_fail_before_motion",
         "tests/test_pc_integration.py::PCIntegrationTests.test_no_sensor_same_content_does_not_require_tray_or_fans",
-        "tests/test_pc_integration.py::PCIntegrationTests.test_position_disabled_box_end_preserves_pending_drain_and_source"
+        "tests/test_pc_integration.py::PCIntegrationTests.test_position_disabled_box_end_preserves_pending_drain_and_source",
+        "tests/test_cutting.py::CuttingTests.test_cut_event_without_release_does_not_accept_cutting"
       ],
       "remaining": "Configured actions and position-disabled preflight are checked. Every combination of partial coordinate configuration with all recovery/restoration exits has not been exercised."
     },
@@ -9734,7 +9750,8 @@
         "tests/test_failure_states.py::FailureStateTests.test_tool_none_reaches_success_tail_and_clears_shared_motion_context",
         "tests/test_failure_states.py::FailureStateTests.test_nested_tool_exceptions_release_ownership_without_motion_rollback",
         "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_has_its_own_successful_shared_context_tail",
-        "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_exception_preserves_the_state_at_its_failure"
+        "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_exception_preserves_the_state_at_its_failure",
+        "tests/test_cutting.py::CuttingTests.test_cut_event_without_release_does_not_accept_cutting"
       ],
       "validation_note": "Actual composed Python components now assert shared Z/velocity/acceleration, fan/source/error hints and operation/head/heartbeat ownership after nested cut/load/flush False, None and exceptions, plus the distinct normal and exception tails of all eight recovery leaves. False/None caller-boundary returns follow real phase execution; separate effect injections interrupt actual phases with exceptions. Physical rollback is not inferred."
     },
@@ -10295,7 +10312,7 @@
         "CFS_TEST_LOAD TNN=<physical T1A..T4D> CONFIRM=1",
         "CFS_TEST_UNLOAD TNN=<physical T1A..T4D> CONFIRM=1"
       ],
-      "scope": "Extension-only commands outside the original 103-command inventory; separate invocations, no automatic load/unload chain; PC preparation only, not deployed or run on target",
+      "scope": "Extension-only commands outside the original inventory. Reference installation was attempted; full load/nozzle and cut/unload acceptance FAILED and further hardware tests are held. The corrected common cutter route has PC tests only and has not been installed or rerun.",
       "baseline": "One attached/connected explicitly confirmed cfs0 MCU 1.1.3 with host encoding 1",
       "preconditions": "Ready passive lifecycle, standby/inactive virtual SD/not paused/not resuming, no error/other operation or trial, real head sensor, already homed XYZ, valid mechanical travel/feed/count/temperature settings; unloading also requires an active released cutter switch",
       "load": [
@@ -10322,7 +10339,17 @@
         "PC-INTEGRATION-EVENTS"
       ],
       "successful_feed_replies": "Baseline 0x10 stage 0: one mode byte equal to 0; stage 5: four measuring-wheel bytes; stages 4/6/7: empty body. Stage 4 ACK precedes feed completion.",
-      "reply_attribution_limit": "The stock native transport orders address/command completions, but the protocol carries no stage echo/transaction ID; payload checks cannot identify every late same-command reply or prove physical completion."
+      "reply_attribution_limit": "The stock native transport orders address/command completions, but the protocol carries no stage echo/transaction ID; payload checks cannot identify every late same-command reply or prove physical completion.",
+      "motion_sequence": "Optional Z lift completed first; Y pre-cut withdrawal and M400 before transverse X for every cutter entry; normal sensed success returns Y pre-cut and M400 then requires switch release within a bounded one-second observation before returning to any retraction caller. Release failure raises; missed sensing/exception does not trigger speculative cleanup motion.",
+      "reference_trial": {
+        "firmware": "cfs0 MCU 1.1.3",
+        "attempted_commit": "5a32ac8a29c0057dabeab4e3e93aa3483c41879f",
+        "transport_load": "21 attributed normal API returns, head present/selected CONNECTIONS/mode 2/non-full buffer and live source, but no nozzle output reported",
+        "extra_diagnostic": "Separate retained-Klipper E20 feed also produced no reported nozzle output; not a Box purge check or proof of shaft rotation",
+        "unload": "FAILED after first missed cut observation; no 0x11 retraction issued. Operator reported a carriage strike, skipped steps and minor damage during X-first approach from the rear extrusion position.",
+        "stop": "Emergency stop accepted and all four printer MCUs entered shutdown. A later new ready process with zero heater targets was observed; not restarted by the agent and not treated as physical recovery.",
+        "acceptance": "Full mechanical acceptance failed; no retry/rehome/redeploy after the incident. Earlier bounded preload results remain separate."
+      }
     }
   }
 }

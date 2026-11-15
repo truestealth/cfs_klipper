@@ -20,15 +20,22 @@ integration, Jinja macro tests and a reversible development-file installer.
 Local verification also executes pinned retained Python and saved macro sources
 with substituted hardware effects; public CI uses synthetic fixtures.
 
+**Hardware trials are on hold. Do not run `CFS_TEST_UNLOAD` from `5a32ac8`.**
+Its cutter approach caused mechanical contact in the reference trial; the
+operator reported skipped steps and minor damage. Loading reached the head
+sensor but produced no observed nozzle output. The full load/unload trial
+failed acceptance. A local trajectory correction has not been installed or
+retested on hardware; the printer's physical position is untrusted.
+
 `load_config` now initializes `[box]` in **passive admission mode**: identity and
 telemetry reads are available, while ordinary host actions and native writes are
 blocked. There is no general switch to enable mechanics. An explicit
 [single-operation preload trial](docs/installation.md#single-operation-trial)
 has a bounded reference-printer check: one invocation for each T1A–T1D slot on
 MCU 1.1.3, fresh RFID/remaining replies, observed mechanical activity and correct
-display in both interfaces. Separate [load/unload trial admission](docs/installation.md#material-operation-trial)
-is prepared on the PC and has not been installed or run on the printer. Full
-loading, tool changes and print acceptance remain pending.
+display in both interfaces. The later [load/unload trial](docs/installation.md#material-operation-trial)
+was installed and attempted, with the failed results described above. Earlier
+preload results remain separate from full loading, tool changes and print acceptance.
 A reference K1C trial verified the live configuration and sustained passive reads
 on CFS MCU 1.1.3 with printer Python 3.8.2. Mechanical acceptance remains pending.
 The main installer also completed file/cache rollback with Klipper stopped and

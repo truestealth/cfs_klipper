@@ -19,6 +19,41 @@ from test_lifecycle import Native, Reactor
 from test_native import reply
 
 
+class PoseReplay:
+    """Replay commanded XYZ and M400 barriers, without modelling real mechanics."""
+
+    def __init__(self, position):
+        self.position = position
+        self.completed = tuple(position[:3])
+        self.absolute = True
+        self.moves = []
+
+    def run(self, script):
+        completed = []
+        for line in script.splitlines():
+            words = line.split()
+            if not words:
+                continue
+            command = words[0]
+            if command in ("G90", "G91"):
+                self.absolute = command == "G90"
+            elif command in ("G0", "G1"):
+                before = tuple(self.position[:3])
+                for word in words[1:]:
+                    if word[0] in "XYZ":
+                        index = "XYZ".index(word[0])
+                        value = float(word[1:])
+                        self.position[index] = value if self.absolute else self.position[index] + value
+                after = tuple(self.position[:3])
+                if before != after:
+                    self.moves.append({"line": line.strip(), "before": before, "after": after,
+                                       "completed_before": self.completed})
+            elif command == "M400":
+                self.completed = tuple(self.position[:3])
+                completed.append(self.completed)
+        return completed
+
+
 class MaterialTrialTests(unittest.TestCase):
     def make_box(self, action="LOAD", target="T1A", **settings):
         directory = tempfile.TemporaryDirectory()
@@ -67,6 +102,7 @@ class MaterialTrialTests(unittest.TestCase):
         self.full_buffer_after_head = False
         self.clear_head_on_retract = True
         self.events, self.on_native = [], None
+        self.pose = PoseReplay(self.printer.position)
         self.outcomes = {}
         self.set_head(action == "UNLOAD")
         if action == "UNLOAD":
@@ -123,15 +159,15 @@ class MaterialTrialTests(unittest.TestCase):
 
         def script(value):
             self.events.append(("gcode", value))
+            completed = self.pose.run(value)
             if self.printer.buttons:
                 callback = self.printer.buttons[0][1]
                 cfg = self.box.boxcfg
-                if (self.fire_cut and value == "G0 Y%.2f F%.2f\n M400" %
-                        (cfg.get_real_cut_pos_y(), cfg.cut_velocity)):
-                    callback(self.reactor.monotonic(), True)
-                if (self.release_cut and value == "G90\n G0 Y%.2f F20000.00" %
-                        cfg.retrude_position_y):
-                    callback(self.reactor.monotonic(), False)
+                for x, y, _ in completed:
+                    if self.fire_cut and x == cfg.pre_cut_pos_x and y == cfg.get_real_cut_pos_y():
+                        callback(self.reactor.monotonic(), True)
+                    elif self.release_cut and y <= cfg.pre_cut_pos_y:
+                        callback(self.reactor.monotonic(), False)
             for line in value.splitlines():
                 fields = line.split()
                 if fields and fields[0] in ("M104", "M109"):
@@ -170,6 +206,62 @@ class MaterialTrialTests(unittest.TestCase):
                 self.box.send_native(build_request(self.address, "EXTRUDE_PROCESS",
                                                   bytes((self.mask, 0, 0))))
             self.assertEqual(len(self.native.calls), before)
+
+    def assert_cut_crossings_use_withdrawn_pose(self, start, lifted=True):
+        """Check actual segment geometry and completed travel before lateral X."""
+        moves = self.pose.moves[start:]
+        crossings = [move for move in moves if move["before"][0] != move["after"][0]]
+        self.assertTrue(crossings, "the fixture must exercise lateral X travel")
+        corridor_y = self.box.boxcfg.pre_cut_pos_y
+        for move in crossings:
+            with self.subTest(line=move["line"], before=move["before"]):
+                self.assertLessEqual(move["before"][1], corridor_y)
+                self.assertLessEqual(move["after"][1], corridor_y)
+                self.assertLessEqual(move["completed_before"][1], corridor_y,
+                                     "Y withdrawal must reach an M400 barrier before X travel")
+                if lifted:
+                    self.assertGreaterEqual(move["completed_before"][2], 50)
+
+    def test_load_then_unload_withdraws_from_the_same_rear_service_pose_before_x(self):
+        self.make_box(target="T1C", switch_pin="synthetic_pin")
+        same_box = self.box
+        self.run_trial("LOAD")
+        cfg = self.box.boxcfg
+        self.assertEqual(self.printer.position[:2], [cfg.extrude_pos_x, cfg.extrude_pos_y])
+        self.assertGreater(self.printer.position[1], cfg.pre_cut_pos_y)
+        self.assertTrue(self.lifecycle.head_present())
+        start = len(self.pose.moves)
+        result = self.run_trial("UNLOAD")
+        self.assertIs(self.box, same_box)
+        self.assertEqual(result["target"], "T1C")
+        self.assert_cut_crossings_use_withdrawn_pose(start)
+        self.assertEqual(self.printer.position[:2], [cfg.retrude_position_x, cfg.retrude_position_y])
+        self.assertFalse(self.box.cut_sensor.cut_present)
+        self.assertIsNone(self.box.last_cmd)
+        self.assert_released()
+
+    def test_standalone_cutter_withdraws_before_x_with_and_without_a_tray(self):
+        for tray in (0, 1):
+            with self.subTest(has_extrude_pos=tray):
+                self.make_box(has_extrude_pos=tray)
+                self.lifecycle.passive = False
+                self.set_head(True)
+                self.printer.position[:3] = [127, 368, 40]
+                self.pose.completed = tuple(self.printer.position[:3])
+                self.assertIs(self.box.cutter.move_to_cut(), True)
+                self.assert_cut_crossings_use_withdrawn_pose(0, lifted=bool(tray))
+                self.assertEqual(self.printer.position[1], self.box.boxcfg.pre_cut_pos_y)
+                self.assertFalse(any("G28" in script for script in self.gcode.scripts))
+
+    def test_cutter_withdrawal_uses_absolute_coordinates_before_lateral_travel(self):
+        self.make_box("UNLOAD")
+        self.lifecycle.passive = False
+        self.printer.position[:3] = [127, 368, 40]
+        self.pose.completed = tuple(self.printer.position[:3])
+        self.gcode.run_script_from_command("G91")
+        self.assertIs(self.box.cutter.move_to_cut(), True)
+        self.assert_cut_crossings_use_withdrawn_pose(0)
+        self.assertEqual(self.printer.position[1], self.box.boxcfg.pre_cut_pos_y)
 
     def test_passive_registration_and_confirmation_do_not_enable_ordinary_commands(self):
         trial = self.make_box()
@@ -432,15 +524,16 @@ class MaterialTrialTests(unittest.TestCase):
                 self.assertEqual(self.box.last_cmd, "T1A")
                 self.assert_released()
 
-    def test_unreleased_cut_switch_after_return_cannot_claim_success(self):
+    def test_unreleased_cut_switch_stops_before_retraction_and_preserves_source(self):
         self.make_box("UNLOAD")
         self.release_cut = False
         with self.assertRaises((RuntimeError, ValueError)):
             self.run_trial()
         self.assertTrue(self.box.cut_sensor.cut_present)
-        self.assertIsNone(self.box.last_cmd)
-        self.assertFalse(self.lifecycle.head_present())
-        self.assertIn("G90\n G0 Y100.00 F20000.00", self.gcode.scripts)
+        self.assertEqual(self.box.last_cmd, "T1A")
+        self.assertTrue(self.lifecycle.head_present())
+        self.assertEqual(self.printer.position[1], self.box.boxcfg.pre_cut_pos_y)
+        self.assertFalse(any(command == 0x11 for _, command, _ in self.native.commands()))
         self.assertNotIn("M104 S0", self.gcode.scripts)
         self.assert_released()
 

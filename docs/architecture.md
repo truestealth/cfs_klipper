@@ -119,8 +119,12 @@ The separate [material trial](installation.md#material-operation-trial) reuses
 Loading and Cutter/Retraction under one operation context. Only the owning
 dispatch and an armed load head callback receive scoped permission; startup and
 ordinary commands stay passive. Fresh pre/postconditions bind a physical source,
-and trial failures stop before automatic recovery. This preparation has PC
-checks only and has not been deployed or run on the printer.
+and trial failures stop before automatic recovery. The deployed `5a32ac8` trial
+failed hardware acceptance: no nozzle output was observed after loading, and
+the cutter approach caused mechanical contact during unloading. Hardware tests
+are held. The local correction withdraws Y before transverse X and requires
+cutter release on normal sensed completion; it has not been installed or
+retested on hardware. Endpoint bounds alone do not validate a trajectory.
 
 Operations coordinate host actions with separately observed CFS, buffer and
 toolhead state. An ACK, last T-command or cached material record cannot establish
@@ -142,7 +146,9 @@ values and transitions come from the target stock implementation.
 The [development installer](installation.md) deploys `klippy/extras/box.py` and
 `klippy/extras/cfs/` with preview, scoped backup and restore. Temporary-tree tests
 cover the import layout and passive initialization. It leaves other modules,
-configuration, services and spool data with their owners; no printer was installed.
+configuration, services and spool data with their owners. Recorded target
+deployments and the failed mechanical trial are separate evidence in the
+[installation guide](installation.md#material-operation-trial).
 
 Python 3.8 is pinned in [.python-version](../.python-version), matching the
 preserved CPython ABI baseline without establishing MIPS native compatibility.
