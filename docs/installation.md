@@ -1,22 +1,21 @@
-# Local installation preparation
+# Installation and test commands
 
 [Русский](installation.ru.md)
 
-This tool copies the extension to a local Klipper `extras` directory. The
-bootstrap initializes passive admission with mechanics blocked. A reference K1C
-trial on CFS MCU 1.1.3 and printer Python 3.8.2 reached ready and sustained native
-identity/state reads. Mechanical acceptance remains separate. The tool itself
-does not contact a printer, manage services, or edit configuration, macros,
-firmware or data; remote deployment and restarts require explicit authorization.
+The installer copies the extension into an existing Klipper `extras` directory.
+It leaves the stock `serial_485` library, MCU firmware, configuration, macros
+and user data in place. Startup is passive; the test commands below grant one
+explicit operation at a time.
 
-Run from this checkout with Python 3.8 or later. Both paths must be explicit;
-the extras directory and backup parent must exist. The backup path itself must
-not exist and must be separate from the extras directory. `extras/box.py` must
-be an existing regular file, and `extras/cfs` must be absent. Links, reparse
-points and parent traversal are rejected. Native `box.so`, `box.*.so`, `box.pyd`
-and `box.*.pyd` entry points are rejected because they can shadow `box.py`;
-`box_wrapper.so` is retained. The default action is a read-only
-preview:
+## Installation and rollback
+
+Run from the checkout with Python 3.8 or later. Stop Klipper before installing or
+restoring files. Inspect the target's service wrapper before using it: its start
+branch may copy factory configuration or restart an MCU service.
+
+The extras directory and backup parent must exist. The backup path must be new
+and separate from extras; `extras/box.py` must be a regular file and `extras/cfs`
+must be absent. The default action previews changes:
 
 ```sh
 python tools/install.py --extras /path/to/klipper/klippy/extras --backup /path/to/new-backup
@@ -24,341 +23,185 @@ python tools/install.py install --extras /path/to/klipper/klippy/extras --backup
 python tools/install.py restore --extras /path/to/klipper/klippy/extras --backup /path/to/new-backup
 ```
 
-Installation saves the original `box.py` bytes, mode and timestamps alongside
-a hash manifest, then copies only the fixed Python file list. Both entry-cache
-layouts are supported: `extras/__pycache__/box.cpython-*.pyc` and the sibling
-`extras/box.pyc` used by the reference printer. Original caches are backed up and
-invalidated before switching source; restore removes generated matching caches
-and restores the originals with their bytes, mode and timestamps. If an entry
-cache did not originally exist, a generated matching cache is removed on restore.
-Other cache entries are left alone. Existing
-`box*.so`, `serial*.so`, other extras and user data are not modified. Restore
-checks the backup and every installed file and refuses if owned files changed or
-the `cfs` directory contains additional entries, except for recognized bytecode
-of the installed modules: `cfs/<module>.pyc` or matching files in
-`cfs/__pycache__`. Only these owned cache files are removed.
-Unknown cache entries and links are rejected. It verifies the restored bytes
-and retains the backup. Keep the backup safe: hashes detect accidental changes,
-but do not authenticate a deliberately altered manifest.
+Installation backs up the original `box.py` and its entry caches, including
+sibling `box.pyc` and `__pycache__/box.cpython-*.pyc`, with hashes, modes and
+timestamps. It then copies the fixed Python source list and invalidates the
+entry caches. Other extras, native libraries and data are unchanged.
 
-New backups use manifest version 3. Modern-cache backups from version 2 remain
-restorable. A version 2 backup with a sibling `extras/box.pyc` is rejected before
-mutation: the old manifest cannot establish whether that file was original or
-generated. Preserve the original source/cache evidence and use a separately
-verified recovery procedure for that older ambiguous layout.
+Restore verifies the backup and installed sources, removes the owned package
+and recognized generated caches, and restores the original entry/cache bytes
+and metadata. Extra package entries, unknown caches, changed sources, links and
+path traversal are rejected. Native entry points such as `box.so` are rejected
+because they can shadow `box.py`; `box_wrapper.so` is retained.
 
-An installation error attempts to roll back changes already made; the backup
-directory remains for inspection. A restore error can require manual recovery
-from `box.py.original`; do not discard it. The target must remain quiescent
-throughout either operation: the tool does not lock out concurrent writers or
-survive power loss as a transaction.
+New backups use manifest version 3. Version 2 modern-cache backups remain
+supported; version 2 with a sibling `box.pyc` requires a separately verified
+restore because its manifest cannot identify that cache's origin.
 
-Stop the target Klipper process before install or restore, then verify the copied
-files and backup before restarting it. Inspect the actual service wrapper first:
-the examined firmware's start/restart branch can copy factory configuration and
-restart another MCU service. Those actions are outside this file installer.
+Keep the backup after restoration and verify the files before restarting.
+The target must stay quiescent throughout: the installer does not lock out
+other writers or provide a power-loss transaction. An installation error attempts
+rollback; if restore itself fails, retain `box.py.original` for recovery.
 
 <a id="passive-startup"></a>
 
-## Passive first startup
+## Passive startup
 
-`load_config(config)` now returns the `box` object instead of rejecting every
-startup. It obtains the absolute data root from the retained scalar
-`extras.base_info.base_dir`, requires `gcode` and `webhooks`, and asks Klipper to
-load `serial_485 <bus>` using `[box] bus`. It does not import the native binary
-directly or open a second serial connection. A configured cutter switch uses
-the retained `buttons` object.
+`load_config` obtains the data root from `extras.base_info.base_dir` and loads
+`serial_485 <bus>` using `[box] bus`. It borrows that transport rather than opening
+another connection. On `klippy:ready` it resolves the motion, print, sensor,
+address-manager and cooperative-dispatch dependencies, emits `box:ready` and
+starts heartbeat. The retained address-manager configuration must stay enabled.
 
-On `klippy:ready`, the lifecycle resolves `toolhead`, `gcode_move`, `print_stats`,
-`virtual_sdcard`, the configured head sensor, the four-entry retained
-`extras.auto_addr_wrapper.addr_manager_table_mb` and `greenlet.getcurrent`.
-The existing address-manager configuration must remain enabled; its own bus
-requirements are not changed by Box's configured lookup.
-Only then does it borrow the configured serial object, emit `box:ready` and
-schedule its heartbeat. A failed ready attempt cancels extension-owned work
-and releases its native binding without closing the stock transport.
+The entry supplies first-generation `cfs0` context for addresses 1–4. Version
+selection uses exact firmware profiles, with **1.1.3** as the baseline.
 
-The entry supplies explicit first-generation `cfs0` context for addresses 1–4.
-This is the supported K1 CFS Upgrade target, not hardware identification from
-the version reply. Exact firmware profiles remain required, with 1.1.3 as the
-baseline; a replaced serial number clears family confirmation.
+Passive admission allows typed identity and telemetry requests `0x02/03/05/08/0A/14`.
+Ordinary mechanical commands, native writes and automatic preload are blocked;
+there is no general mechanics switch. Automatic head/runout/error paths cannot
+start motion or heating. Existing G-code outside Box keeps its own behavior:
+`BOX_INFO_REFRESH` includes preload, and temperature wrappers can heat before
+reaching a guarded Box command.
 
-By default, admission permits only typed `GET_RFID` (`0x02`), `GET_REMAIN_LEN` (`0x03`),
-`GET_BUFFER_STATE` (`0x05`), `GET_FILAMENT_SENSOR_STATE` (`0x08`), `GET_BOX_STATE`
-(`0x0A`) and `GET_VERSION_SN` (`0x14`). Wheel requests, raw diagnostics,
-`CREATE_CONNECT`, motor/preload writes and host actions are rejected. Incoming
-error/runout/head events cannot trigger pause, motion restoration, heating,
-tightening or sensor-enable G-code. Automatic preload permission and power-on
-RUN are suppressed. Existing macros can encounter these explicit admission
-errors; this mode is not suitable for printing. There is no general option to
-enable mechanics. Separate explicit trials below grant one operation without
-changing the passive lifecycle.
-
-Use direct typed read commands for telemetry. `BOX_INFO_REFRESH` invokes preload
-RUN, and existing temperature wrappers can heat before reaching a guarded Box
-handler. The passive Box does not disable G-code owned by other subsystems.
-
-After identification, each passive initialization reads a fresh MATERIAL presence
-mask before applying saved labels to live state, including reconnect and addresses
-already marked connected by the retained address manager. Passive diagnostics use
-`Lifecycle.last_error`, leaving the retained virtual-SD pause hint `box.last_err`
-unchanged.
-
-The spool cache stays at `<base_dir>/creality/userdata/box/tn_data.json`, with
-`material_database.json` beside it; the flushing marker stays at
-`<base_dir>/creality/userdata/config/flushing_sign`. Existing valid cache data
-is loaded and malformed data raises an error. RFID and remaining-length replies
-follow the established metadata persistence: even a read request can rewrite
-the compatible cache when the values stay equal. A missing file or `base_data`
-creates the compatible empty cache. Passive admission therefore does not mean
-read-only storage; explicit data/configuration commands can also save data.
-`SAVE_BOX_CFG` retains the factory paths `/usr/data/printer_data/config/box.cfg`
-and `/mnt/UDISK/printer_data/config/box.cfg`; the data root does not redirect them.
-
-PC failure tests use substitutes and temporary paths. The first reference trial
-also verified the live include chain and all 54 settings, preserved protected file
-hashes, and observed 103 valid native read replies over seven minutes. These are
-bounded passive observations, not mechanical acceptance or validation of another
-firmware version.
-
-The main version 3 installer subsequently completed a real file/cache restore
-and passive reinstallation on that target. Original entry/cache bytes, mode and
-nanosecond mtime were checked with Klipper stopped; the owned package and its
-caches were removed. The stock Box process was not started between restoration
-and reinstallation, avoiding its automatic startup actions. Passive boots after
-installation remained ready. Fresh version 3 backups use the main installer for
-this layout without a separate legacy-cache adapter. This verifies filesystem
-rollback; a stock-runtime restart and full mechanical acceptance remain untested.
-
-After direct RFID/remaining reads, the touchscreen and Creality Print recognized
-CFS but showed all four slots as grey or undefined. The changed cache was backed
-up before the exact pre-query spool cache was restored with Klipper stopped.
-A passive start of the same sources restored slot display in both interfaces,
-as confirmed by the user. No decoder/runtime fix or repeated RFID/remaining
-query was involved. That earlier check verified cached display, not fresh physical RFID
-acquisition; RFID and remaining values were restored together.
+The spool cache remains at `<base_dir>/creality/userdata/box/tn_data.json` with
+`material_database.json` beside it. The flushing marker remains at
+`<base_dir>/creality/userdata/config/flushing_sign`. Fresh MATERIAL masks are read
+before saved labels are applied, including reconnect. RFID/remaining reads and
+explicit data commands can persist compatible cache updates; passive mode does
+not mean read-only storage. `SAVE_BOX_CFG` retains the factory configuration paths.
 
 <a id="single-operation-trial"></a>
 
-## Explicit single-operation preload trial
+## Preload
 
-This path has PC tests and a bounded authorized trial on the reference K1C with
-cfs0 MCU 1.1.3. One invocation per T1A–T1D slot returned fresh RFID/remaining
-data, with physical activity observed by the operator. Full mechanical acceptance
-remains separate. Further installations and trials require authorization and
-physical preparation. The default lifecycle remains passive.
-Preserve a spool-cache backup before any authorized future trial.
+```gcode
+CFS_TEST_PRELOAD TNN=T1A CONFIRM=1
+```
 
-The extension-only command is `CFS_TEST_PRELOAD TNN=T1A CONFIRM=1`. `TNN` must be
-one physical slot, T1A through T4D; mutable tool mapping is not used. `CONFIRM=1`
-marks an explicit invocation, not operator authentication. No persistent armed
-state or general mechanics switch is created. Existing host commands and
-automatic ready, heartbeat, reconnect, head, runout and error paths keep their
-passive restrictions throughout the trial.
+`TNN` selects one physical slot, T1A–T4D. The command requires a connected cfs0
+MCU **1.1.3**, encoding 1, ready/standby, no print, pause, active error or competing
+operation, and a configured head sensor reporting no filament.
 
-Before RUN, the path requires a ready connected cfs0 MCU **1.1.3**, host encoding
-1, standby print state, inactive virtual SD, no pause/error/other operation,
-and an actual configured head sensor reporting no filament. It obtains fresh
-normal replies in this order:
+The sequence is fresh STATE (mode `0`), MATERIAL (selected slot present),
+CONNECTIONS (zero), one selected `SET_PRE_LOADING` RUN, fresh STATE (mode `0`),
+then selected-slot RFID and remaining length. Metadata is saved only after its
+reply validates.
 
-1. `GET_BOX_STATE`: mode IDLE (`0`).
-2. `GET_FILAMENT_SENSOR_STATE`, MATERIAL: the selected slot is present.
-3. `GET_FILAMENT_SENSOR_STATE`, CONNECTIONS: the entire mask is zero.
-4. One `SET_PRE_LOADING` RUN request (`0x0D`), selecting one slot bit.
-5. Another `GET_BOX_STATE`: mode IDLE (`0`) again.
-6. `GET_RFID` for that slot only.
-7. `GET_REMAIN_LEN` for that slot only.
-
-The permission belongs to the current cooperative dispatch, lifecycle, native
-binding, device generation and exact request object. It is consumed once and
-revoked when the call finishes or fails. Context is checked around waits and
-before native attempts/effects, with a 300-second cooperative deadline.
-Read requests use two-second timeouts; RUN is limited to the remaining trial
-budget. These limits do not interrupt the stock library while it is waiting.
-Missing replies, nonzero statuses, events, non-IDLE state and invalid payloads end the
-trial without proceeding. RFID must contain exactly the selected slot with
-`none`, `unknown` or a 40-byte record before any metadata is persisted.
-
-On MCU 1.1.3, RUN can prepare the shared hub before processing its selected slot.
-The zero CONNECTIONS requirement avoids the observed occupied-channel retraction
-branch at that snapshot; it does not guarantee physical isolation or disable
-autonomous MCU behavior. The RUN ACK can follow an expired internal wait, so it
-is not physical-completion proof; the subsequent fresh IDLE reply is mandatory.
-That IDLE reply is also only an observation: ordinary state telemetry does not
-expose the separate preload FSM busy predicate. Physical observation is required;
-ACK plus mode `0` alone does not establish completion on timeout/failure paths.
-
-The host does not resend trial requests after MCU CRC/LENGTH errors. Passing
-`retries_en=False` cannot cancel retries already owned by the stock `.so`.
-Revoking permission or reaching the cooperative deadline prevents subsequent
-host work; it is not a physical stop of an in-flight native/MCU operation. No
-unverified CLOSE/STOP cleanup is sent. Results and cache writes retain the normal
-RFID/remaining semantics, including `unknown` and the baseline `100` fallback.
-If RFID metadata has been saved before a later remaining-value request fails,
-that fresh metadata stays saved; the trial does not restore old cache values.
-PC checks do not establish hardware results. Other host actions, heaters and
-toolhead motion receive no permission.
-
-<a id="reference-trial-results"></a>
-
-### Bounded reference results
-
-Four separate explicitly confirmed invocations tested T1A, T1B, T1C and T1D once
-each, with no operator retry. A missing-confirmation invocation was rejected
-before the bus call. The 28 attributed API-return frames passed independent
-CRC/address/opcode/status, request-mask and sequence checks; concurrent background
-state replies were kept separate. Each slot returned a fresh 40-byte RFID record
-matching its saved ID and a valid selected-slot remaining percentage.
-
-Only the selected slot's remaining value changed in each affected cache record;
-the T1D trial had no semantic cache change. Other spool keys and the material
-database were preserved. The operator observed spool rotation/feed/retraction
-for T1A, reported normal behavior for T1B–T1D, and confirmed correct colours in
-both the touchscreen and Creality Print. Normal post-trial mode `0` accompanied
-these observations. Stock native libraries, MCU firmware, configurations and
-macros were retained; 52 protected files and all 25 installed sources matched
-their expected hashes. These normal baseline results do not accept fault/timeout
-paths, full loading/unloading, cutting, purging, printing, recovery or other MCU
-versions. Remaining values are MCU reports, not an independent measurement of
-the material on each spool.
-
-The captured startup/heartbeat window before the explicit tests contained only
-typed reads and no preload RUN. Final read-only checks left the printer ready
-with an absent head-filament observation, zero CONNECTIONS and zero heater
-targets; those reads did not change spool data. This evidence is for the same
-baseline unit and retained host runtime, not another firmware/hardware pairing.
+The cooperative budget is 300 seconds, with two-second reads and RUN bounded by
+the remaining budget. Requests are not resent by the host. An ACK and IDLE
+telemetry do not expose the MCU's separate preload-busy state, so observe the
+material during the operation.
 
 <a id="material-operation-trial"></a>
 
-## Load/unload trial: failed reference check
-
-**Hardware checks are held. Do not run `CFS_TEST_UNLOAD` from `5a32ac8`.**
-That version was installed passively and its cutter approach caused mechanical
-contact during the reference unload trial. The operator reported skipped steps
-and minor damage. Physical position is untrusted; do not use old command
-coordinates to home, retry, extrude or recover automatically. The current complete
-workflow and cutter revision below has not been installed or tested on hardware.
-The stock `serial_485.so`, MCU firmware, configuration and macros remain unchanged.
-
-### Recorded results and correction scope
-
-Preparation replies were normal. Loading then reached normal protocol and head/
-hub/buffer/source postconditions, but the operator observed no nozzle output.
-A separate diagnostic extrusion through retained Klipper also produced no
-observed output; it was not the Box purge path, and extruder-shaft rotation was
-not observed. Full loading/nozzle acceptance therefore failed.
-
-The unload approach moved transversely in X before withdrawing Y from the
-extrusion position, causing the reported contact. The first missed cutter
-observation stopped the trial before any `0x11` retraction; unloading did not
-complete. Emergency stop was accepted and all four printer MCUs reported
-shutdown. A later read-only capture found a new ready host process with heater
-targets at zero; that externally changed state is not evidence of physical
-recovery. No further hardware trial is accepted by that readiness.
-
-The earlier published `fd337ef` added Y-before-X and a sensed-release tail; it
-was not installed. Subsequent reconstruction identified missing caller context:
-the old transport-only load omitted the normal clean/flush/restore tail and left
-the head at the rear extrusion Y. The current PC revision restores that complete
-workflow and the stock X-first cutter order, with no added release move or wait.
-Before fan or cutter motion, the shared entry check rejects a loaded, X-homed
-head behind configured safe Y or an unavailable/nonfinite Y. Without a tray it
-uses pre-cut Y only when safe Y is absent. It never invents a retreat from an
-unknown position. The entry check runs again after optional homing before the
-first X move. These are admission checks, not a guarantee of
-physical clearance. Hardware tests remain held; the earlier four-slot preload
-results remain separate valid history.
-
-The following describes the command interface and admission checks, not permission
-to run the affected version or to resume held hardware testing.
-
-Two separate commands select a physical slot, bypassing logical tool mapping:
+## Full loading and unloading
 
 ```gcode
 CFS_TEST_LOAD TNN=T1A CONFIRM=1
-```
-
-```gcode
 CFS_TEST_UNLOAD TNN=T1A CONFIRM=1
 ```
 
-Each command grants only its own invocation. Loading does not chain unloading,
-and unloading does not start another load. Confirmation is explicit invocation,
-not authentication. The trial reads `gcode` from the configured
-`BOX_LOAD_MATERIAL_WITH_MATERIAL` or `BOX_QUIT_MATERIAL` section and requires the
-known bare phase order before effects. It preserves the macros and supplies
-`TNN` only to the two feed phases, as the retained LAN service does. Custom
-recipes or arguments require separate admission and are rejected here. This
-does not execute or certify the external service itself.
+These are separate invocations; one does not start the other. Each reads the
+configured `BOX_LOAD_MATERIAL_WITH_MATERIAL` or `BOX_QUIT_MATERIAL` recipe,
+requires the supported phase order and supplies physical `TNN` to its feed
+phases. Existing macros are preserved. Custom recipes or extra arguments are
+rejected by this admission.
 
-Both commands require one connected/online CFS with confirmed cfs0 MCU **1.1.3**,
-host encoding 1, ready/standby, inactive virtual SD, no pause or resume, no active
-error, refill, ending-material drain, operation or other trial. A real configured
-head sensor is required. XYZ must already be homed; the trial does not home or
-clear the bed mesh. Configured positions are validated against mechanical
-`stepper_*` travel, including service positions beyond slicer limits. Feed values,
-speeds, temperatures and iteration counts are checked before heat, motion or
-native writes, including clean-right X and the clean stroke at extrusion Y−10.
-The target temperature must allow extrusion within the heater's
-configured limits. Unloading requires a configured active cutter switch,
-initially released, and current Y must be at or before configured safe Y.
-These checks do not validate the entire physical trajectory.
-The configuration is pinned for the operation.
+Before a hardware check, home XYZ, inspect the actual position and simulate the
+configured route. Verify that the bed and cutter path are clear. Cutter entry
+requires a released switch and Y at or before the configured safe Y.
+
+Both commands require one online cfs0 MCU **1.1.3**, encoding 1, ready/standby,
+inactive virtual SD, and no pause/resume, active error, refill, drain or competing
+operation. A real head sensor is required. Positions, travel, temperatures,
+feed values and iteration counts are validated before heat, motion or native
+writes. The configuration is pinned for the invocation.
 
 | Observation | LOAD | UNLOAD |
 | --- | --- | --- |
-| Initial head/source | Head absent, no loaded source | Head present; `last_cmd` and saved filament source both match `TNN` |
-| Fresh initial mode | IDLE `0` | IDLE `0` or PRINTING `2` |
-| Fresh MATERIAL | Selected bit present | Selected bit present |
-| Fresh CONNECTIONS | Entire mask zero | Exactly the selected bit |
-| Fresh initial buffer | Empty `2` | A normal valid observation |
-| Required final result | Head present, selected CONNECTIONS, mode `2`, buffer not full and matching source bookkeeping | Head absent, CONNECTIONS zero, mode `0`, empty buffer `2`, released cutter and cleared source bookkeeping |
+| Initial head/source | Head absent, no loaded source | Head present; source hints match `TNN` or both are absent |
+| Fresh mode | IDLE `0` | IDLE `0` or PRINTING `2` |
+| Fresh MATERIAL | Selected slot present | Selected slot present |
+| Fresh CONNECTIONS | Zero | Exactly the selected slot |
+| Fresh buffer | Neutral `0` or empty limit `2` | Valid normal observation |
+| Final result | Head present, selected CONNECTIONS, mode `2`, buffer not full, source recorded | Head absent, CONNECTIONS zero, mode `0`, buffer `2`, cutter released, source absent |
 
-LOAD executes the configured material-present recipe: initial `M104`, homing
-check, error/material checks, initial cut/retract, extrusion positioning and
-nozzle cleaning, CFS loading, extruder phase, standalone flush and
-`RESTORE_POSITION`. Initial cut/retract have no filament to remove under this
-trial's empty-head precondition. The extruder phase clears `filament_useup`;
-the standalone flush performs the configured E action and cleaning. Missing
-`LEN` retains `Tn_retrude`; no positive purge length is invented. UNLOAD executes
-the configured quit checks, sensed cut, known-source retraction and return
-position. The `WITH_TNN` diagnostic is not used. Ordinary `BOX_*` commands remain
-phases, so the external service does not cause a second flush. End-to-end PC
-tests include loaded-source replacement through ordinary phase dispatch; this
-bounded hardware admission still requires LOAD to begin without a loaded source.
-Tool changes, printing and physical nozzle-flow acceptance remain separate.
+LOAD performs the configured checks, extrusion positioning, cleaning, CFS loading,
+extruder phase, flush and position restoration. Its owned flush supplies
+`LEN=int(cfg.Tn_extrude)`: 150 mm in the reference profile. The length must be
+integral in 1–200 mm, with finite positive velocity/percent pairs and effective
+feed at most 200 mm. Actual speed and extrusion factors must equal 1.
+A failed feed stops before further cleaning.
 
-Permission belongs to one operation context, lifecycle/binding/device generations
-and the owning cooperative dispatch. Each registered recipe phase has its own
-one-use command scope; retained aliases must preserve its exact parameters.
-Ordinary commands cannot inherit that permission. Only an armed load's real head-arrival
-callback receives temporary additional permission. Other head/slot/runout/error
-callbacks, ordinary host commands and automatic startup paths remain gated.
-Only the selected CFS and normal-route typed request bodies are admitted; raw
-diagnostics and preload RUN remain blocked.
+Known-source UNLOAD performs the configured checks and sensed cut, then BUFFER
+retraction and blocking head E−20 assistance. It submits the final E−30 at F600
+(nominally three seconds) before issuing one selected MATERIAL request. A normal
+MATERIAL ACK is followed by `M400` before source cleanup and return positioning.
+This allows head withdrawal during the CFS request without requiring identical
+physical motor start times.
 
-Every scoped reply must be fresh, normal and well formed before decoder effects.
-Validation follows the command and feed stage: successful `0x10` stage 0 carries
-one mode byte, stage 5 carries four wheel bytes, and stages 4/6/7 are empty.
-An empty ACK is therefore not a substitute for every successful stage reply.
-Unlike the ordinary service queue, which can advance after an error reply, the
-trial revokes its grant on the first phase error, including exceptions swallowed
-by a nested macro dispatcher. It stops before automatic loading recovery, another
-sensed cutting attempt or unload recovery. Host CRC/LENGTH resends are disabled
-and native requests pass `retries_en=False`. The cooperative operation budget is
-900 seconds; own reads use at most two seconds, and other requests are bounded
-by their native timeout and the remaining budget. These limits cannot interrupt
-stock-library retries/waits, an MCU action or already queued Klipper motion.
+Unknown-source UNLOAD leaves both source hints absent. `TNN` identifies only the
+single lane observed in fresh CONNECTIONS and MATERIAL. Its registered retraction
+phase admits fresh CONNECTIONS, MATERIAL, STATE, IDLE, selector-zero BUFFER and
+selected-lane MATERIAL in order. It retains the configured cold cut/heat sequence
+and does not substitute an old source hint.
 
-After normal recipe completion, the trial checks fresh final observations. It
-adds no `M400` or `M104 S0`: the stock restore tail can leave Z queued, and the
-recipe does not promise heater shutdown. Neither final observations nor command
-return establishes completion of queued motion or nozzle flow. A failure does not automatically cut, stop,
-unload or restore heat, fans, movement modes or position. Recorded source/data
-changes are retained rather than replaced with stale cache values. Inspect the
-actual state before deciding any further operation; a failed load may leave
-material in the path without an accepted loaded-source result. Physical
-observation remains required even when ACKs and final observations are normal.
-Fresh observation requirements, ownership cleanup and duplicate-event rejection
-are retained admission policies; the implementation does not reproduce the
-original's stale-cache fallback or leaked callback permissions on exceptions.
+## CFS-only retraction
+
+<a id="native-buffer-trial"></a>
+
+```gcode
+CFS_TEST_RETRACT TNN=T1C CONFIRM=1
+CFS_TEST_RETRACT TNN=T1C TRIGGER=MATERIAL CONFIRM=1
+```
+
+The default trigger is BUFFER; MATERIAL is an explicit separate choice. These
+commands send no XYZ/E movement, heating or cutting and require no homing.
+They retain the same device/idle/ownership checks. Source hints must either
+both be absent or both match `TNN`; fresh CONNECTIONS must name exactly that
+lane and MATERIAL must include it.
+
+The sequence is four fresh observations (STATE, MATERIAL, CONNECTIONS, BUFFER),
+IDLE, fresh normal STATE, one selected retraction, then the four observations
+again. Only the initial STATE may carry `0x13` or `0x19` with four data bytes and
+mode `4`; later replies must be normal.
+
+BUFFER uses a 60-second cooperative budget and a ten-second request cap.
+Its final mode must be `0`, buffer `2`, and CONNECTIONS zero or the selected lane;
+the head reading is reported without requiring absence. MATERIAL uses a
+240-second budget and a 150-second request cap; final CONNECTIONS must be zero
+and the head absent. Both require the selected material to remain present.
+Neither assigns or clears a loaded source.
+
+## Execution and completion
+
+`CONFIRM=1` marks an explicit invocation. Permission belongs to the current
+dispatch, operation, lifecycle, binding and device generation; it is revoked
+when the invocation ends. Ordinary commands and unrelated callbacks cannot
+inherit it. Full LOAD/UNLOAD temporarily admits only its registered phases and
+the armed load's real head-arrival callback.
+
+Every response must be fresh, normal and valid for its opcode/stage before
+decoder effects. A phase error stops advancement without automatic retry or
+recovery motion. Full LOAD/UNLOAD has a 900-second cooperative budget and
+two-second own reads. These deadlines cannot interrupt a stock-library wait,
+an MCU action or already submitted motion.
+
+Command return does not guarantee an empty Klipper queue: the configured LOAD
+restore tail can leave Z moving. Wait for actual motion to settle before the
+next operation. The recipes do not add an automatic heater-off command; switch
+off unused heating separately. On failure, inspect the actual material, position
+and heater state before another command.
+
+<a id="reference-trial-results"></a>
+
+## Reference validation
+
+On K1C CFS Upgrade with cfs0 MCU 1.1.3 and printer Python 3.8.2, passive startup
+and file/cache rollback were verified. Preload was checked on all four slots,
+with fresh RFID/remaining data and correct spool display on the touchscreen and
+Creality Print. Two consecutive complete T1C load/unload cycles produced normal
+nozzle flow and filament return without manual assistance.
+
+Printing, controlled fault/recovery cases and other MCU versions remain in the
+[hardware validation plan](implementation-plan.md).

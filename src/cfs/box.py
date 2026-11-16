@@ -823,8 +823,21 @@ class Box:
         self.gcode.respond_info("CFS test material observations: %s" % result)
         return result
 
+    def cmd_test_retract(self, gcmd):
+        try:
+            trigger = gcmd.get_command_parameters().get("TRIGGER", "BUFFER")
+            result = self.preload_trial.run_retract(
+                gcmd.get_command_parameters().get("TNN"),
+                confirmed=gcmd.get_int("CONFIRM", 0) == 1, trigger=trigger)
+        except (OSError, ValueError, RuntimeError, AttributeError, KeyError) as error:
+            raise gcmd.error("cfs: test retract: %s" % error) from error
+        self.gcode.respond_info("CFS test %s observations (not full unload): %s" % (trigger, result))
+        return result
+
     def register_native_commands(self, gcode):
         self.gcode = gcode
+        if self.lifecycle is not None and self.lifecycle.passive:
+            gcode.register_command("CFS_TEST_RETRACT", self.cmd_test_retract)
         for name, handler in (
             ("BOX_SEND_DATA", self.cmd_send_data),
             ("BOX_COMMUNICATION_TEST", self.cmd_communication_test),

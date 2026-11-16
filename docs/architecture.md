@@ -2,14 +2,10 @@
 
 English | [Русский](architecture.ru.md)
 
-**Status:** state, configuration, storage, native-call integration, reply decoding
-and per-device versions are implemented with PC tests. Lifecycle, cooperative
-operation context, common errors and configured mechanical primitives are also
-PC-tested, as are stage 8 drain, refill, recovery and resume components. The
-bootstrap initializes passive admission without ordinary host mechanics. The
-explicit preload trial has a bounded normal check on one baseline unit; full
-hardware acceptance remains pending. Stage 9 adds synthetic Jinja/retained-boundary
-tests and reversible development-file deployment.
+The extension uses the stock `serial_485.so` and starts in passive mode. State,
+storage, protocol, lifecycle and operation components have PC tests. Explicit
+preload and full T1C load/unload are verified on CFS MCU 1.1.3; printing,
+tool changes and recovery still require hardware validation.
 
 ## Scope
 
@@ -24,7 +20,7 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | Path | Responsibility | Current state |
 | --- | --- | --- |
 | `klipper/box.py` | Thin Klipper entry point | Imports the passive bootstrap |
-| `src/cfs/box.py` | Shared data, endpoint, status, metadata hook and handler integration | PC gates plus reference passive startup and explicit preload admission |
+| `src/cfs/box.py` | Shared data, endpoint, status, metadata hook and handler integration | Passive startup and scoped explicit operations |
 | `src/cfs/state.py` | Shared live state, snapshots, tool maps and grouping | Implemented; decoded observations share this state |
 | `src/cfs/configuration.py` | Loader, UI values and MODIFY/SAVE | Implemented with explicit preservation rules |
 | `src/cfs/storage.py` | Spool cache, recovery hints and read-only material database | Implemented; recovery uses validated hints |
@@ -33,10 +29,10 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | `src/cfs/events.py`, `runout.py`, `recovery.py`, `resume.py` | Slot events, drain/refill, recovery and resume | PC substitute checks; physical behavior unverified |
 | `src/cfs/firmware.py` | Per-address identity, explicit family and exact version profiles | Mixed versions and identity invalidation PC-tested |
 | `src/cfs/lifecycle.py` | Ready/shutdown, configured dependencies, reconnect, heartbeat and pause wait | Own work is removed or invalidated; borrowed transport stays with stock serial |
-| `src/cfs/operations.py` | Source/target ownership, cooperative waits, head-result latch and explicit trials | PC ownership/cancellation checks and load/unload admission; four observed normal baseline preload trials |
+| `src/cfs/operations.py` | Source/target ownership, cooperative waits, head-result latch and explicit trials | PC checks, T1A–T1D preload and two consecutive full T1C cycles |
 | `src/cfs/errors.py` | Client reports, pause/restore ordering and saved error context | Duplicate/special-key behavior and caught-error exits PC-tested |
-| `src/cfs/motion.py`, `extrusion.py`, `cutting.py` | Configured motion, fans, heating, extrusion, cutting and calibration | Component checks with substitutes; hardware acceptance pending |
-| `src/cfs/feeding.py`, `loading.py`, `retraction.py` | Preload, staged loading and unloading | PC phase checks; hardware acceptance pending |
+| `src/cfs/motion.py`, `extrusion.py`, `cutting.py` | Configured motion, fans, heating, extrusion, cutting and calibration | PC checks and the verified T1C load/unload route |
+| `src/cfs/feeding.py`, `loading.py`, `retraction.py` | Preload, staged loading and unloading | PC phase checks and explicit baseline preload/load/unload |
 | `tests/test_box_contract.py` | Klipper layout and external contract checks | Bootstrap/layout check only |
 | `tests/test_contract_matrix.py` | Inventory completeness and verification bindings | Validates real test references and remaining work |
 | `tests/test_state.py`, `test_configuration.py`, `test_storage.py`, `test_box_data.py` | Component and data-command scenarios | Synthetic values, temporary files, bounded Klipper substitutes |
@@ -45,11 +41,10 @@ purging, pause/resume, errors/recovery, sensors, RFID and spool data.
 | `tests/test_motion.py`, `test_extrusion.py`, `test_cutting.py`, `test_host_actions.py` | Host actions and their registration/integration | Synthetic G-code, heaters, fans, buttons and wheel replies; no hardware |
 | `tests/test_material_workflow.py` | Complete service-ordered load/quit cycles | One evolving XYZ/E/source state, retained-style macro aliases, replies and injected failures |
 | `docs/contract-matrix.json` | Full implementation checklist and acceptance cases | Per-requirement and check-family implementation status |
-| `docs/` | Architecture, protocol and compatibility, in English and Russian | Draft specifications |
+| `docs/` | Architecture, protocol and compatibility, in English and Russian | Current behavior and validation scope |
 
-Add modules when implemented behavior needs them, together with its tests.
-The diagram describes responsibilities; composed tool changes have PC checks,
-while hardware acceptance remains pending.
+Add modules when implemented behavior needs them, together with their tests.
+The diagram shows component ownership.
 
 ```mermaid
 flowchart LR
@@ -107,30 +102,23 @@ their handlers run. No production setting enables the active component routes.
 The [installation guide](installation.md#passive-startup) lists dependencies,
 data paths and the permitted read commands.
 
-The separate [preload trial](installation.md#single-operation-trial) is an
-extension-only explicit command. It owns a narrowly checked RUN request while
-the lifecycle stays passive; ordinary host guards and automatic paths remain
-blocked. Four separate T1A–T1D normal runs on one MCU 1.1.3 unit returned fresh
-RFID/remaining data, with operator-observed activity and correct client display.
-This bounded check does not accept ordinary loading, cutting, tool changes,
-printing or recovery. The [reference results](installation.md#reference-trial-results)
-keep hardware observations separate from PC fault/ownership checks.
+Explicit [preload](installation.md#single-operation-trial) and
+[load/unload](installation.md#material-operation-trial) commands grant permission
+only to the current operation while the lifecycle remains passive. The material
+trial executes the configured recipe, including cleaning, flush and position
+restoration. Its registered phase commands remain available independently to
+retained clients. Dispatch ownership and fresh pre/postconditions bind the
+selected source; an abnormal phase revokes permission before further effects.
 
-The separate [material trial](installation.md#material-operation-trial) reads the
-configured load/quit recipe and calls its registered phases in order, including
-pre-clean, flush and position restoration. The phase commands remain independent
-for retained clients. Only the owning dispatch, one current recipe command and
-an armed load head callback receive scoped permission; startup and ordinary
-commands stay passive. Fresh pre/postconditions bind a physical source, and
-trial failures revoke permission before automatic recovery, even when a nested
-macro swallows an exception. The deployed `5a32ac8` trial
-failed hardware acceptance: no nozzle output was observed after loading, and
-the cutter approach caused mechanical contact during unloading. Hardware tests
-are held. The current PC revision restores the stock X-first/no-release cutter
-sequence and rejects a loaded rear or unknown entry before effects. Its normal
-caller reaches safe Y through the complete clean/flush/restore tail. It adds no
-final wait or heater-off command beyond the recipe. This revision has not been
-installed or tested on hardware; endpoint bounds do not validate a trajectory.
+Owned LOAD supplies a bounded positive flush length from configuration. Known-source
+owned UNLOAD submits the finite head tail before MATERIAL and waits for it after
+the normal ACK, before source cleanup and XYZ return. Two consecutive full T1C
+cycles completed without manual assistance on MCU 1.1.3.
+
+Unknown-source UNLOAD uses the existing Retraction branch without assigning a
+loaded source. The requested slot pins one fresh hub lane; its current command
+owns ordered reads, IDLE, shared BUFFER and selected MATERIAL, with one normal
+response per step and final sensor checks.
 
 Operations coordinate host actions with separately observed CFS, buffer and
 toolhead state. An ACK, last T-command or cached material record cannot establish
@@ -152,9 +140,8 @@ values and transitions come from the target stock implementation.
 The [development installer](installation.md) deploys `klippy/extras/box.py` and
 `klippy/extras/cfs/` with preview, scoped backup and restore. Temporary-tree tests
 cover the import layout and passive initialization. It leaves other modules,
-configuration, services and spool data with their owners. Recorded target
-deployments and the failed mechanical trial are separate evidence in the
-[installation guide](installation.md#material-operation-trial).
+configuration, services and spool data with their owners. Commands and current
+validation are described in the [installation guide](installation.md).
 
 Python 3.8 is pinned in [.python-version](../.python-version), matching the
 preserved CPython ABI baseline without establishing MIPS native compatibility.

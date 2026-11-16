@@ -3,110 +3,55 @@
 English | [Русский](README.ru.md)
 
 An open replacement for the stock Klipper `[box]` module on the Creality K1C
-with the K1 Series CFS Upgrade. Preserve the CFS MCU firmware, touchscreen,
-Creality Print, Fluidd status, slicer mapping and user settings.
+with the K1 Series CFS Upgrade. It retains the stock `serial_485` library,
+CFS MCU firmware, touchscreen, Creality Print and user settings.
 
-The existing host-side `serial_485` library remains in use. The scope covers the
-full stock `box` contract: initialization, loading, unloading, cutting, tool
-changes and purging, pause/resume, errors/recovery, sensors, RFID and spool data.
+The scope covers the full `box` contract: initialization, loading, unloading,
+cutting, tool changes, purging, print lifecycle, recovery, sensors, RFID and spool
+data. Firmware **1.1.3** is the baseline; examined differences through 1.5.3 are
+documented in the [firmware history](docs/compatibility.md#firmware-history).
 
-The baseline is CFS MCU firmware **1.1.3** on the reference K1C. The
-[firmware change history](docs/compatibility.md#firmware-history) records the
-examined differences through 1.5.3 and their compatibility implications.
+The host implementation has PC tests. On the reference K1C, preload was verified
+for all four slots, and two consecutive full T1C load/unload cycles completed
+without manual assistance. Printing and additional firmware versions still
+require hardware validation.
 
-**Status:** the replacement's host components, supported loading/tool-change,
-print, refill and recovery routes have PC checks. Stage 9 adds retained-consumer
-integration, Jinja macro tests and a reversible development-file installer.
-Local verification also executes pinned retained Python and saved macro sources
-with substituted hardware effects; public CI uses synthetic fixtures.
-
-**Hardware trials are on hold. Do not run `CFS_TEST_UNLOAD` from `5a32ac8`.**
-Its cutter approach caused mechanical contact in the reference trial; the
-operator reported skipped steps and minor damage. Loading reached the head
-sensor but produced no observed nozzle output. The full load/unload trial
-failed acceptance. The current PC revision restores the complete configured
-workflow and stock cutter order, rejecting a rear or unknown cutter entry.
-It has not been installed or tested on hardware; physical position is untrusted.
-
-`load_config` now initializes `[box]` in **passive admission mode**: identity and
-telemetry reads are available, while ordinary host actions and native writes are
-blocked. There is no general switch to enable mechanics. An explicit
-[single-operation preload trial](docs/installation.md#single-operation-trial)
-has a bounded reference-printer check: one invocation for each T1A–T1D slot on
-MCU 1.1.3, fresh RFID/remaining replies, observed mechanical activity and correct
-display in both interfaces. The later [load/unload trial](docs/installation.md#material-operation-trial)
-was installed and attempted, with the failed results described above. Earlier
-preload results remain separate from full loading, tool changes and print acceptance.
-A reference K1C trial verified the live configuration and sustained passive reads
-on CFS MCU 1.1.3 with printer Python 3.8.2. Mechanical acceptance remains pending.
-The main installer also completed file/cache rollback with Klipper stopped and
-passive reinstallation, including sibling `.pyc` files. Buffer, RFID `unknown`
-and remaining-value replies were checked. Direct RFID/remaining reads made all
-four slots grey or undefined in the touchscreen and Creality Print. Restoring
-the exact pre-query spool cache and restarting passively restored both displays,
-as confirmed by the user. This earlier check verified cached display; the later
-explicit preload trials obtained fresh 40-byte RFID records from the MCU.
-Two examined saved load wrappers omit the required physical `TNN` on direct
-invocation; the replacement rejects that direct path. The reference LAN service
-supplies `TNN` to the two feed commands while dispatching the material-present
-wrapper's command list. PC end-to-end checks now cover that ordered load/quit
-cycle, including cleaning, standalone flush, position restoration and failures.
-The explicit trial reads the configured recipe without changing user macros;
-ordinary Box commands remain individual phases. Hardware compatibility remains
-unaccepted, and passive startup remains the default.
-The current phase preserves the observed `START_PRINT` mapping check and both
-load wrappers' argument forwarding for behavior parity.
-Optimization and corrections will be considered later if needed. These recorded
-outcomes do not establish successful printing or loading.
+Startup is **passive by default**: identity and telemetry are available, while
+ordinary mechanical actions are blocked. Explicit
+[test commands](docs/installation.md#material-operation-trial) permit individual
+operations without changing that default.
 
 ## Project layout
 
 ```text
 src/cfs/        Extension implementation
-klipper/box.py  Thin Klipper entry point
+klipper/box.py  Klipper entry point
 tests/          PC tests
 docs/           Architecture, protocol and compatibility
 ```
 
-Stage 1 produced the full contract matrix. Stage 2 added state, configuration,
-storage and nine data-command handlers. Stage 3 added calls through the retained
-native API, validated replies, exact firmware profiles and twelve native-command
-handlers. Stage 4 adds explicit ready/shutdown wiring, reconnect, heartbeat,
-guarded operation waits and shared error reporting. Stage 5 adds configured
-host motion, fans, heating, extrusion, cutting, cleaning and calibration
-handlers. Stage 6 adds preload, loading and unloading phases. Stage 7 adds tool
-changes and print lifecycle routes. Stage 8 adds runout, recovery and resume paths.
-Stage 9 tests integration and reversible file deployment.
-All 103 original command names are registered: 101 unconditional and two conditional Hall
-commands. The extension-only `CFS_TEST_PRELOAD`, `CFS_TEST_LOAD` and
-`CFS_TEST_UNLOAD` commands are separate from that inventory. The legacy feed
-command remains deliberately blocked; encoding 0,
-wire stages above seven, reserved operations and unaddressed diagnostics remain
-unsupported. See the matrix for the exact open paths.
+- [Installation and rollback](docs/installation.md)
+- [Architecture](docs/architecture.md)
+- [Protocol](docs/protocol.md)
+- [Compatibility](docs/compatibility.md)
+- [Implementation plan](docs/implementation-plan.md)
+- [Contract matrix](docs/contract-matrix.md)
 
-- [Development installation and rollback](docs/installation.md): preview, scoped backup, restore and passive first startup.
-- [Architecture](docs/architecture.md): responsibilities and Klipper layout.
-- [Protocol](docs/protocol.md): framing, native API boundary and open questions.
-- [Compatibility](docs/compatibility.md): implementation and validation coverage.
-- [Implementation plan](docs/implementation-plan.md): stages and acceptance criteria for the full `box` contract.
-- [Contract matrix](docs/contract-matrix.md): complete inventory and bindings to planned PC/hardware checks, including existing G-code macros.
+<a id="quick-start"></a>
 
-## Quick start
+## Running tests
 
-Tests run directly from the checkout using standard-library `unittest`. Install
-[requirements-test.txt](requirements-test.txt) for test-only Jinja2 3.1.6 macro
-rendering; the extension itself is not installed as a package. **Python 3.8 is the
-project default**, recorded in [.python-version](.python-version). Create a local
-environment with CPython 3.8 before running the tests. Native MIPS identity/state
-reads have a bounded reference-printer check; full mechanical compatibility remains
-unverified.
+**Python 3.8** is the project default, set in [.python-version](.python-version).
+Tests use standard-library `unittest` and test-only Jinja2 from
+[requirements-test.txt](requirements-test.txt). The extension requires no package
+build or installation.
 
 Windows / PowerShell:
 
 ```powershell
 py -3.8 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-test.txt
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.venv/Scripts/python.exe -m pip install -r requirements-test.txt
+.venv/Scripts/python.exe -m unittest discover -s tests -v
 ```
 
 Linux / macOS:
@@ -117,31 +62,12 @@ python3.8 -m venv .venv
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-An existing Python 3.8 `.venv` can be reused. With `uv` installed, the environment
-creation command can instead be `uv venv --python 3.8 .venv`.
+[CI](.github/workflows/ci.yml) runs these checks on Python 3.8, including
+installation and rollback in temporary directories. Tests do not operate a printer.
 
-Tests cover state snapshots and remapping, all 54 settings and 21 endpoint
-fields, data commands, temporary-file persistence, native requests and replies,
-mixed device versions and stale work, as well as bootstrap and matrix integrity.
-Lifecycle cases cover targeted heartbeat, shutdown/restart, pause/reporting and
-head-event re-entry while a native request is waiting. Motion and extrusion
-cases use synthetic coordinates, fan pins, heaters and wheel samples; cutting
-cases distinguish a fresh switch event from a cached value and exercise blind
-cutting. These tests do not execute the stock native binary or operate hardware. See the
-[coverage and deliberate storage differences](docs/compatibility.md#state-configuration-and-storage)
-and [host-action policies](docs/compatibility.md#host-actions), as well as
-[lifecycle integration limits](docs/protocol.md#lifecycle-integration).
-
-## Development
-
-The [CI workflow](.github/workflows/ci.yml) is configured to run the same tests
-on Python 3.8, using the same version file and test-only requirements. CI checks
-installation and rollback in temporary directories; it does not deploy to a
-printer or build a distribution.
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
-
-For bug reports, include the commit, environment, relevant host/MCU versions and
-reproduction steps. Remove secrets, personal identifiers and private captures.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines. Bug reports
+should include the commit, host/MCU versions and reproduction steps, with private
+data removed.
 
 ## Support the project
 

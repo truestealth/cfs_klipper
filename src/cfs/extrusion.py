@@ -190,8 +190,15 @@ class Extrusion:
             percent = cfg.Tn_extrude_percent
         self._require_clean_positions()
         guard()
-        box.Tn_Extrude(length, velocity, temp, percent, tnn=None, error_report=True)
+        trial = getattr(box, "material_trial", None)
+        if trial is not None and trial.owns_phase("LOAD", "BOX_MATERIAL_FLUSH"):
+            trial._bounded_profile()
+        result = box.Tn_Extrude(length, velocity, temp, percent, tnn=None, error_report=True)
         guard()
+        if (result is False and trial is not None
+                and trial.owns_phase("LOAD", "BOX_MATERIAL_FLUSH")):
+            trial.cancel()
+            raise RuntimeError("owned LOAD flush did not complete its positive feed")
         box.nozzle_clean()
         guard()
         old_mode = box.gcode_move.absolute_coord

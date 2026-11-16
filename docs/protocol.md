@@ -2,13 +2,10 @@
 
 English | [Русский](protocol.ru.md)
 
-**Status:** borrowed-native calls, reply decoding, per-device version selection,
-and stage 4 lifecycle, error and operation-context components are tested with PC
-substitutes. The package is `cfs`; the Klipper object remains `box`. The bootstrap
-initializes passive identity/telemetry admission. The explicit single-operation
-trial has PC tests and four individually observed normal baseline preload runs,
-with fresh MCU RFID/remaining replies. A complete K1C replacement cycle, fault
-paths and other firmware versions remain unverified.
+The package is `cfs`; the Klipper object remains `box`. It borrows the stock
+`serial_485` object and starts in passive identity/telemetry mode. Reference CFS
+MCU 1.1.3 validation includes four preload checks and two consecutive complete
+T1C load/unload cycles without manual assistance.
 
 Stable section anchors allow implementation and tests to reference this document.
 Add a verified target command here before using it in an operation.
@@ -80,9 +77,7 @@ do not turn an unknown payload into a verified typed operation, and optional
 
 The [native](../tests/test_native.py), [decoder](../tests/test_protocol.py),
 [firmware](../tests/test_firmware.py) and [integration](../tests/test_box_native.py)
-tests use synthetic frames and substitutes. Separate reference-printer checks
-cover passive startup and reads; fault transmission counts, operation scheduling
-and mechanical completion remain hardware acceptance work.
+tests cover the API boundary, frames and version selection.
 
 <a id="lifecycle-integration"></a>
 
@@ -110,15 +105,12 @@ RFID acquisition/estimation path can move motors and is not started by default
 passive admission. A saved tag ID or remaining value must be distinguished from a fresh
 MCU observation.
 
-For ordinary baseline 1.1.3 `0x0A` replies, `DATA[2]` contains pending motor-driver
-diagnostic flags consumed by the state read; mode is the separate `DATA[3]`.
-Static analysis maps bits 0–3 to channels A–D, bit 4 to an MS3791 driver condition and
-bit 7 to the priority persistent-condition branch. These are not direct physical
-switch readings, preload stages or the separate FSM busy predicate; the trial
-does not exercise every flag. A background heartbeat can consume an indication
-before another read. Neither a low bit alone nor a zero byte establishes a jam,
-absence of faults or physical completion. A normal post-RUN mode `0` is required
-by the trial but, even with an ACK, needs separate physical observation.
+For ordinary baseline 1.1.3 `0x0A` replies, `DATA[2]` contains pending motor
+diagnostics consumed by the state read; mode is the separate `DATA[3]`.
+Bits 0–3 identify channels A–D, bit 4 represents the shared low-motion monitor,
+and bit 7 marks delivery of a persistent condition.
+A background heartbeat can consume an indication before another read.
+These flags are separate from physical switches and operation completion.
 
 The following operation policies describe the active component contract tested
 with explicit PC construction. Registration provides 101 unconditional commands
@@ -159,11 +151,9 @@ the target and temporarily disables heartbeat only for that address while the
 head phase is armed. It records the stage-6 result and status even when the
 result is `False`; neither the flag nor an ACK proves physical completion.
 Missing or raising phase actions cancel ownership and restore the previous
-heartbeat permission. The loading phase consumes this saved result. Public tests use an own producer fixture. Separate local checks execute the
-pinned retained SwitchSensor/RunoutHelper inside a native stage-four substitute
-and prove complete loading consumes a saved False result. Disabled, debounced
-and duplicate helper input still emits the custom event. No native binary or
-physical sensor ran.
+heartbeat permission. The loading phase consumes this saved result. The custom
+head event remains separate from RunoutHelper debounce, disable and duplicate
+filtering.
 
 `slot_events` holds per-address diagnostics; the slot event executor separately
 updates metadata and schedules guarded refreshes. Power-on refresh, head motion
@@ -225,10 +215,7 @@ acceptance must identify the exact version combination they cover.
 
 ## Frame format
 
-**Evidence: partial for the target.** Frame geometry and CRC have offline checks
-and bounded normal baseline API-return checks, including 28 attributed frames
-from four preload trials. These are not a count of all physical wire
-transmissions. Full operation/fault acceptance remains separate.
+Frame geometry and CRC are checked on the PC and in baseline API replies.
 
 | Field | Size | Meaning |
 | --- | --- | --- |
@@ -256,10 +243,8 @@ operations. Mechanical units and stage transitions require their own acceptance.
 
 ## Native API
 
-**Evidence:** recovered from the retained library, exercised through PC
-substitutes and the unchanged reference library on MCU 1.1.3. Passive reads and
-four normal explicit preload paths were observed. Other command combinations,
-fault admission, retries and deadline behavior still need target checks.
+The retained API is exercised through PC substitutes and the unchanged reference
+library on MCU 1.1.3.
 
 | Item | Reviewed boundary | Remaining verification |
 | --- | --- | --- |
@@ -284,72 +269,95 @@ failure paths. The loading section below is one part of that full contract.
 
 <a id="loading"></a>
 
-## Loading
+## Loading and unloading
 
-**Evidence: unverified for a complete replacement route.** Use the matrix's
-recovered commands, predicates and failure exits when implementing the route.
-The table describes required operation coverage, not a successful runtime cycle.
+The [explicit load/unload trial](installation.md#material-operation-trial) owns
+one selected slot and validates fresh head, hub, buffer, mode and source state.
+It executes the configured macro recipe, including heating, cutting, cleaning,
+flush and position restoration, while the default lifecycle stays passive.
 
-| Phase | Required information |
-| --- | --- |
-| Preconditions | Initial filament location, slot presence, readiness and temperature |
-| CFS feed | Native calls and accepted/rejected reply handling |
-| Arrival | Separate CFS, buffer and toolhead observations; treatment of missing data |
-| Extruder feed | Coordination with existing macros, modes and configured lengths |
-| Purge | Existing configured behavior and completion conditions |
-| Completion | Fresh observations that establish success and the resulting state |
-| Failure | Stop/release behavior, reported error, retained uncertainty and permitted retry |
+### Preload
 
-Do not invent stage timing or copy a sequence from a different printer/MCU.
-Keep the existing preload policy;
-configuration such as OPEN and an action such as RUN are not interchangeable.
-The full power-on refresh includes a mechanical RUN before RFID/remain queries;
-default passive admission permits the typed reads alone and suppresses automatic
-RUN and slot-event actions. The explicit trial checks baseline mode and fresh
-MATERIAL/CONNECTIONS observations before its selected RUN, then requires another
-normal IDLE reply before selected-slot RFID/remaining reads. Its predecode RFID
-validation excludes additional/duplicate records before metadata persistence.
-An ACK or ordinary mode `0` alone is not mechanical-completion proof. The trial disables host
-CRC/LENGTH resends; retained `.so` retries and an in-flight MCU operation cannot
-be stopped by revoking host permission.
+OPEN configures power-on preload; RUN performs it. Full power-on refresh runs
+before RFID/remaining queries. Passive admission permits typed reads and
+suppresses automatic RUN and slot-event actions. The
+[preload trial](installation.md#single-operation-trial) checks baseline mode and
+fresh MATERIAL/CONNECTIONS before one selected RUN, then requires a normal IDLE
+reply before selected-slot RFID/remaining reads. RFID validation rejects
+additional or duplicate records before metadata persistence.
 
-The separate [load/unload trial](installation.md#material-operation-trial) failed
-hardware acceptance on deployed `5a32ac8`; further hardware checks are held.
-Loading admits typed `0x0F`, selected `0x10` stages 0/4/5/6/7,
-`0x04` PRINT and fresh `0x0A`/`0x08`/`0x05` observations. Stage 6 belongs only to
-the armed head callback. Unloading uses the configured cutter and known-source
-`0x04` IDLE/`0x11` BUFFER/MATERIAL path. Neither route admits preload RUN, raw
-diagnostics, another CFS or an automatic recovery sequence. Fresh final head,
-hub, buffer, mode and source bookkeeping are checked separately from ACKs;
-neither matching replies nor reached sensor postconditions establish nozzle
-extrusion. The reference load produced no observed nozzle output. The unload
-attempt caused cutter-approach contact and stopped before any `0x11` retraction.
-The current PC revision executes the complete configured recipe, including
-clean/flush/restore, and restores the stock cutter order while rejecting rear
-or unknown cutter entries. It has not been installed or tested on hardware;
-protocol ACKs cannot validate a motion trajectory. The limited trial retains
-fresh-observation, dispatch/command ownership, cleanup and duplicate-event gates
-and revokes on the first failure. It does not copy the ordinary service's
-continue-after-error behavior or the original stale-cache failure branches.
+### Full LOAD
 
-Successful baseline 1.1.3 `0x10` replies have stage-specific `DATA`, rather than
-a universal empty ACK. The trial validates these bodies before decoder effects:
+Loading admits typed `0x0F`, selected `0x10` stages 0/4/5/6/7, `0x04` PRINT and
+fresh `0x0A`/`0x08`/`0x05` observations. Stage 6 belongs only to the armed head
+callback. Initial admission accepts neutral BUFFER `0` or empty-limit `2` and
+rejects `1`/`3`; neutral means neither limit is active.
+
+Successful baseline 1.1.3 `0x10` replies have stage-specific DATA:
 
 | Request stage | DATA size | Successful reply data |
 | --- | --- | --- |
-| `0` | 1 byte | Mode `0` after normal baseline initialization |
+| `0` | 1 byte | Mode `0` after normal initialization |
 | `5` | 4 bytes | Measuring-wheel float32, big-endian |
 | `4`, `6`, `7` | 0 bytes | Empty payload |
 
-Normal reply status and the matching body are required together. The mode byte
-or wheel data does not replace the trial's separate final sensor checks.
+Stage `4` acknowledges before its feed loop completes. Head arrival, stage `6`
+and subsequent observations complete that path. Replies carry no stage echo
+or transaction ID; stage-specific body checks reject incompatible responses.
 
-Stage `4` acknowledges before its feed loop completes; the head-arrival stage
-`6` and subsequent observations remain necessary. Replies carry no stage echo
-or transaction ID. The retained native transport orders requests and matching
-address/command completions, but these fields cannot establish the origin of
-every late same-command reply. Stage-specific payload checks reject mismatched
-shapes; they do not add transaction identity or prove mechanical completion.
+The owned LOAD supplies `LEN=int(cfg.Tn_extrude)` to its flush command (150 mm
+in the reference configuration). Admission requires an integral length 1–200 mm,
+finite positive velocity/percent pairs, effective positive feed at most 200 mm,
+and actual speed/extrusion factors of 1. A false head-feed result stops before
+cleaning. Standalone commands retain their configured defaults.
+
+### Full UNLOAD
+
+Known-source UNLOAD uses the configured cutter and `0x04` IDLE / `0x11`
+BUFFER/MATERIAL path. Inside the owned trial its retraction sequence is:
+
+1. Complete selected BUFFER and the blocking E−20 head assist.
+2. Queue finite E−30 F600, then submit step generation without waiting.
+3. Send one selected MATERIAL request while the head tail may still execute.
+4. After a normal ACK, complete `M400` before source cleanup and XYZ return.
+
+Hot-heater, scale and operation-ownership checks gate the coordinated tail.
+An error revokes admission; it does not retry or return XYZ. Already submitted
+finite extrusion may finish. This coordinates the two withdrawals without
+assuming identical physical motor start times. Ordinary and unknown-source
+paths retain their configured sequences.
+
+Unknown-source UNLOAD keeps both host source hints absent. Within its current
+retraction command it admits, in order: fresh `0x08` CONNECTIONS, `0x08` MATERIAL,
+`0x0A` STATE, `0x04` IDLE, `0x11` BUFFER with selector zero, then selected-lane
+`0x11` MATERIAL. Each normal response advances one step; mask conflicts,
+missing/abnormal replies, reordering or duplicates stop the path. The shared
+selector is limited to this command and phase.
+
+Full UNLOAD requires fresh mode `0`, selected material present, CONNECTIONS zero,
+BUFFER `2`, head absent, cutter released and source cleared. ACKs and cached
+labels are checked separately from these observations and from nozzle flow.
+
+### CFS-only retraction
+
+The [native-only trial](installation.md#native-buffer-trial) defaults to one
+selected `0x11` BUFFER after IDLE `0x04`/`0001` and fresh normal STATE. Explicit
+`TRIGGER=MATERIAL` selects MATERIAL instead; it is not an automatic fallback.
+Neither form performs CUT, XYZ/E or heating. Only initial STATE status `0x13`
+(19) or `0x19` (25), with four data bytes and mode `4`, is admitted as an error
+observation; subsequent replies must be normal. MATERIAL requires fresh mode
+`0`, CONNECTIONS zero, BUFFER `2` and head absent after its normal ACK.
+
+Baseline BUFFER status `0x13` means that the empty-buffer condition was not
+confirmed within its approximately five-second firmware wait. MATERIAL status
+`0x19` is `RETRUDE_ERR6`.
+A valid CRC preserves these MCU error meanings; it does not turn them into
+successful retraction.
+
+All explicit trials retain dispatch/command ownership and duplicate-event gates.
+They admit no raw diagnostics, another CFS or automatic recovery. Host CRC/LENGTH
+resends are disabled; revoking host permission cannot cancel an in-flight MCU
+operation or the retained library's internal retries.
 
 <a id="timing"></a>
 

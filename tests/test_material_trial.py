@@ -64,7 +64,7 @@ class PoseReplay:
 
 
 class MaterialTrialTests(unittest.TestCase):
-    def make_box(self, action="LOAD", target="T1A", **settings):
+    def make_box(self, action="LOAD", target="T1A", unknown_source=False, **settings):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
@@ -104,6 +104,8 @@ class MaterialTrialTests(unittest.TestCase):
         self.port_present = True
         self.homed_axes = "xyz"
         self.printer.objects["toolhead"].get_status = lambda now: {"homed_axes": self.homed_axes}
+        self.factors = {"speed_factor": 1., "extrude_factor": 1.}
+        self.printer.objects["gcode_move"].get_status = lambda now: dict(self.factors)
         self.table = [SimpleNamespace(online=int(index + 1 == self.address)) for index in range(4)]
         self.lifecycle = self.box.register_lifecycle(
             self.printer, passive=True,
@@ -127,9 +129,16 @@ class MaterialTrialTests(unittest.TestCase):
         self.clear_head_on_retract = True
         self.events, self.on_native = [], None
         self.pose = PoseReplay(self.printer.position)
+        self.pose.submitted_e = self.printer.position[3]
+
+        def submit_steps():
+            self.events.append(("flush", tuple(self.printer.position), self.pose.completed_e))
+            self.pose.submitted_e = self.printer.position[3]
+
+        self.printer.objects["toolhead"].flush_step_generation = submit_steps
         self.outcomes = {}
         self.set_head(action == "UNLOAD")
-        if action == "UNLOAD":
+        if action == "UNLOAD" and not unknown_source:
             self.box.last_cmd = target
             self.box.update_filament_pos(target, target)
         original = self.native.cmd_send_data_with_response
@@ -213,6 +222,12 @@ class MaterialTrialTests(unittest.TestCase):
         return self.box.material_trial.run(action or self.action, target or self.target,
                                            confirmed=True)
 
+    def make_unknown_unload(self):
+        self.make_box("UNLOAD", target="T1C", unknown_source=True)
+        self.material, self.connections, self.buffer, self.native.mode = 15, 4, 0, 0
+        self.assertIsNone(self.box.last_cmd)
+        self.assertEqual(self.box.box_state.get_Tn_data(1, "filament"), "None")
+
     def stages(self):
         return [data[1] for _, command, data in self.native.commands() if command == 0x10]
 
@@ -244,7 +259,7 @@ class MaterialTrialTests(unittest.TestCase):
         cfg = self.box.boxcfg
         self.assertEqual(self.printer.position[:2], [cfg.clean_right_pos_x, cfg.safe_pos_y])
         self.assertEqual(self.pose.completed[:2], (cfg.clean_right_pos_x, cfg.safe_pos_y))
-        self.assertEqual(self.printer.position[3], 5 + 18 + cfg.Tn_retrude - 5)
+        self.assertEqual(self.printer.position[3], 5 + 18 + cfg.Tn_extrude - 5)
         self.assertGreater(self.printer.position[1], cfg.pre_cut_pos_y)
         self.assertTrue(self.lifecycle.head_present())
         start = len(self.pose.moves)
@@ -254,6 +269,44 @@ class MaterialTrialTests(unittest.TestCase):
         self.assert_original_first_x(start, cfg.safe_pos_y)
         self.assertEqual(self.printer.position[:2], [cfg.retrude_position_x, cfg.retrude_position_y])
         self.assertFalse(self.box.cut_sensor.cut_present)
+        self.assertIsNone(self.box.last_cmd)
+        self.assert_released()
+
+    def test_neutral_buffer_load_completes_the_full_recipe_then_known_source_unload(self):
+        self.make_box(target="T1C", switch_pin="synthetic_pin")
+        same_box = self.box
+        self.buffer = 0
+        loaded = self.run_trial("LOAD")
+        self.assertEqual(loaded, {"action": "LOAD", "target": "T1C", "mode": 2,
+                                  "material": 4, "connections": 4, "buffer": 0})
+        self.assertEqual(self.stages(), [0, 4, 6, 5])
+        self.assertEqual(self.box.last_cmd, "T1C")
+        self.assertTrue(self.lifecycle.head_present())
+        cfg = self.box.boxcfg
+        self.assertEqual(self.pose.completed[:2], (cfg.clean_right_pos_x, cfg.safe_pos_y))
+        self.assertEqual(self.printer.position[3], 5 + 18 + cfg.Tn_extrude - 5)
+        self.assert_released()
+        start = len(self.pose.moves)
+        unloaded = self.run_trial("UNLOAD")
+        self.assertIs(self.box, same_box)
+        self.assertEqual(unloaded, {"action": "UNLOAD", "target": "T1C", "mode": 0,
+                                    "material": 4, "connections": 0, "buffer": 2})
+        self.assert_original_first_x(start, cfg.safe_pos_y)
+        self.assertEqual(self.printer.position[:2], [cfg.retrude_position_x, cfg.retrude_position_y])
+        self.assertFalse(self.lifecycle.head_present())
+        self.assertIsNone(self.box.last_cmd)
+        self.assert_released()
+
+    def test_full_buffer_load_refuses_before_host_motion_heat_or_native_writes(self):
+        self.make_box(target="T1C")
+        self.buffer = 1
+        before = tuple(self.printer.position), self.printer.heater.target
+        with self.assertRaisesRegex(RuntimeError, "fresh material-trial preconditions"):
+            self.run_trial("LOAD")
+        self.assertEqual([(command, data) for _, command, data in self.native.commands()],
+                         [(0x0A, b""), (0x08, b"\x00"), (0x08, b"\x01"), (0x05, b"")])
+        self.assertEqual(self.gcode.scripts, [])
+        self.assertEqual((tuple(self.printer.position), self.printer.heater.target), before)
         self.assertIsNone(self.box.last_cmd)
         self.assert_released()
 
@@ -340,6 +393,316 @@ class MaterialTrialTests(unittest.TestCase):
         self.assertIn("G90\n G0 X42.00 F20000.00", self.gcode.scripts)
         self.assertFalse(any(command in (0x0D, 0x10) for _, command, _ in self.native.commands()))
         self.assert_released()
+
+    def test_unknown_source_unload_uses_shared_buffer_then_selected_material_without_source_assignment(self):
+        self.make_unknown_unload()
+        before = deepcopy(self.box.store.base_data)
+        observations, updates = [], []
+        self.box.update_filament_pos = lambda *args: updates.append(args)
+
+        def observe(address, command, data):
+            observations.append((self.box.last_cmd, self.box.last_cmd_tmp,
+                                 self.box.box_state.get_Tn_data(1, "filament")))
+
+        self.on_native = observe
+        result = self.run_trial()
+        self.assertEqual(result["target"], "T1C")
+        self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 0x11],
+                         [b"\x00\x00", b"\x04\x01"])
+        self.assertTrue(observations)
+        self.assertTrue(all(row == (None, None, "None") for row in observations))
+        self.assertEqual(updates, [])
+        self.assertEqual(self.box.store.base_data, before)
+        self.assertIsNone(self.box.last_cmd)
+        self.assertIsNone(self.box.last_cmd_tmp)
+        self.assertEqual(self.box.box_state.get_Tn_data(1, "filament"), "None")
+        self.assertEqual((self.connections, self.buffer, self.native.mode), (0, 2, 0))
+        self.assertFalse(self.lifecycle.head_present())
+        self.assertEqual(self.printer.position[:2],
+                         [self.box.boxcfg.retrude_position_x, self.box.boxcfg.retrude_position_y])
+        self.assertFalse(any(opcode in (0x0D, 0x10) for _, opcode, _ in self.native.commands()))
+        self.assert_released()
+
+    def test_unknown_source_unload_rejects_ambiguous_or_wrong_fresh_lane_before_effects(self):
+        for material, connections, buffer in ((15, 0, 0), (15, 1, 0), (15, 5, 0),
+                                               (3, 4, 0), (15, 4, 3)):
+            with self.subTest(material=material, connections=connections, buffer=buffer):
+                self.make_unknown_unload()
+                self.material, self.connections, self.buffer = material, connections, buffer
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_trial()
+                self.assertTrue(all(opcode in (5, 8, 10) for _, opcode, _ in self.native.commands()))
+                self.assertEqual(self.gcode.scripts, [])
+                self.assertIsNone(self.box.last_cmd)
+                self.assertEqual(self.box.box_state.get_Tn_data(1, "filament"), "None")
+                self.assert_released()
+
+    def test_unknown_source_requires_homed_single_idle_cfs_and_present_head(self):
+        changes = {
+            "unhomed": lambda: setattr(self, "homed_axes", "xy"),
+            "another_cfs": lambda: setattr(self.table[1], "online", 1),
+            "printing": lambda: setattr(self.box.print_stats, "state", "printing"),
+            "absent_head": lambda: self.set_head(False),
+            "unknown_head": lambda: self.set_head(None),
+        }
+        for name, change in changes.items():
+            with self.subTest(name=name):
+                self.make_unknown_unload()
+                change()
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_trial()
+                self.assertEqual(self.native.calls, [])
+                self.assertEqual(self.gcode.scripts, [])
+                self.assert_released()
+
+    def test_unknown_source_assist_configuration_is_checked_before_any_effects(self):
+        velocities = ((), (0,), (-1,), (float("nan"),), (float("inf"),), ("bad",), 3600, None)
+        for velocity in velocities:
+            with self.subTest(velocity=velocity):
+                self.make_unknown_unload()
+                self.box.boxcfg.Tn_retrude_velocity = velocity
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_trial()
+                self.assertEqual(self.native.calls, [])
+                self.assertEqual(self.gcode.scripts, [])
+                self.assertIsNone(self.box.last_cmd)
+                self.assert_released()
+        self.make_unknown_unload()
+        self.box.boxcfg.Tn_extrude_temp = 180
+        self.printer.heater.min_extrude_temp = 210
+        self.box.get_material_target_temp = lambda target: 220
+        with self.assertRaises((RuntimeError, ValueError)):
+            self.run_trial()
+        self.assertEqual(self.native.calls, [])
+        self.assertEqual(self.gcode.scripts, [])
+        self.assertIsNone(self.box.last_cmd)
+        self.assert_released()
+
+    def test_unknown_source_revalidates_lane_and_presence_before_shared_buffer(self):
+        for bank, changed in ((b"\x01", 1), (b"\x01", 5), (b"\x00", 3)):
+            with self.subTest(bank=bank, changed=changed):
+                self.make_unknown_unload()
+                reads = []
+
+                def change_after_preflight(address, command, data):
+                    if command == 0x08 and data == bank:
+                        reads.append(True)
+                        if len(reads) == 2:
+                            if bank == b"\x01":
+                                self.connections = changed
+                            else:
+                                self.material = changed
+
+                self.on_native = change_after_preflight
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_trial()
+                self.assertEqual(len(reads), 2)
+                self.assertFalse(any(opcode in (0x04, 0x11) for _, opcode, _ in self.native.commands()))
+                self.assertNotIn("G1 E-30 F2400", self.gcode.scripts)
+                self.assertIsNone(self.box.last_cmd)
+                self.assert_released()
+
+    def test_unknown_source_hint_changes_cancel_before_shared_buffer(self):
+        for hint in ("last_cmd", "filament"):
+            with self.subTest(hint=hint):
+                self.make_unknown_unload()
+                reads = []
+
+                def inject_source(address, command, data):
+                    if command == 0x08 and data == b"\x01":
+                        reads.append(True)
+                        if len(reads) == 2:
+                            if hint == "last_cmd":
+                                self.box.last_cmd = "T1C"
+                            else:
+                                self.box.box_state.modify_Tn_data(1, "T1C", "filament")
+
+                self.on_native = inject_source
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_trial()
+                self.assertFalse(any(opcode in (0x04, 0x11) for _, opcode, _ in self.native.commands()))
+                # The injected observation is retained; no cleanup invents a
+                # replacement source or rewinds another callback's mutation.
+                self.assertEqual(self.box.last_cmd if hint == "last_cmd" else
+                    self.box.box_state.get_Tn_data(1, "filament"), "T1C")
+                self.assert_released()
+
+    def test_unknown_source_head_loss_before_buffer_stops_but_buffer_may_clear_head(self):
+        for during_buffer in (False, True):
+            with self.subTest(during_buffer=during_buffer):
+                self.make_unknown_unload()
+                reads = []
+
+                def lose_head(address, command, data):
+                    if during_buffer:
+                        if command == 0x11 and data == b"\x00\x00":
+                            self.set_head(False)
+                    elif command == 0x08 and data == b"\x01":
+                        reads.append(True)
+                        if len(reads) == 2:
+                            self.set_head(False)
+
+                self.on_native = lose_head
+                if during_buffer:
+                    self.run_trial()
+                    self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 0x11],
+                                     [b"\x00\x00", b"\x04\x01"])
+                else:
+                    with self.assertRaises((RuntimeError, ValueError)):
+                        self.run_trial()
+                    self.assertFalse(any(opcode in (0x04, 0x11) for _, opcode, _ in self.native.commands()))
+                self.assertIsNone(self.box.last_cmd)
+                self.assert_released()
+
+    def test_unknown_source_native_grants_reject_wrong_phase_reentry_and_repeats(self):
+        self.make_unknown_unload()
+        probes = []
+
+        def denied(request):
+            before = len(self.native.calls)
+            with self.assertRaises((RuntimeError, ValueError)):
+                self.box.send_native(request)
+            self.assertEqual(len(self.native.calls), before)
+
+        shared = build_request(1, "RETRUDE_PROCESS", b"\x00\x00")
+        selected = build_request(1, "RETRUDE_PROCESS", b"\x04\x01")
+        original_script = self.gcode.on_script
+
+        def probe_before_retraction(script):
+            original_script(script)
+            if not probes:
+                probes.append("cut phase")
+                denied(shared)
+                denied(selected)
+
+        self.gcode.on_script = probe_before_retraction
+
+        def probe_inflight(address, command, data):
+            if command == 0x11 and data == b"\x00\x00":
+                probes.append("shared buffer in flight")
+                denied(shared)
+                denied(selected)
+                denied(build_request(2, "RETRUDE_PROCESS", b"\x00\x00"))
+                owner, self.dispatch = self.dispatch, object()
+                try:
+                    denied(shared)
+                finally:
+                    self.dispatch = owner
+
+        self.on_native = probe_inflight
+        original_retract = self.box.communication_retrude_process
+
+        def probe_completed(address, slot, trigger, **kwargs):
+            result = original_retract(address, slot, trigger, **kwargs)
+            if slot == "0":
+                probes.append("shared buffer complete")
+                denied(shared)
+                denied(build_request(1, "RETRUDE_PROCESS", b"\x04\x00"))
+            else:
+                probes.append("selected material complete")
+                denied(shared)
+                denied(selected)
+            return result
+
+        self.box.communication_retrude_process = probe_completed
+        self.run_trial()
+        self.assertEqual(probes, ["cut phase", "shared buffer in flight",
+                                  "shared buffer complete", "selected material complete"])
+        self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 0x11],
+                         [b"\x00\x00", b"\x04\x01"])
+        self.assertIsNone(self.box.last_cmd)
+        self.assert_released()
+
+    def test_unknown_source_buffer_failures_stop_before_assists_or_selected_material(self):
+        outcomes = (None, reply(1, 0x11, status=2), reply(1, 0x11, status=4),
+                    reply(1, 0x11, data=b"\x00"), OSError("synthetic shared BUFFER failure"))
+        for outcome in outcomes:
+            with self.subTest(outcome=outcome):
+                self.make_unknown_unload()
+                self.outcomes[(0x11, b"\x00\x00")] = outcome
+                with self.assertRaises((OSError, RuntimeError, ValueError)):
+                    self.run_trial()
+                self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 0x11],
+                                 [b"\x00\x00"])
+                self.assertFalse(any("E-20" in script or "E-30" in script for script in self.gcode.scripts))
+                self.assertNotIn("G90\n G0 Y100.00 F20000.00", self.gcode.scripts)
+                self.assertIsNone(self.box.last_cmd)
+                self.assertTrue(self.lifecycle.head_present())
+                self.assert_released()
+
+    def test_unknown_source_material_failure_does_not_retry_or_return_the_head(self):
+        self.make_unknown_unload()
+        self.outcomes[(0x11, b"\x04\x01")] = reply(1, 0x11, status=3)
+        with self.assertRaises((RuntimeError, ValueError)):
+            self.run_trial()
+        self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 0x11],
+                         [b"\x00\x00", b"\x04\x01"])
+        self.assertNotIn("G90\n G0 Y100.00 F20000.00", self.gcode.scripts)
+        self.assertIsNone(self.box.last_cmd)
+        self.assertEqual(self.box.box_state.get_Tn_data(1, "filament"), "None")
+        self.assert_released()
+
+    def test_unknown_source_omitted_retraction_sequence_blocks_the_return_move(self):
+        self.make_unknown_unload()
+        self.box.retraction.box_retrude_material = lambda report_error=True: True
+        with self.assertRaises((RuntimeError, ValueError)):
+            self.run_trial()
+        self.assertFalse(any(opcode == 0x11 for _, opcode, _ in self.native.commands()))
+        self.assertNotIn("G90\n G0 Y100.00 F20000.00", self.gcode.scripts)
+        self.assertNotIn("G90\n G0 X42.00 F20000.00", self.gcode.scripts)
+        self.assertIsNone(self.box.last_cmd)
+        self.assert_released()
+
+    def test_unknown_source_cancellation_or_replacement_during_buffer_stops_later_effects(self):
+        for change in ("cancel", "replace", "owner"):
+            with self.subTest(change=change):
+                self.make_unknown_unload()
+
+                def revoke(address, command, data):
+                    if command == 0x11 and data == b"\x00\x00":
+                        if change == "cancel":
+                            self.box.material_trial.cancel()
+                        elif change == "replace":
+                            self.box._accept_identity(1, b"113" + b"B" * 19, b"replacement")
+                        else:
+                            self.dispatch = object()
+
+                self.on_native = revoke
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_trial()
+                self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 0x11],
+                                 [b"\x00\x00"])
+                self.assertFalse(any("E-20" in script or "E-30" in script for script in self.gcode.scripts))
+                self.assertNotIn("G90\n G0 Y100.00 F20000.00", self.gcode.scripts)
+                self.assertIsNone(self.box.last_cmd)
+                self.assert_released()
+
+    def test_unknown_source_postconditions_do_not_accept_head_connection_or_buffer_failure(self):
+        for failure in ("head", "connections", "buffer"):
+            with self.subTest(failure=failure):
+                self.make_unknown_unload()
+                if failure == "head":
+                    self.clear_head_on_retract = False
+                material_sent = []
+
+                def change_final_observation(address, command, data):
+                    if command == 0x11 and data == b"\x04\x01":
+                        material_sent.append(True)
+                    if command == 0x0A and material_sent:
+                        if failure == "connections":
+                            self.connections = 4
+                        elif failure == "buffer":
+                            self.buffer = 0
+
+                self.on_native = change_final_observation
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_trial()
+                self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 0x11],
+                                 [b"\x00\x00", b"\x04\x01"])
+                self.assertIsNone(self.box.last_cmd)
+                self.assertEqual(self.box.box_state.get_Tn_data(1, "filament"), "None")
+                self.assertNotIn("M104 S0", self.gcode.scripts)
+                self.assert_released()
 
     def test_full_buffer_final_feed_keeps_the_integral_configured_amount(self):
         self.make_box(extrude_material_len_for_box="3")
@@ -826,14 +1189,14 @@ class MaterialTrialTests(unittest.TestCase):
         def alias(command):
             with self.assertRaises(CommandError):
                 base(HostCommand({"LEN": "99"}, "BOX_MATERIAL_FLUSH_99 LEN=99"))
-            base(HostCommand({}, "BOX_MATERIAL_FLUSH_99"))
+            base(HostCommand(command.get_command_parameters(), command.get_commandline()))
             attempts.append(True)
             with self.assertRaises(CommandError):
-                base(HostCommand({}, "BOX_MATERIAL_FLUSH_99"))
+                base(HostCommand(command.get_command_parameters(), command.get_commandline()))
         self.gcode.commands["BOX_MATERIAL_FLUSH"] = alias
         self.run_trial()
         self.assertEqual(attempts, [True])
-        feed = "G0 E%.2f F%.2f" % (self.box.boxcfg.Tn_retrude, self.box.boxcfg.Tn_extrude_velocity[0])
+        feed = "G0 E%.2f F%.2f" % (self.box.boxcfg.Tn_extrude, self.box.boxcfg.Tn_extrude_velocity[0])
         self.assertEqual(self.gcode.scripts.count(feed), 1)
         self.assert_released()
 
@@ -850,7 +1213,7 @@ class MaterialTrialTests(unittest.TestCase):
         self.box.nozzle_clean = clean
         def alias(command):
             try:
-                base(HostCommand({}, "BOX_MATERIAL_FLUSH_99"))
+                base(HostCommand(command.get_command_parameters(), command.get_commandline()))
             except RuntimeError:
                 pass  # The retained dispatcher can swallow generic exceptions.
         self.gcode.commands["BOX_MATERIAL_FLUSH"] = alias
@@ -870,6 +1233,247 @@ class MaterialTrialTests(unittest.TestCase):
             self.run_trial()
         self.assertEqual(self.box.last_cmd, self.target)
         self.assertEqual(self.printer.position[1], self.box.boxcfg.extrude_pos_y)
+        self.assert_released()
+
+    def test_owned_load_profile_rejects_unbounded_length_and_actual_configured_portions_before_effects(self):
+        cases = [("Tn_extrude", value) for value in (0, 201, 150.5, True, float("nan"), float("inf"))]
+        cases += [("Tn_extrude_velocity", value) for value in (None, (), (0,), (float("inf"),), (360, 360))]
+        cases += [("Tn_extrude_percent", value) for value in ((), (0,), (-1,), (float("nan"),), (100,), (1, 1))]
+        for name, value in cases:
+            with self.subTest(name=name, value=value):
+                self.make_box(Tn_extrude=150)
+                setattr(self.box.boxcfg, name, value)
+                with self.assertRaises((ValueError, RuntimeError)):
+                    self.run_trial()
+                self.assertEqual(self.native.calls, [])
+                self.assertEqual(self.gcode.scripts, [])
+                self.assert_released()
+
+    def test_owned_load_false_positive_feed_stops_before_flush_clean_tail_and_restore(self):
+        self.make_box(Tn_extrude=150)
+        original_feed, original_clean = self.box.Tn_Extrude, self.box.nozzle_clean
+        cleans, restored = [], []
+
+        def feed(length, *args, **kwargs):
+            return False if length == 150 else original_feed(length, *args, **kwargs)
+
+        def clean():
+            cleans.append(True)
+            return original_clean()
+
+        self.box.Tn_Extrude, self.box.nozzle_clean = feed, clean
+        self.gcode.commands["RESTORE_POSITION"] = lambda command: restored.append(True)
+        with self.assertRaisesRegex(RuntimeError, "positive feed"):
+            self.run_trial()
+        self.assertEqual(cleans, [True])  # The retained pre-clean already ran.
+        self.assertEqual(restored, [])
+        self.assertFalse(any("E-5 " in script for script in self.gcode.scripts))
+        self.assertEqual(self.box.last_cmd, self.target)
+        self.assert_released()
+
+    def test_owned_load_unit_scaling_is_required_before_effects_and_rechecked_before_positive_queue(self):
+        for when in ("preflight", "flush_entry", "inside_feed"):
+            with self.subTest(when=when):
+                self.make_box(Tn_extrude=150)
+                if when == "preflight":
+                    self.factors["extrude_factor"] = 2
+                elif when == "flush_entry":
+                    original = self.gcode.commands["BOX_MATERIAL_FLUSH"]
+
+                    def alias(command):
+                        self.factors["speed_factor"] = 2
+                        return original(command)
+
+                    self.gcode.commands["BOX_MATERIAL_FLUSH"] = alias
+                else:
+                    original_script = self.gcode.on_script
+
+                    def script(value):
+                        original_script(value)
+                        if value == "G91" and self.box.material_trial.owns_phase("LOAD", "BOX_MATERIAL_FLUSH"):
+                            self.factors["extrude_factor"] = 2
+
+                    self.gcode.on_script = script
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_trial()
+                if when == "preflight":
+                    self.assertEqual(self.native.calls, [])
+                    self.assertEqual(self.gcode.scripts, [])
+                self.assertFalse(any("E150.00" in script for script in self.gcode.scripts))
+                self.assertFalse(any("E-5 " in script for script in self.gcode.scripts))
+                self.assert_released()
+
+    def test_coordinated_unload_requires_real_unit_scaling_and_step_submission_before_effects(self):
+        for case in ("no_flush", "no_status", "speed", "extrude", "nan", "string", "boolean"):
+            with self.subTest(case=case):
+                self.make_box("UNLOAD")
+                if case == "no_flush":
+                    self.box.toolhead.flush_step_generation = None
+                elif case == "no_status":
+                    del self.box.gcode_move.get_status
+                else:
+                    key, value = {"speed": ("speed_factor", .5), "extrude": ("extrude_factor", 2),
+                        "nan": ("speed_factor", float("nan")), "string": ("extrude_factor", "1"),
+                        "boolean": ("speed_factor", True)}[case]
+                    self.factors[key] = value
+                with self.assertRaises((ValueError, RuntimeError, AttributeError)):
+                    self.run_trial()
+                self.assertEqual(self.native.calls, [])
+                self.assertEqual(self.gcode.scripts, [])
+                self.assert_released()
+
+    def test_coordinated_tail_is_submitted_without_wait_before_material_and_completed_before_finish(self):
+        self.make_box("UNLOAD")
+        seen, finished = [], []
+        original_finish = self.box.retraction._finish
+
+        def native(address, command, data):
+            if command == 17 and data[1] == 1:
+                seen.append((self.pose.submitted_e, self.printer.position[3], self.pose.completed_e))
+
+        def finish(call, report_error):
+            finished.append((self.pose.completed_e, self.printer.position[3]))
+            return original_finish(call, report_error)
+
+        self.on_native, self.box.retraction._finish = native, finish
+        self.run_trial()
+        self.assertEqual(len(seen), 1)
+        submitted, queued, completed = seen[0]
+        self.assertEqual(submitted, queued)
+        self.assertEqual(queued, completed - 30)
+        self.assertEqual(finished, [(queued, queued)])
+        tail = self.events.index(("gcode", "G0 E-30 F600"))
+        flush = next(index for index, event in enumerate(self.events) if event[0] == "flush")
+        material = self.events.index(("native", 17, b"\x01\x01"))
+        self.assertLess(tail, flush)
+        self.assertLess(flush, material)
+        self.assertFalse(any(event == ("gcode", "M400") for event in self.events[tail:material]))
+        self.assertEqual(self.events[material + 1], ("gcode", "M400"))
+        self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 17],
+                         [b"\x01\x00", b"\x01\x01"])
+        self.assert_released()
+
+    def test_coordinated_material_fault_leaves_only_finite_tail_pending_and_preserves_source(self):
+        bad_crc = bytearray(reply(1, 17))
+        bad_crc[-1] ^= 1
+        outcomes = (reply(1, 17, 0x13), reply(1, 17, 0x19), reply(1, 17, data=b"bad"), None, bytes(bad_crc))
+        for outcome in outcomes:
+            with self.subTest(outcome=outcome):
+                self.make_box("UNLOAD")
+                self.outcomes[(17, b"\x01\x01")] = outcome
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_trial()
+                material = self.events.index(("native", 17, b"\x01\x01"))
+                self.assertEqual(self.events[material + 1:], [])
+                self.assertEqual(self.pose.submitted_e, self.printer.position[3])
+                self.assertEqual(self.printer.position[3], self.pose.completed_e - 30)
+                self.assertEqual(self.box.last_cmd, self.target)
+                self.assertEqual(self.box.box_state.get_Tn_data(1, "filament"), self.target)
+                self.assertEqual(self.gcode.scripts.count("G0 E-30 F600"), 1)
+                self.assert_released()
+
+    def test_coordinated_tail_rechecks_actual_hot_state_and_factors_after_blocking_assist(self):
+        for case in ("cold_flag", "cold_actual", "overtemperature", "nan", "speed", "extrude"):
+            with self.subTest(case=case):
+                self.make_box("UNLOAD")
+                original = self.box.Tn_Extrude
+
+                def feed(length, *args, **kwargs):
+                    result = original(length, *args, **kwargs)
+                    if length == -20:
+                        if case == "cold_flag":
+                            self.printer.heater.can_extrude = False
+                        elif case in ("cold_actual", "overtemperature", "nan"):
+                            self.printer.heater.smoothed_temp = {"cold_actual": 20,
+                                "overtemperature": 300, "nan": float("nan")}[case]
+                        else:
+                            self.factors["speed_factor" if case == "speed" else "extrude_factor"] = 2
+                    return result
+
+                self.box.Tn_Extrude = feed
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_trial()
+                self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 17], [b"\x01\x00"])
+                self.assertFalse(any("E-30" in script for script in self.gcode.scripts))
+                self.assertFalse(any(event[0] == "flush" for event in self.events))
+                self.assertEqual(self.box.last_cmd, self.target)
+                self.assert_released()
+
+    def test_coordinated_false_assist_stops_before_tail_submission_and_material(self):
+        self.make_box("UNLOAD")
+        self.box.Tn_Extrude = lambda *args, **kwargs: False
+        returned = []
+        self.gcode.commands["BOX_GO_TO_BOX_EXTRUDE_POS"] = lambda command: returned.append(True)
+        with self.assertRaises(RuntimeError):
+            self.run_trial()
+        self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 17], [b"\x01\x00"])
+        self.assertFalse(any("E-30" in script for script in self.gcode.scripts))
+        self.assertFalse(any(event[0] == "flush" for event in self.events))
+        self.assertEqual(self.box.last_cmd, self.target)
+        self.assertEqual(returned, [])
+        self.assert_released()
+
+    def test_material_generation_loss_leaves_finite_tail_without_wait_finish_or_xyz_return(self):
+        self.make_box("UNLOAD")
+
+        def replace(address, command, data):
+            if command == 17 and data[1] == 1:
+                self.box._binding_generation += 1
+
+        self.on_native = replace
+        with self.assertRaises((RuntimeError, ValueError)):
+            self.run_trial()
+        stop = self.events.index(("native", 17, b"\x01\x01"))
+        self.assertEqual(self.events[stop + 1:], [])
+        self.assertEqual(self.printer.position[3], self.pose.completed_e - 30)
+        self.assertEqual(self.box.last_cmd, self.target)
+        self.assert_released()
+
+    def test_submission_fault_or_generation_loss_never_enters_material_or_wait_cleanup(self):
+        for fault in ("exception", "generation", "cancel"):
+            with self.subTest(fault=fault):
+                self.make_box("UNLOAD")
+
+                def flush():
+                    self.events.append(("flush_fault", fault))
+                    if fault == "exception":
+                        raise OSError("synthetic submission failure")
+                    if fault == "generation":
+                        self.box._binding_generation += 1
+                    else:
+                        self.box.material_trial.cancel()
+
+                self.box.toolhead.flush_step_generation = flush
+                with self.assertRaises((RuntimeError, ValueError, OSError)):
+                    self.run_trial()
+                stop = self.events.index(("flush_fault", fault))
+                self.assertEqual(self.events[stop + 1:], [])
+                self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 17], [b"\x01\x00"])
+                self.assertEqual(self.printer.position[3], self.pose.completed_e - 30)
+                self.assertEqual(self.box.last_cmd, self.target)
+                self.assert_released()
+
+    def test_other_dispatch_and_unclaimed_phase_cannot_select_coordinated_profile(self):
+        self.make_box("UNLOAD")
+        self.assertFalse(self.box.material_trial.owns_phase("UNLOAD", "BOX_RETRUDE_MATERIAL"))
+        observed = []
+
+        def inspect(address, command, data):
+            if command != 17 or data[1] != 0:
+                return
+            self.assertTrue(self.box.material_trial.owns_phase("UNLOAD", "BOX_RETRUDE_MATERIAL"))
+            self.assertFalse(self.box.material_trial.owns_phase("LOAD", "BOX_MATERIAL_FLUSH"))
+            owner, self.dispatch = self.dispatch, object()
+            try:
+                observed.append(self.box.material_trial.owns_phase("UNLOAD", "BOX_RETRUDE_MATERIAL"))
+                with self.assertRaises(RuntimeError):
+                    self.box.host_guard()
+            finally:
+                self.dispatch = owner
+
+        self.on_native = inspect
+        self.run_trial()
+        self.assertEqual(observed, [False])
         self.assert_released()
 
 

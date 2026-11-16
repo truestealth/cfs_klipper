@@ -2,124 +2,38 @@
 
 English | [Русский](compatibility.ru.md)
 
-**Status:** extension in development. No complete replacement cycle has been accepted
-on the target printer. This document distinguishes a required interface from
-an implemented or hardware-verified one.
+The extension is in development. Explicit preload and full T1C load/unload are
+verified on CFS MCU 1.1.3. Printing, tool changes, recovery and other MCU versions
+still require hardware validation. Startup remains passive and uses the stock
+`serial_485.so`.
 
 ## Coverage
 
 | Area | Implementation | Validation |
 | --- | --- | --- |
-| Klipper import layout | Implemented | PC regression tests and passive deployment on the reference K1C |
-| Passive Klipper startup | Implemented | Real load_config, dependencies and data root; reference MCU 1.1.3 trial reached ready with host actions blocked |
-| Explicit single-operation preload trial | Implemented; bounded reference check | One normal invocation per T1A–T1D on MCU 1.1.3, fresh RFID/remaining replies and operator observations; default lifecycle stays passive |
-| Explicit load/unload trial admission | Complete configured recipes and PC end-to-end checks; hardware acceptance failed | Deployed `5a32ac8` failed; current pre-clean/flush/restore and stock cutter revision is not deployed; hardware checks held |
-| Full contract inventory and check bindings | Stage 1 complete | Real test references, partial families and remaining acceptance cases are tracked |
-| State, configuration and compatible storage | Stage 2 components implemented | Synthetic state, all 54 options, 21 endpoint fields and temporary-file tests |
-| Native `serial_485` calls | Stage 3 primitives implemented | PC request/retry checks plus real reads and selected preload RUN through the unchanged target library |
-| Wire contract | Request bodies and reply validation implemented | Synthetic checks, earlier passive replies and 28 attributed normal preload-trial API-return frames; full operation/fault acceptance remains pending |
-| Per-device firmware selection | Implemented for six exact cfs0 versions | Independent identities, profiles and four-/six-byte layouts tested on a PC |
-| Lifecycle, shared errors and operation context | Component implementation | Cooperative reactor and substitute tests; physical operations remain incomplete |
-| Configured motion, heating, cutting and cleaning | Stage 5 components implemented | Synthetic G-code, fan, heater and sensor checks; hardware acceptance pending |
-| Preload, loading and unloading | Stage 6 components implemented | Synthetic phases and bounded normal explicit preload; full loading/unloading acceptance pending |
-| Tool change and print lifecycle | Partial | PC substitutes cover tool changes and ending-material drain; hardware acceptance pending |
-| Pause/resume and recovery | Stage 8 components | PC substitutes cover recovery, refill, resume and persisted hints; bounded retained-source checks supplement CI; hardware unverified |
-| Stock G-code and status interfaces | Partial | All 103 names registered, including two conditional Hall commands and one blocked legacy feed command; endpoint and snapshots tested |
-| RFID, remaining length, saved materials | Partial | Fresh 40-byte MCU records and remaining replies after explicit T1A–T1D preload; normal physical behavior and both interfaces confirmed; fault/full-cycle acceptance remains pending |
-| Reversible development-file installation | Implemented | Modern/sibling bytecode backup and scoped restore; PC failure/tamper checks and actual target file/cache rollback while stopped, followed by passive reinstallation |
-| Python 3.8 | Project and CI default | 660 methods run: 656 passed, 4 Windows symlink-privilege skips on Python 3.8.20; passive target runtime 3.8.2 checked separately |
+| Klipper import and passive startup | Implemented | PC checks and reference K1C deployment with identity/telemetry reads |
+| Explicit preload | Implemented | T1A–T1D observed on MCU 1.1.3, fresh RFID/remaining data and both client interfaces |
+| Explicit full load/unload | Implemented | Two consecutive complete T1C cycles without manual assistance on MCU 1.1.3 |
+| State, configuration and storage | Implemented | Four-box/sixteen-slot state, 54 options, 21 endpoint fields and compatible files |
+| Native requests and reply decoding | Implemented | PC request/status checks and baseline reads, preload, load and unload through stock serial |
+| Per-device firmware profiles | Six exact cfs0 versions | Independent identities and four-/six-byte layouts tested on a PC |
+| Lifecycle, shared errors and operation ownership | Implemented components | Cooperative reactor, cancellation and composed failure-state checks |
+| Motion, heating, cutting and cleaning | Implemented components | PC checks and the verified T1C load/unload route |
+| Tool changes, printing, pause/resume and recovery | Partial | PC checks; hardware validation remains |
+| Stock G-code and status interfaces | Partial | All 103 names registered; endpoint, snapshots and retained boundaries tested |
+| Reversible development-file installation | Implemented | PC backup/restore checks and target file/cache rollback while stopped |
+| Python 3.8 | Project and CI default | 715 methods: 711 passed, 4 Windows symlink-privilege skips on Python 3.8.20; target runtime 3.8.2 |
 
-The 660-method total is the public suite only. Separate local runs passed 14
-retained-module checks, 13 saved-macro checks and the 17 public macro checks
-using the retained renderer. They are additional evidence, not extra public
-test methods. The four skips require Windows native symlink privileges;
-platform-independent reparse rejection is checked. The retained checks include
-the actual virtual-SD worker after a passive diagnostic: it does not dispatch PAUSE.
+The suite covers configured recipes on shared XYZ/E/source state, phase and
+dispatch ownership, reply validation, malformed data, cancellation and storage
+failures. Separate retained-module and saved-macro checks supplement the public
+suite. The four Windows skips require native symlink privileges.
 
-PC regressions now check the restored X-first approach from a valid entry and
-the original sensed-cut tail, together with rejection of rear/unknown entries.
-Nine end-to-end methods execute the complete service-ordered load/quit sequence
-on one XYZ/E/source state, including replacement, aliases, defaults and failures.
-Trial tests separately check configured recipes, one-use phase permissions and
-revocation when nested macros swallow or omit their base handler. These checks
-do not establish physical clearance or recovery after the failed reference trial.
-
-One further PC method checks the original standalone flush temperature bounds,
-including both endpoints and invalid-value fallback.
-
-PC admission adds 30 public methods: 10 bootstrap, 15 passive lifecycle and five
-composed failure-state checks. Caller-boundary False/None returns are injected
-after real phases; separate effect exceptions exercise interrupted phases.
-All eight recovery leaves assert their distinct shared-context tails. These
-checks do not imply physical rollback or a successful hardware operation.
-
-Legacy bytecode support adds ten installation methods, covering both cache
-layouts, exact cache restoration, import collisions, interrupted installation
-and rejection of tampered or unexpected files. All 27 installation methods pass
-in the separate Linux portability run; the project-default run remains Python 3.8.
-
-The single-operation preload admission adds 19 public PC methods for explicit
-confirmation, request/dispatch ownership, fresh observations, blocked background
-effects, reply validation and revocation after failures. The published Python 3.8
-CI also passed on Ubuntu. Separate reference-printer trials exercised the normal
-baseline path below; CI does not establish those physical results.
-
-The first authorized reference trial used the unchanged stock native transport
-on CFS MCU 1.1.3 and printer Python 3.8.2. It reached ready/standby, preserved all 54
-protected input hashes, and produced 103 valid identity/state/sensor replies,
-including 101 state replies over 412 seconds. The old Box binary remained on disk
-but was not mapped in the new process. This validates passive reads only.
-Existing client startup requests were observed; preload OPEN was rejected by
-the passive guard and heartbeat continued. No operator mechanical command was sent.
-
-The subsequent main-installer version 3 check restored the original entry and
-cache bytes, mode and nanosecond mtime with Klipper stopped, removed the owned
-package/caches, and performed a fresh passive installation. There was no
-intermediate stock Box boot; filesystem rollback was verified with passive
-boots after installation. Fresh backups no longer need a separate cache adapter.
-
-Additional typed native reads returned buffer `0` (middle range), RFID `unknown`
-for all four slots, and remaining values `100` for all four slots. Remaining
-values are firmware percentages/sentinels, not measured millimetres. The RFID
-record was unavailable: on baseline MCU 1.1.3, `100` is the getter fallback in
-that case, not evidence of four full spools. The RFID
-fallback preserved saved colours/materials; it does not prove fresh physical tag
-identity. Buffer state is an internal observation, not an added public Box status
-field. The cache changed only in RFID and remaining values of four slots; all other
-keys and other CFS records were preserved. All 53 immutable input hashes stayed
-unchanged. RFID/remaining queries follow normal cache persistence, so formatting
-and mtime can change. Client-facing status and retained metadata were checked
-through the API contract. After these reads both the native touchscreen and
-Creality Print recognized CFS but displayed all four slots as grey or undefined.
-
-A subsequent controlled check backed up the changed cache, restored the exact
-pre-query cache with Klipper stopped, and started the same extension passively.
-The user confirmed that slot display returned in both interfaces. No decoder or
-runtime fix was made and the native RFID/remaining requests were not repeated.
-All 25 installed source files stayed identical; 52 original immutable inputs and
-the current material database were preserved. This verifies display of saved
-slot data, not fresh physical RFID acquisition. RFID and remaining values were
-restored together, so the check does not isolate a client display condition or
-establish a permanent RFID solution.
-
-Later, the published trial code was installed with the same reversible procedure
-and without booting the restored stock Box process. One explicit invocation per
-T1A–T1D produced 28 independently checked normal API-return frames. All four fresh
-40-byte RFID records matched saved IDs; selected remaining percentages were valid.
-Only selected-slot remaining values changed;
-the other spool keys, material database, 52 protected files and 25 installed
-sources were preserved. The operator reported normal activity for all four
-trials and correct display in both interfaces. See the
-[bounded reference results](installation.md#reference-trial-results).
-This accepts a normal explicit preload path on one baseline unit, with physical
-observations; it does not accept the full filament/print/recovery cycle, native
-fault handling, timeout completion or another firmware version. A normal mode
-`0` is a required observation, not a direct read of the preload FSM busy state.
-
-Coverage records local component checks. Hosted results for each commit are
-available in [GitHub Actions](https://github.com/truestealth/cfs_klipper/actions).
-See the [matrix](contract-matrix.md) for implementation status, runnable references
-and remaining acceptance cases. Hardware acceptance is pending.
+The reference installation preserves the stock serial library, configuration,
+macros and spool data. Hardware results and explicit commands are described in
+the [installation guide](installation.md#material-operation-trial). The
+[contract matrix](contract-matrix.md) tracks remaining validation; hosted runs
+are available in [GitHub Actions](https://github.com/truestealth/cfs_klipper/actions).
 
 <a id="state-configuration-and-storage"></a>
 
@@ -179,25 +93,17 @@ The implementation makes these deliberate storage/configuration choices:
 
 ## Native integration
 
-Stage 3 implements request primitives through the configured stock `serial_485`
-object, command-specific reply decoding and per-address identity/profile selection.
-Explicit binding borrows the object without connecting or disconnecting it.
-The PC suite uses substitutes. Separately, the reference passive trial exercised
-the stock binary in its intended target process for identity/state/sensor reads.
-This passive check does not validate mechanical commands, injected transport
-faults or other MCU versions. The later explicit preload checks add only the
-bounded normal baseline path; fault and full-operation paths remain separate.
-`load_config()` retains passive identity/telemetry admission. The separate
-[explicit preload trial](installation.md#single-operation-trial) grants one
-selected RUN path without enabling ordinary host actions or automatic mechanics.
-Its PC tests, normal baseline trials and earlier passive target observations
-have distinct evidence scopes. Separate [material trial admission](installation.md#material-operation-trial)
-composes the real host phases in PC tests. Its deployed reference check did not
-accept loading or unloading: nozzle output was not observed, and the cutter
-approach caused mechanical contact. The first missed cutter observation stopped
-the path before `0x11` retraction; this did not prevent the preceding contact.
-Hardware checks are held. The current complete workflow/stock cutter revision
-has not been installed or tested on hardware; successful PC tests do not accept it.
+Native request primitives use the configured stock `serial_485` object without
+opening or closing its connection. Command-specific decoding and per-address
+identity/profile selection are tested with synthetic frames and the borrowed API.
+The reference printer verifies passive reads, explicit T1A–T1D preload and two
+consecutive full T1C load/unload cycles on MCU 1.1.3. Transport faults and other
+firmware versions retain PC-only validation.
+
+`load_config()` remains passive. The explicit
+[preload](installation.md#single-operation-trial) and
+[material](installation.md#material-operation-trial) commands grant only the
+selected operation, without enabling ordinary host actions or automatic mechanics.
 
 Checks cover all 25 named reply statuses and their contextual outcomes, normal
 data/cache updates, missing-response distinctions, communication-test byte zero
@@ -252,8 +158,8 @@ The implemented host policies are:
 
 Tests compose native wheel replies with segmented extrusion and actual Python
 cleaning, shared error restoration, macro alias dispatch and temporary-file
-configuration saves. Stage 9 adds bounded Jinja and retained-producer execution checks. Hardware
-acceptance remains separate. The bootstrap blocks host actions in passive mode.
+configuration saves. Bounded Jinja and retained-producer checks cover the macro
+boundaries. The bootstrap blocks ordinary host actions in passive mode.
 
 ## Runout, recovery and resume
 
@@ -303,8 +209,8 @@ The version-1 public `BOX_EXTRUDE_PROCESS` passes STAGE in the recovered call's
 remain distinct. Encoding 0, typed wire stages above 7 and legacy opcode `0x13`
 are explicitly blocked pending resolution; `BOX_EXTRUDE_2_PROCESS` is registered
 but cannot send. Execution requires a confirmed CFS address 1..4, even though the
-recovered direct-feed parser accepts addresses through 9. Stage 9 separately verifies retained Jinja and actual sensor-producer execution
-on the PC. Hardware acceptance remains open.
+recovered direct-feed parser accepts addresses through 9. Retained Jinja and
+sensor-producer execution have separate PC checks.
 
 
 ## Tool changes and print lifecycle
@@ -388,13 +294,12 @@ seven, reserved operations and unaddressed diagnostics remain explicitly gated.
 
 **Baseline: CFS MCU 1.1.3 on the reference K1C with K1 Series CFS Upgrade.**
 The reference printer uses the stock host `serial_485.so`. This baseline defines
-the starting contract for the open `box` replacement. Reference passive startup
-and identity/state/sensor reads have been observed; mechanical acceptance remains
-pending.
+the contract for the open `box` replacement. Passive reads, explicit T1A–T1D
+preload and two consecutive complete T1C load/unload cycles are verified.
 
 | CFS MCU firmware | Project target | Replacement validation |
 | --- | --- | --- |
-| 1.1.3 | Baseline; current reference CFS firmware | PC checks, passive startup/reads and four individually observed normal preload trials; full mechanical acceptance pending |
+| 1.1.3 | Baseline; current reference CFS firmware | PC checks, passive reads, explicit T1A–T1D preload and two consecutive full T1C load/unload cycles |
 | 1.2.2, 1.4.2, 1.5.0 | Intermediate reference versions | Static cfs0/G32 comparison and PC profile/layout checks; no replacement hardware acceptance |
 | 1.5.2 | Additional compatibility target | Static comparison and PC profile/layout checks; target hardware validation pending |
 | 1.5.3 | Additional compatibility target | Ordinary paths match examined 1.5.2; exact identity/profile tested on a PC; target hardware validation pending |

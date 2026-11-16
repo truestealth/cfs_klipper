@@ -4,11 +4,13 @@ import re
 import shlex
 import struct
 import unittest
+from copy import deepcopy
 
 from macro_harness import Host, Model
 from test_box_data import CommandError
 from test_host_actions import HostCommand
 import test_host_actions as host_actions
+import test_material_trial as material_trial_tests
 from test_native import reply
 
 
@@ -45,36 +47,55 @@ class WorkflowCommand(HostCommand):
 class WorkflowFixture:
     """Supply only external thermal, sensor, motion and native observations."""
 
-    def __init__(self, loaded=False):
-        self.base = host_actions.HostActionTests()
-        self.base.make_box(switch='synthetic_pin', extrude_pos_x=100,
+    def __init__(self, loaded=False, unknown_source=False, passive=False):
+        if loaded and unknown_source:
+            raise ValueError('choose a known or absent host source')
+        positions = dict(extrude_pos_x=100,
             extrude_pos_y=200, extrude_pos_z=30, safe_pos_y=180,
             clean_right_pos_x=150, pre_cut_pos_x=40, pre_cut_pos_y=100,
             cut_pos_y=205, retrude_position_x=40, retrude_position_y=140)
+        if passive:
+            # Register real passive wrappers before the retained-style aliases,
+            # as load_config does; changing only lifecycle.passive is not enough.
+            self.base = material_trial_tests.MaterialTrialTests()
+            self.base.make_box('UNLOAD' if loaded or unknown_source else 'LOAD',
+                target='T1A' if loaded else 'T1C', unknown_source=unknown_source,
+                switch_pin='synthetic_pin', **positions)
+        else:
+            self.base = host_actions.HostActionTests()
+            self.base.make_box(switch='synthetic_pin', **positions)
         self.base.native.mode = 0
-        self.base.ready(identify=True)
+        if not passive:
+            self.base.ready(identify=True)
         self.box, self.native = self.base.box, self.base.native
         self.printer, self.reactor = self.base.printer, self.base.reactor
         self.lifecycle = self.base.lifecycle
         self.printer.position[:] = [120., 150., 30., 0.]
         self.box.gcode_move.last_position = list(self.printer.position)
         self.completed = list(self.printer.position)
-        self.material, self.connections, self.buffer = 15, 1 if loaded else 0, 2
+        self.material = 15
+        self.connections = 4 if unknown_source else (1 if loaded else 0)
+        self.buffer = 0 if unknown_source else 2
         self.head_callback, self.cut_callback, self.clear_head = True, True, True
         self.faults, self.on_native = {}, None
         self.native_events, self.lines, self.moves, self.responses = [], [], [], []
         self.script_errors, self.tokens = [], []
+        self.events = []
         self.token = None
         self.fail_primitive = None
         self.printer.heater.target = 0
-        self.set_head(loaded)
+        self.set_head(loaded or unknown_source)
         if loaded:
             self.box.last_cmd = 'T1A'
             self.box.update_filament_pos('T1A', 'T1A')
         self.host = Host(Model)
         self.host.command_error = self.host.gcode.error = CommandError
         self.gcode = self.host.gcode
+        self.gcode.ready_gcode_handlers = self.gcode.commands
+        self.gcode.create_gcode_command = lambda name, line, parameters: WorkflowCommand(line)
         for name, handler in self.base.gcode.commands.items():
+            if name in ('IF_NEED_HOME', 'BOX_CHECK_MATERIAL'):
+                continue
             self.gcode.register_command(name, handler)
         self.host.objects['toolhead'] = self.printer.objects['toolhead']
         self.host.macro('IF_NEED_HOME', {'gcode':
@@ -118,6 +139,7 @@ class WorkflowFixture:
             name = line.split()[0].upper()
             command = WorkflowCommand(line)
             self.lines.append((self.token, line))
+            self.events.append(('gcode', line))
             try:
                 if name == 'SET_GCODE_VARIABLE':
                     self.gcode.mux[(name, command.get('MACRO'))](command)
@@ -194,6 +216,7 @@ class WorkflowFixture:
         self.native.calls.append((body, timeout, args))
         address, opcode, data = body[0], body[3], body[4:]
         self.native_events.append((self.token, opcode, data))
+        self.events.append(('native', opcode, data))
         if self.on_native is not None:
             self.on_native(opcode, data)
         fault = self.faults.get((opcode, data))
@@ -234,6 +257,24 @@ class MaterialWorkflowTests(unittest.TestCase):
         fixture = WorkflowFixture(**options)
         self.addCleanup(fixture.close)
         return fixture
+
+    def test_owned_full_load_uses_one_positive_configured_flush_through_retained_alias(self):
+        fixture = self.fixture(passive=True)
+        box = fixture.box
+        box.boxcfg.Tn_extrude = 150.
+        source_before = deepcopy(box.store.base_data)
+        result = fixture.command('CFS_TEST_LOAD TNN=T1C CONFIRM=1')
+        self.assertEqual(result['target'], 'T1C')
+        self.assertEqual(fixture.printer.position[3], 168)
+        self.assertEqual([line for _, line in fixture.lines if line.startswith('BOX_MATERIAL_FLUSH_99')],
+                         ['BOX_MATERIAL_FLUSH_99 LEN=150'])
+        self.assertEqual([line for _, line in fixture.lines if line.startswith('G0 E150')], ['G0 E150.00 F360.00'])
+        self.assertEqual(sum('E-5 ' in line for _, line in fixture.lines), 1)
+        self.assertEqual([data[1] for _, opcode, data in fixture.native_events if opcode == 16], [0, 4, 6, 5])
+        self.assertEqual(fixture.script_errors, [])
+        self.assertEqual(box.store.base_data, source_before)
+        self.assertEqual(box.last_cmd, 'T1C')
+        self.assertFalse(box.material_trial.active)
 
     def test_prepared_load_then_quit_uses_the_same_full_state(self):
         fixture = self.fixture()
@@ -278,6 +319,79 @@ class MaterialWorkflowTests(unittest.TestCase):
         self.assertIsNone(fixture.box.last_cmd)
         self.assertEqual(fixture.printer.position[3], -158)
         self.assertEqual(fixture.script_errors, [])
+
+    def test_passive_unknown_source_trial_keeps_the_complete_cold_stock_order(self):
+        fixture = self.fixture(unknown_source=True, passive=True)
+        box, heater = fixture.box, fixture.printer.heater
+        heater.smoothed_temp, heater.can_extrude = 20, False
+        before = deepcopy(box.store.base_data)
+        observations, source_updates = [], []
+        box.update_filament_pos = lambda *args: source_updates.append(args)
+
+        def observe(opcode, data):
+            observations.append((box.last_cmd, box.last_cmd_tmp,
+                                 box.box_state.get_Tn_data(1, 'filament')))
+
+        fixture.on_native = observe
+        result = fixture.command('CFS_TEST_UNLOAD TNN=T1C CONFIRM=1')
+        self.assertEqual(result['target'], 'T1C')
+        self.assertEqual([data for _, opcode, data in fixture.native_events if opcode == 0x11],
+                         [b'\x00\x00', b'\x04\x01'])
+        self.assertTrue(all(row == (None, None, 'None') for row in observations))
+        self.assertEqual(source_updates, [])
+        self.assertEqual(box.store.base_data, before)
+        self.assertIsNone(box.last_cmd)
+        self.assertIsNone(box.last_cmd_tmp)
+        self.assertEqual(box.box_state.get_Tn_data(1, 'filament'), 'None')
+        self.assertEqual(fixture.printer.position, [40, 140, 50, -50])
+        self.assertEqual(fixture.completed, fixture.printer.position)
+        self.assertFalse(fixture.lifecycle.head_present())
+        self.assertFalse(box.cut_sensor.cut_present)
+        self.assertEqual((fixture.connections, fixture.buffer, fixture.native.mode), (0, 2, 0))
+        self.assertEqual(heater.target, box.boxcfg.Tn_extrude_temp)
+        events = fixture.events
+        cut = next(index for index, event in enumerate(events)
+                   if event[0] == 'gcode' and event[1].startswith('G0 Y205.00 '))
+        heat = next(index for index, event in enumerate(events)
+                    if event[0] == 'gcode' and event[1].startswith(
+                        'M109 S%d' % box.boxcfg.Tn_extrude_temp))
+        shared = events.index(('native', 0x11, b'\x00\x00'))
+        assist = next(index for index, event in enumerate(events)
+                      if event[0] == 'gcode' and 'E-20.00' in event[1])
+        pull = events.index(('gcode', 'G1 E-30 F2400'))
+        material = events.index(('native', 0x11, b'\x04\x01'))
+        park = next(index for index, event in enumerate(events)
+                    if event[0] == 'gcode' and event[1].startswith('G0 Y140.00 '))
+        self.assertEqual(sorted((cut, heat, shared, assist, pull, material, park)),
+                         [cut, heat, shared, assist, pull, material, park])
+        self.assertFalse(any('E-8 ' in line or line == 'M104 S0' for _, line in fixture.lines))
+        first_x = next(move for move in fixture.moves if move['before'][0] != move['after'][0])
+        self.assertEqual(first_x['before'][1], 150)
+        self.assertEqual(first_x['after'][:2], [40, 150])
+        self.assertTrue(fixture.lifecycle.passive)
+        self.assertFalse(box.material_trial.active)
+        self.assertEqual(fixture.script_errors, [])
+        before_effects = (len(fixture.native_events), len(fixture.lines))
+        with self.assertRaises(CommandError):
+            fixture.command('BOX_RETRUDE_MATERIAL')
+        self.assertEqual((len(fixture.native_events), len(fixture.lines)), before_effects)
+
+    def test_passive_unknown_source_buffer_failure_stops_before_assists_and_return(self):
+        fixture = self.fixture(unknown_source=True, passive=True)
+        fixture.printer.heater.smoothed_temp = 20
+        fixture.printer.heater.can_extrude = False
+        fixture.faults[(0x11, b'\x00\x00')] = 2
+        with self.assertRaises(CommandError):
+            fixture.command('CFS_TEST_UNLOAD TNN=T1C CONFIRM=1')
+        self.assertEqual([data for _, opcode, data in fixture.native_events if opcode == 0x11],
+                         [b'\x00\x00'])
+        self.assertFalse(any('E-20' in line or 'E-30' in line for _, line in fixture.lines))
+        self.assertFalse(any(line.startswith('G0 Y140.00 ') for _, line in fixture.lines))
+        self.assertIsNone(fixture.box.last_cmd)
+        self.assertEqual(fixture.box.box_state.get_Tn_data(1, 'filament'), 'None')
+        self.assertTrue(fixture.lifecycle.head_present())
+        self.assertTrue(fixture.lifecycle.passive)
+        self.assertFalse(fixture.box.material_trial.active)
 
     def test_flush_default_and_explicit_length_keep_distinct_parser_outcomes(self):
         for raw, expected_e, error in (('BOX_MATERIAL_FLUSH', -42, False),

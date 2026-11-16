@@ -170,6 +170,9 @@ class Retraction:
 
     def _known(self, call, content, report_error):
         box = self.box
+        trial = getattr(box, "material_trial", None)
+        coordinated = (trial is not None and trial.owns_phase("UNLOAD", "BOX_RETRUDE_MATERIAL")
+                       and not trial._unknown_source)
         address, slot = content["addr"], content["num"]
         if not self._wait(call, address):
             return False
@@ -179,17 +182,32 @@ class Retraction:
         unused_old, unused_new, temperature = call(box.get_flush_temp, box.last_cmd, box.last_cmd)
         if call(box.get_filament_sensor_detect):
             buffered = self._retract(call, address, slot, "BUFFER", report_error)
-            # The assist return is deliberately ignored in this initial path.
-            call(box.Tn_Extrude, -20, velocity, temperature)
+            # Ordinary callers retain the ignored assist result; the owned
+            # coordinated trial stops before submitting another head move.
+            assisted = call(box.Tn_Extrude, -20, velocity, temperature)
+            if coordinated and assisted is False:
+                trial.cancel()
+                raise RuntimeError("owned coordinated unload did not complete its blocking head assist")
             if buffered is False:
                 if call(box.get_filament_sensor_detect):
                     return self._error(call, "key_retrude_err3", report_error=report_error)
                 if self._idle(call, address) is False:
                     return False
-            self._e_move(call, "G0 E-30 F2400")
+            if coordinated:
+                call(trial._bounded_profile, True)
+            self._e_move(call, "G0 E-30 F600" if coordinated else "G0 E-30 F2400")
+            if coordinated:
+                # Submit the finite three-second tail without waiting for it;
+                # the synchronous native call must not rely on a flush timer.
+                call(box.toolhead.flush_step_generation)
         result = self._retract(call, address, slot, "MATERIAL", False)
         if result is not False:
+            if coordinated:
+                call(box.gcode.run_script_from_command, "M400")
             return self._finish(call, report_error)
+        if coordinated:
+            trial.cancel()
+            raise RuntimeError("owned coordinated unload did not complete MATERIAL")
         if not report_error:
             return False
 

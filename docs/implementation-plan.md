@@ -2,17 +2,11 @@
 
 English | [Русский](implementation-plan.ru.md)
 
-**Status:** stages 1–8 provide the contract inventory and host components for
-state, native calls, lifecycle, motion, load/unload, tool changes and recovery.
-Stage 9 adds PC integration, Jinja tests, bounded local retained-source execution
-and reversible development-file installation. Explicit unresolved paths remain
-in the matrix, including the missing physical target in two examined saved load
-wrappers. PC admission provides real initialization and passive identity/
-telemetry startup. The reference printer's live configuration, passive reads,
-file/cache rollback and cached display have bounded checks. The single-operation
-preload admission path has four individually observed normal runs on MCU 1.1.3,
-with fresh RFID/remaining replies and correct client display. Full hardware
-acceptance remains pending.
+**Status:** stages 1–9 provide the host implementation and PC checks. On the
+reference K1C with CFS MCU 1.1.3, passive startup, rollback, T1A–T1D preload and
+two consecutive full T1C load/unload cycles are verified. Stage 10 continues with
+tool changes, printing, recovery and other firmware versions. Remaining
+requirements are in the [contract matrix](contract-matrix.md).
 
 ## Target and design
 
@@ -90,9 +84,8 @@ power-loss data cleanup without losing the material cache.
 **PC result:** exact request bodies, validated command/status replies, borrowed
 native API calls and per-address identities/profiles are implemented. Twelve
 native-command handlers join the nine data handlers in substitute-based tests.
-The stage-3 suite had 103 test methods. Later stages compose operation/error/event
-handlers on PC substitutes; real native ABI/wire behavior remains unverified and
-the bootstrap permits passive reads only. See the [native integration boundaries](protocol.md#native-integration)
+The stock native API is used on the reference printer; other profiles remain
+PC-tested. Startup is passive, with explicitly scoped mechanical trials. See the [native integration boundaries](protocol.md#native-integration)
 and runnable references in the [matrix](contract-matrix.md).
 
 Obtain the configured stock Klipper serial object and use its supported request
@@ -121,13 +114,11 @@ establish native API use; actual wire transmissions require target validation.
 
 **PC result:** explicit ready/shutdown, configured dependencies, per-address
 reconnect/identity, round-robin heartbeat, owned scheduling, cooperative operation
-context and shared client reporting are implemented. Stage 4 initially supplied 23
-functional handlers; later stages register all 103 required names. Targeted heartbeat ownership and failed stage6 results during a stage4
-native wait are tested. Stage 6 supplies loading consumers and power-on refresh;
-stage 8 adds reason-specific recovery and stage 9 executes the retained producer
-in a bounded local PC harness.
-Unavailable phase actions fail explicitly. See [lifecycle integration](protocol.md#lifecycle-integration)
-and the [matrix](contract-matrix.md). The real entry point now uses passive startup.
+context and shared client reporting are implemented. All 103 required command
+names are registered. Tests cover heartbeat ownership, head results during a
+native wait and explicit failure for unavailable phase actions. See
+[lifecycle integration](protocol.md#lifecycle-integration) and the
+[matrix](contract-matrix.md). The entry point uses passive startup.
 
 Implement command/event registration as the handlers become functional, dependency
 lookup, ready/shutdown behavior, connect/reconnect and per-address heartbeat.
@@ -155,8 +146,9 @@ are implemented and tested with substitutes. Missing position fields are checked
 before the affected movement. The cleaning route uses four strokes independent
 of `clean_run_count`; fan saves use `last_value * scale`. `speed_factor` starts
 as `None`; no M220 behavior is inferred. Registered-action compositions cover
-wheel/feed/cleaning, shared error restoration and macro aliases. Later stages compose full tool changes on PC substitutes; hardware remains
-unverified. The [host policies](compatibility.md#host-actions)
+wheel/feed/cleaning, shared error restoration and macro aliases. The reference
+T1C cycle also exercises configured motion, heating, cutting and cleaning.
+The [host policies](compatibility.md#host-actions)
 record deliberate guards. Colour-derived purge calculations use the retained Klipper
 `chelper` interface (`get_ffi`, `rgb_t` and `get_flushing_volume`); its native
 implementation is substituted in PC tests.
@@ -176,7 +168,8 @@ no-sensor fallback remains distinguishable from an actual sensor reading.
 **PC result:** preload, staged load, head-result consumption and known/unknown
 unload phases are implemented and exercised with substitutes and real Box
 composition. Legacy opcode 0x13, typed encoding 0 and wire stages above 7
-remain blocked; printer acceptance remains open.
+remain blocked. Two consecutive full T1C load/unload cycles are verified on
+MCU 1.1.3.
 
 Implement preload permission OPEN/CLOSE separately from RUN/TIGHT procedures,
 pretension/tighten control, staged loading, head callback coordination, final
@@ -232,7 +225,7 @@ compatibility still needs validation. The baseline live include/override fingerp
 future trials must recheck their environment. Hardware acceptance remains
 required. The installer deploys the passive admission bootstrap.
 
-The subsequent PC admission work implements `load_config`, the retained data-root
+PC admission implements `load_config`, the retained data-root
 and dependency lookup, failure cleanup and exact shared-state checks after nested
 failures/recovery. The first startup polls identity and telemetry without automatic
 mechanics; host actions and raw diagnostics are blocked. This does not complete
@@ -268,29 +261,15 @@ configuration, CFS hardware and MCU identity. Validate **1.1.3 first**:
 6. Controlled failures, disconnect/reconnect, runout/refill, restart and
    power-loss recovery; settings/spool data and rollback preservation.
 
-The bounded path for step 2 is the separate
-[single-operation trial](installation.md#single-operation-trial). It grants one
-selected RUN request without switching the lifecycle to active. Ordinary client
-commands and automatic actions remain blocked; ownership is revoked on return,
-failure or stale context. The stock native library and MCU remain unchanged.
-Further deployment or mechanics require authorization and physical preparation.
-A zero CONNECTIONS snapshot and a normal IDLE reply after RUN are mandatory;
-neither a one-bit selector, an ACK nor mode `0` establishes physical isolation
-or completion. The four observed T1A–T1D normal trials confirm only this baseline
-path on one CFS, not full loading/unloading, cutting, purging, printing, recovery
-or failure/timeout behavior.
+The [single-operation trial](installation.md#single-operation-trial) and
+[load/unload trial](installation.md#material-operation-trial) keep the lifecycle
+passive and grant only the selected operation. Current reference checks cover
+T1A–T1D preload and two consecutive full T1C load/unload cycles without manual
+assistance, including nozzle output, cutting and return to CFS. Configuration,
+spool data and stock native files are preserved.
 
-The [load/unload trial](installation.md#material-operation-trial) was deployed as
-`5a32ac8` and failed reference acceptance. Loading reached its sensor/protocol
-postconditions without observed nozzle output; unloading caused mechanical
-contact at the cutter approach and stopped before retraction. All hardware
-checks are held with physical position untrusted. The current PC revision
-restores complete configured load/quit recipes, including cleaning, flush and
-restore, and the stock cutter sequence with a rejection gate for rear/unknown
-entries. End-to-end tests cover ordinary and replaced sources, macro aliases,
-defaults and failures; scoped trials retain first-failure revocation. No new
-mechanical attempt or installation was made. Physical condition/position, nozzle
-flow, complete printing and recovery still need separate hardware acceptance.
+Full tool changes, printing and recovery remain in stage 10; all 18 hardware
+families retain their planned status until their complete assertions are met.
 
 Then validate other targeted versions separately. Record results for the number
 of physical CFS units actually tested; PC simulation of four boxes does not

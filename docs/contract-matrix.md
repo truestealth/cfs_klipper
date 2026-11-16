@@ -216,41 +216,21 @@ target checks verified original entry/cache bytes, modes and modification times
 after stopped restoration, followed by passive reinstallation and ready startup.
 The restored stock process was not booted.
 
-An earlier passive getter check returned RFID `unknown`; exact cache restoration
-restored both interfaces. This established cached display separately from the
-subsequent [reference trial](installation.md#reference-trial-results).
+Reference-printer checks on MCU 1.1.3 cover passive startup and rollback,
+T1A–T1D preload with fresh RFID/remaining data and correct client display, and
+two consecutive full T1C load/unload cycles without manual assistance.
+Nozzle output, cutting, return to CFS and final sensor conditions were confirmed;
+configuration, spool data and stock native files were preserved.
 
-That trial completed one explicit preload for each physical T1A–T1D on MCU 1.1.3.
-All 28 attributed normal API-return frames were checked, including four fresh
-40-byte records and selected percentage replies. The operator reported ordinary
-feed/return and correct display in both interfaces. Other spool metadata,
-database bytes and protected files were preserved. Full load/unload/print/
-recovery cases and other firmware versions remain pending.
+The extension-only [single-operation](installation.md#single-operation-trial)
+and [load/unload](installation.md#material-operation-trial) trial commands are
+outside the original 103-command inventory. Their PC checks cover fresh
+pre/post observations, head callbacks, cutting, positioning and permission
+revocation. The lifecycle stays passive. Unknown-source unloading additionally
+requires absent host hints and one fresh selected lane; it does not invent a
+loaded source.
 
-The extension-only [single-operation trial](installation.md#single-operation-trial)
-is outside the original 103-command inventory. Its 19 PC methods are bound to
-`PC-INTEGRATION-DEPENDENCIES` and relevant event checks;
-`admission_policy.single_operation_trial` records its exact scope. The lifecycle
-stays passive during the operation. Target observations are separate evidence in
-that policy and hardware-family validation notes; the full hardware families
-remain planned until their remaining assertions are accepted.
-
-See [compatibility.md](compatibility.md) for implementation/validation status
-and [protocol.md](protocol.md) for the native API boundary.
-
-The separate [load/unload trial preparation](installation.md#material-operation-trial)
-reads and executes the complete configured load/quit phase order with explicit
-confirmation and a root operation context. Its PC tests are bound to the same dependency/event families:
-fresh pre/post observations, actual-head callback admission, sensed cutting,
-service positioning, first-failure stopping and revocation. These commands are
-also outside the original inventory. The reference full trial failed: normal
-head/transport observations did not establish nozzle output, and an X-first
-cutter approach caused reported carriage contact. No retraction was issued.
-The current PC workflow includes pre-clean, standalone flush and restore, so its
-normal load tail establishes safe Y before the next original X-first cut. A
-shared entry check rejects a loaded rear or unknown pose rather than adding a
-retreat. There is no added release movement, final M400 or heater-off command.
-End-to-end tests use the same evolving XYZ/E/source state and exercise aliases,
-defaults, errors and revocation. This revision has not been installed or
-mechanically tested. Hardware tests remain held; the earlier four preload
-observations do not accept the full cycle.
+All 18 hardware families remain planned until their full assertions are met,
+including tool changes, printing, recovery and other firmware versions.
+See [compatibility.md](compatibility.md) for validation status and
+[protocol.md](protocol.md) for the native API boundary.

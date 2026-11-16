@@ -8409,7 +8409,10 @@
         "tests/test_tool_actions.py::ToolActionTests.test_known_source_to_another_box_uses_each_firmware_profile",
         "tests/test_tool_actions.py::ToolActionTests.test_box_end_runs_actual_cut_unload_and_safe_position",
         "tests/test_tool_actions.py::ToolActionTests.test_box_end_source_replacement_cannot_unload_the_replacement",
-        "tests/test_material_workflow.py::MaterialWorkflowTests.test_final_head_failure_is_reported_after_source_bookkeeping_clears"
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_final_head_failure_is_reported_after_source_bookkeeping_clears",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_unload_uses_shared_buffer_then_selected_material_without_source_assignment",
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_passive_unknown_source_buffer_failure_stops_before_assists_and_return",
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_passive_unknown_source_trial_keeps_the_complete_cold_stock_order"
       ]
     },
     {
@@ -8644,7 +8647,7 @@
       ],
       "status": "planned",
       "test": null,
-      "validation_note": "Observed subset: normal reference MCU 1.1.3 getter/RUN exchanges through the unchanged stock API. Required timeouts, faults and remaining mechanical routes are still pending."
+      "validation_note": "Reference MCU 1.1.3 getters, preload and T1C load/unload use the unchanged stock API. Timeouts, faults and remaining routes require separate checks."
     },
     {
       "id": "HW-CMD-DATA",
@@ -8664,7 +8667,7 @@
       ],
       "status": "planned",
       "test": null,
-      "validation_note": "Observed subset: one explicit normal preload per physical slot A/B/C/D on one baseline CFS. Operator reported ordinary feed/return. Complete load/unload and all starting conditions remain pending."
+      "validation_note": "T1A-T1D preload and two consecutive full T1C load/unload cycles are verified on one baseline CFS. Other unload starting conditions remain to be checked."
     },
     {
       "id": "HW-CMD-MOTION",
@@ -8683,7 +8686,7 @@
       ],
       "status": "planned",
       "test": null,
-      "validation_note": "Reference full trial failed: head observations did not establish nozzle output; the rear X-first approach caused reported contact and no retraction was issued. The complete configured workflow and original cutter order with entry rejection are PC-tested only, not deployed; hardware checks held and the full family remains planned."
+      "validation_note": "Two consecutive T1C cycles verified ordinary cutter approach, cutting, return and final sensor conditions. Calibration and other configured cutter paths remain to be checked."
     },
     {
       "id": "HW-CMD-PRINT",
@@ -9024,9 +9027,10 @@
         "The real entry point resolves extras.base_info.base_dir and registers a passive lifecycle before macros; ready borrows the configured serial owner.",
         "Passive startup permits only typed identity/telemetry reads and blocks host actions, raw diagnostics, automatic motion, preload, pause, heating and sensor changes.",
         "The extension-only CFS_TEST_PRELOAD command admits one confirmed physical target on MCU 1.1.3 without changing passive mode; owner/generation/request guards, idle/head/material/hub preconditions and pre-persistence reply checks reject unrelated effects.",
-        "Separate confirmed CFS_TEST_LOAD/UNLOAD commands reuse baseline transport phases while the lifecycle remains passive; real head/cutter observations, fresh masks, known-source unloading, checked geometry and phase-owned requests gate mechanics. PC substitutes do not establish target completion.",
+        "Separate confirmed CFS_TEST_LOAD/UNLOAD commands reuse baseline transport phases while the lifecycle remains passive; real head/cutter observations, fresh masks, known or scoped unknown-source unloading, checked geometry and phase-owned requests gate mechanics. PC substitutes do not establish target completion.",
         "Preserve the stock X-first approach and sensed-cut tail from a validated entry. Reject a loaded, X-homed rear or unknown entry before fan/motion effects; without a tray use pre-cut Y only when safe Y is absent. The complete clean/flush/restore caller establishes normal safe Y; no added release movement or wait is inferred. Composed tests track requested/completed XYZ/E and original M400 boundaries.",
-        "Material trials read the configured bare load/quit recipe and require its exact phase order before effects. Each registered phase owns one command scope; only exact retained aliases may call its base handler. Preserve passive startup, fresh observations and first-failure revocation, including swallowed/omitted macro base calls."
+        "Material trials read the configured bare load/quit recipe and require its exact phase order before effects. Each registered phase owns one command scope; only exact retained aliases may call its base handler. Preserve passive startup, fresh observations and first-failure revocation, including swallowed/omitted macro base calls.",
+        "Scoped unknown-source UNLOAD requires absent host hints and one fresh selected lane; its current retraction phase admits CONNECTIONS, MATERIAL, STATE, IDLE, one selector0 BUFFER, then one selected MATERIAL. Verify no source assignment, wrong-order/duplicate/in-flight rejection, first-failure stopping before return movement, and independent final head/connection/buffer/mode checks."
       ],
       "status": "partial",
       "test": [
@@ -9130,9 +9134,24 @@
         "tests/test_material_trial.py::MaterialTrialTests.test_rear_unload_is_rejected_before_heat_requests_or_a_recovery_move",
         "tests/test_material_trial.py::MaterialTrialTests.test_recipe_and_registered_dependencies_are_checked_before_effects",
         "tests/test_material_trial.py::MaterialTrialTests.test_macro_alias_cannot_change_parameters_or_claim_a_phase_twice",
-        "tests/test_material_trial.py::MaterialTrialTests.test_a_macro_that_omits_its_base_handler_cannot_accept_the_trial"
+        "tests/test_material_trial.py::MaterialTrialTests.test_a_macro_that_omits_its_base_handler_cannot_accept_the_trial",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_assist_configuration_is_checked_before_any_effects",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_buffer_failures_stop_before_assists_or_selected_material",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_cancellation_or_replacement_during_buffer_stops_later_effects",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_head_loss_before_buffer_stops_but_buffer_may_clear_head",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_hint_changes_cancel_before_shared_buffer",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_material_failure_does_not_retry_or_return_the_head",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_native_grants_reject_wrong_phase_reentry_and_repeats",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_omitted_retraction_sequence_blocks_the_return_move",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_postconditions_do_not_accept_head_connection_or_buffer_failure",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_requires_homed_single_idle_cfs_and_present_head",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_revalidates_lane_and_presence_before_shared_buffer",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_unload_rejects_ambiguous_or_wrong_fresh_lane_before_effects",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_unload_uses_shared_buffer_then_selected_material_without_source_assignment",
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_passive_unknown_source_buffer_failure_stops_before_assists_and_return",
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_passive_unknown_source_trial_keeps_the_complete_cold_stock_order"
       ],
-      "remaining": "PC substitutes cover entry/dependencies, passive defaults and explicit preload/load/unload trials. The reference target separately verified passive reads and four normal preloads. Full load/unload trials, dependency fault coverage, retained-helper numerical results and complete mechanical acceptance remain unverified."
+      "remaining": "Other unload starting states, dependency faults and retained-helper numerical results still require checks. The reference printer has verified passive reads, T1A-T1D preload, a bounded unknown-source return and two consecutive full T1C load/unload cycles."
     },
     {
       "id": "PC-INTEGRATION-EVENTS",
@@ -9205,7 +9224,12 @@
         "tests/test_material_trial.py::MaterialTrialTests.test_failed_final_load_observation_does_not_rewind_live_source_or_auto_unload",
         "tests/test_material_workflow.py::MaterialWorkflowTests.test_cancelled_or_replaced_phase_cannot_send_later_feed_stages",
         "tests/test_material_trial.py::MaterialTrialTests.test_macro_alias_cannot_change_parameters_or_claim_a_phase_twice",
-        "tests/test_material_trial.py::MaterialTrialTests.test_swallowed_alias_exception_revokes_scope_before_restore"
+        "tests/test_material_trial.py::MaterialTrialTests.test_swallowed_alias_exception_revokes_scope_before_restore",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_cancellation_or_replacement_during_buffer_stops_later_effects",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_head_loss_before_buffer_stops_but_buffer_may_clear_head",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_hint_changes_cancel_before_shared_buffer",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_native_grants_reject_wrong_phase_reentry_and_repeats",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_postconditions_do_not_accept_head_connection_or_buffer_failure"
       ],
       "validation_note": "Public producer fixture verifies Box consumption and ownership. Additional local execution of pinned SwitchSensor/RunoutHelper verifies disabled/debounce/duplicate behavior inside stage4; this retained-source proof is separate from public CI."
     },
@@ -9229,7 +9253,7 @@
       ],
       "status": "planned",
       "test": null,
-      "validation_note": "Reference active configuration fingerprints remained unchanged through passive deployment and four preloads. This does not complete edit/save or all configured-coordinate/wrapper checks."
+      "validation_note": "Reference configuration remained unchanged through passive deployment, preload and two full T1C cycles. Edit/save and alternative coordinate/wrapper cases remain to be checked."
     },
     {
       "id": "HW-DATA-PRESERVATION",
@@ -9561,7 +9585,10 @@
         "tests/test_material_workflow.py::MaterialWorkflowTests.test_prepared_load_then_quit_uses_the_same_full_state",
         "tests/test_material_workflow.py::MaterialWorkflowTests.test_existing_source_is_cut_and_retracted_before_the_new_load",
         "tests/test_material_workflow.py::MaterialWorkflowTests.test_final_head_failure_is_reported_after_source_bookkeeping_clears",
-        "tests/test_material_trial.py::MaterialTrialTests.test_rear_unload_is_rejected_before_heat_requests_or_a_recovery_move"
+        "tests/test_material_trial.py::MaterialTrialTests.test_rear_unload_is_rejected_before_heat_requests_or_a_recovery_move",
+        "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_unload_uses_shared_buffer_then_selected_material_without_source_assignment",
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_passive_unknown_source_buffer_failure_stops_before_assists_and_return",
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_passive_unknown_source_trial_keeps_the_complete_cold_stock_order"
       ]
     },
     {
@@ -9872,7 +9899,7 @@
         "tests/test_installation.py::InstallationTests.test_collisions_and_nested_backup_rejected",
         "tests/test_installation.py::InstallationTests.test_traversal_rejected"
       ],
-      "validation_note": "Temporary-tree checks cover legacy sibling and modern caches, import collisions, exact source/cache restoration, tampering, failure rollback and version-2 manifest compatibility. Native symlink cases skip on Windows when unavailable; reparse-point rejection has an independent check. On one baseline printer, version-3 restoration of original entry/cache bytes, modes and mtime_ns was verified with Klipper stopped, followed by a passive reinstall and ready startup. The restored stock process was not booted; mechanics and full hardware acceptance remain unverified."
+      "validation_note": "Temporary-tree checks cover legacy and modern caches, import collisions, exact restoration, tampering, rollback and version-2 manifests. Native symlink cases skip on Windows when unavailable; reparse-point rejection is checked separately. On the reference printer, version-3 restoration of original entry/cache bytes, modes and mtime_ns was verified with Klipper stopped, followed by passive reinstallation and ready startup."
     },
     {
       "id": "PC-PYTHON-COMPATIBILITY",
@@ -9907,7 +9934,7 @@
       ],
       "status": "planned",
       "test": null,
-      "validation_note": "Only the four selected-slot preload/RFID/remaining normal cases are observed. This is not the required full load/unload/cut/purge/tool-change/print cycle."
+      "validation_note": "T1A-T1D preload and two consecutive unassisted T1C load/unload cycles are verified, including nozzle flow, cutting and return. Full tool changes and printing remain to be checked."
     },
     {
       "id": "HW-RECOVERY-CYCLE",
@@ -9928,7 +9955,7 @@
       ],
       "status": "planned",
       "test": null,
-      "validation_note": "Only reference cfs0 MCU 1.1.3 normal preload cases were exercised. No firmware update occurred; other versions and complete mechanical outcomes remain pending."
+      "validation_note": "Reference cfs0 MCU 1.1.3 preload and two full T1C cycles are verified. Other firmware versions require hardware checks."
     },
     {
       "id": "PC-MACRO-INCLUDE",
@@ -10301,7 +10328,7 @@
     "host_actions": "Ordinary host commands remain blocked before mutation. Explicit preload grants one exact selected RUN request; separate confirmed load/unload grants only the owning phase, selected address/slot and armed head callback. Neither grant changes lifecycle.passive or enables background mechanics.",
     "metadata": "each passive initialization reads a fresh MATERIAL mask before applying saved labels to live state",
     "errors": "passive diagnostics use Lifecycle.last_error and leave the retained virtual-SD pause hint box.last_err unchanged",
-    "acceptance": "Reference deployment and four explicit selected-slot normal preload/RFID/remaining cases were observed on MCU 1.1.3/CPython 3.8.2/MIPS. Physical motion and correct interfaces were reported by the operator. Full hardware families, fault/recovery paths and other firmware versions remain pending.",
+    "acceptance": "Reference MCU 1.1.3/CPython 3.8.2/MIPS checks cover passive startup, rollback, T1A-T1D preload/RFID/remaining data and two consecutive full T1C load/unload cycles. The operator confirmed client display and both complete cycles without manual assistance. Full hardware families, recovery and other versions remain pending.",
     "single_operation_trial": {
       "command": "CFS_TEST_PRELOAD TNN=<physical T1A..T4D> CONFIRM=1",
       "scope": "Extension-specific command, outside the 103-command original inventory; not operator authentication",
@@ -10350,28 +10377,28 @@
         "CFS_TEST_LOAD TNN=<physical T1A..T4D> CONFIRM=1",
         "CFS_TEST_UNLOAD TNN=<physical T1A..T4D> CONFIRM=1"
       ],
-      "scope": "Extension-only commands outside the original inventory. Deployed5a32ac8 failed full load/nozzle and cut/unload acceptance; hardware checks remain held. The current PC revision executes the complete configured stock recipe and restored cutter sequence with entry rejection; it has not been deployed or mechanically tested.",
+      "scope": "Extension-only load/unload commands outside the original inventory. Each grants one operation while retaining passive startup, stock serial and configured macros. Two consecutive full T1C cycles are verified on the reference MCU 1.1.3.",
       "baseline": "One attached/connected explicitly confirmed cfs0 MCU 1.1.3 with host encoding 1",
       "preconditions": "Ready passive lifecycle, standby/inactive virtual SD/not paused/not resuming, no error/other operation or trial, real head sensor, already homed XYZ, valid travel including clean-right X/clean Y-10, feed/count/temperature settings and exact configured bare recipe/dependencies. UNLOAD also requires an active initially released cutter switch and current Y at or before safe Y.",
       "load": [
         "Absent head and no known loaded source",
-        "Fresh normal mode0, selected MATERIAL, zero CONNECTIONS and buffer2",
-        "Read configured BOX_LOAD_MATERIAL_WITH_MATERIAL body; require known bare phase order and supply TNN only to the two feed commands",
+        "Fresh normal mode0, selected MATERIAL, zero CONNECTIONS and neutral buffer0 or empty buffer2",
+        "Read configured BOX_LOAD_MATERIAL_WITH_MATERIAL body; require known bare phase order, supply TNN to the two feed commands and bounded positive LEN from cfg.Tn_extrude to the owned BOX_MATERIAL_FLUSH",
         "Initial M104/homing/error/material checks, initial no-material cut/retract, positioning and nozzle clean, actual staged CFS load/head callback, extruder latch clear, standalone flush and RESTORE_POSITION",
         "Fresh final mode2/selected CONNECTIONS/non-full buffer/MATERIAL and present head/known selected source",
         "No added final M400 or M104 S0; stock restore may leave Z queued"
       ],
       "unload": [
-        "Present head and exact matching last_cmd/live filament source",
+        "Present head; exact matching last_cmd/live source, or both hints absent. TNN pins one fresh lane without assigning a source.",
         "Fresh normal mode0 or2, exactly selected CONNECTIONS and selected MATERIAL",
         "Read configured BOX_QUIT_MATERIAL body; known bare order, no invented TNN for its retraction phase",
-        "Configured error/material checks, original sensed cut, known-source retraction and return position; automatic recovery remains blocked by the scoped trial",
-        "Fresh final mode0/zero CONNECTIONS/buffer2/MATERIAL and absent head/released cutter/cleared source; no added wait or heater-off command"
+        "Configured checks and sensed cut, then known-source or unknown-source retraction. Known-source owned UNLOAD uses BUFFER, blocking head E-20, submitted E-30 F600 and one selected MATERIAL. A normal MATERIAL ACK is followed by M400 before source cleanup and return; automatic recovery remains blocked.",
+        "Fresh final mode0/zero CONNECTIONS/buffer2/MATERIAL and absent head/released cutter/cleared source; heater-off remains a separate command"
       ],
       "ownership": "Root OperationContext, exact current dispatch, one exact recipe command at a time and one armed head callback; retained aliases must preserve exact parameters and invoke the registered base exactly once. Lifecycle/binding/device/configuration/idle snapshots and ownership cleanup/dedup remain project policies.",
       "native_policy": "Only target-address typed phase bodies; normal reply shape/status before decoding; no trial host CRC/LENGTH resend, retries_en=False; reads at most 2 seconds and other requests bounded by native timeout/remaining 900-second cooperative budget",
       "failure_policy": "Revoke the one-use phase grant on first failure, including a swallowed alias exception or omitted base call; unlike the ordinary service queue, do not continue after an error. Stop before loading recovery, failed-stage relief, repeated missed-switch cut or unload retry. Keep fresh observations, ownership cleanup and duplicate-event rejection rather than copying stale-cache fallback or leaked source permissions. No speculative stop/cut/unload/heat/fan/mode/position restore or cache rewind. In-flight native waits/MCU actions/queued moves remain noninterruptible.",
-      "limits": "Complete configured load/quit phase order includes cleaning, standalone flush and restore on PC. Ordinary BOX commands remain phases, avoiding duplicate effects from retained clients. Bounded LOAD admission still begins without a loaded source; ordinary synthetic phase tests also cover replacement. External service execution, printing, live fault timing and physical nozzle/motion acceptance remain open; user macros and START_PRINT are unchanged.",
+      "limits": "LOAD begins with an empty head and no loaded source; replacement is also covered by synthetic phase tests. User macros and START_PRINT remain unchanged. External service execution, printing, recovery and live fault timing require separate validation.",
       "checks": [
         "PC-INTEGRATION-DEPENDENCIES",
         "PC-INTEGRATION-EVENTS"
@@ -10380,15 +10407,39 @@
       "reply_attribution_limit": "The stock native transport orders address/command completions, but the protocol carries no stage echo/transaction ID; payload checks cannot identify every late same-command reply or prove physical completion.",
       "motion_sequence": "Normal stock X-first approach from a validated safe-Y entry; no added M400 after the source Z helper and no added sensed-release tail. Shared preflight rejects loaded, X-homed rear/unavailable/nonfinite Y before fan/motion effects, with trayless pre-cut fallback only when safe Y is absent; optional homing is rechecked before X. Caller return positioning and final trial observations remain distinct from cutter success.",
       "reference_trial": {
-        "firmware": "cfs0 MCU 1.1.3",
-        "attempted_commit": "5a32ac8a29c0057dabeab4e3e93aa3483c41879f",
-        "transport_load": "21 attributed normal API returns, head present/selected CONNECTIONS/mode 2/non-full buffer and live source, but no nozzle output reported",
-        "extra_diagnostic": "Separate retained-Klipper E20 feed also produced no reported nozzle output; not a Box purge check or proof of shaft rotation",
-        "unload": "FAILED after first missed cut observation; no 0x11 retraction issued. Operator reported a carriage strike, skipped steps and minor damage during X-first approach from the rear extrusion position.",
-        "stop": "Emergency stop accepted and all four printer MCUs entered shutdown. A later new ready process with zero heater targets was observed; not restarted by the agent and not treated as physical recovery.",
-        "acceptance": "Full mechanical acceptance failed; no retry/rehome/redeploy after the incident. Earlier bounded preload results remain separate."
+        "firmware": "cfs0 MCU 1.1.3 with retained stock serial_485.so and passive startup",
+        "target": "T1C",
+        "completed_cycles": 2,
+        "preparation": "Routes replayed from fresh actual position, coordinate transforms, mesh and retained Z context before mechanics",
+        "load": "Both loads completed with sustained nozzle output and no manual feeding",
+        "unload": "Both unloads completed with ordinary approach, cutting, return to CFS and head departure; no retry or manual assistance",
+        "final_observations": "Fresh mode0, MATERIAL15, CONNECTIONS0, BUFFER2, head absent, source absent and zero live motion; heater target switched off separately",
+        "preservation": "Stock native files, configuration and spool data retained",
+        "limits": "T1C baseline case only; all 18 full hardware families retain planned status"
       },
-      "recipe": "Read gcode from configured BOX_LOAD_MATERIAL_WITH_MATERIAL/BOX_QUIT_MATERIAL; require exact bare phase order with optional RESPOND lines. Supply TNN to BOX_EXTRUDE_MATERIAL/BOX_EXTRUDER_EXTRUDE only; never rewrite macros or wrap the ordinary load primitive with another flush."
+      "recipe": "Read configured BOX_LOAD_MATERIAL_WITH_MATERIAL/BOX_QUIT_MATERIAL gcode; require exact bare phase order with optional RESPOND lines. Supply TNN to the two feed commands and bounded cfg.Tn_extrude LEN to the owned flush. Ordinary phase commands and user macros are unchanged.",
+      "unknown_source_unload": {
+        "availability": "One bounded T1C unknown-source return is verified on the reference printer; passive startup is retained",
+        "source_policy": "last_cmd must remain None and live source None or the string 'None'; no fabricated TNN or cache rewind. Existing OperationContext temporary bookkeeping remains unchanged; old last_cmd_tmp is not physical source evidence.",
+        "fresh_lane": "Exactly selected CONNECTIONS and selected MATERIAL bit present before effects and in the fresh retraction queries; other occupied material bits do not identify a loaded source.",
+        "native_order": [
+          "08 CONNECTIONS",
+          "08 MATERIAL",
+          "0A STATE",
+          "04 IDLE",
+          "11 BUFFER selector0",
+          "11 MATERIAL selected lane"
+        ],
+        "ownership": "Only current claimed BOX_RETRUDE_MATERIAL, one request pending, one successful normal reply per step; repeats, reordering and unrelated commands cannot borrow the grant. Completion is required before the return-position phase.",
+        "checks": "Same passive/identity/standby/geometry/cutter guards, unknown assist configured velocity/temperature preflight, no premature head loss, absent source hints throughout, final head absent/CONNECTIONS0/BUFFER2/mode0/released cutter.",
+        "reference_check": {
+          "firmware": "cfs0 MCU 1.1.3 with retained stock serial_485.so",
+          "target": "T1C",
+          "result": "Command completed with fresh final head absent, CONNECTIONS0, BUFFER2, mode0 and released cutter; both source hints stayed absent",
+          "limits": "One normal unknown-source case; other starting states require separate checks"
+        },
+        "sequence": "Original cold cut then retraction heating if required, shared BUFFER, E assist and selected MATERIAL; no extra preheat, automatic recovery, heater-off or return move on failure."
+      }
     }
   }
 }
