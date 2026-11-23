@@ -5,6 +5,7 @@ This module only preserves the box sender's additional MCU CRC/LENGTH retries.
 """
 
 from dataclasses import dataclass
+import logging
 import math
 
 
@@ -225,7 +226,7 @@ class NativeSerial:
             if len(request.data) != 3 or request.data[1] > 7:
                 raise UnsupportedRequest("only the established encoding-1 wire stages 0 through 7 may execute")
         attempts = (3 if request.timeout >= 3600 else 7) if retry_errors else 1
-        for _ in range(attempts):
+        for attempt in range(1, attempts + 1):
             arguments = (request.body, request.timeout)
             if retries_en is not None:
                 arguments += (retries_en,)
@@ -233,8 +234,20 @@ class NativeSerial:
                 check_context()
             raw = self.native.cmd_send_data_with_response(*arguments)
             if raw is None or (request.command == 0x55 and not raw):
+                logging.info("CFS native returned no reply addr=%d cmd=0x%02x attempt=%d/%d",
+                             request.address, request.command, attempt, attempts)
                 return None
-            frame = validate_reply(raw, request.address, request.command)
+            try:
+                frame = validate_reply(raw, request.address, request.command)
+            except FrameError as error:
+                sample = (bytes(raw)[:258].hex() if isinstance(raw, (bytes, bytearray, memoryview))
+                          else type(raw).__name__)
+                logging.info("CFS rejected frame addr=%d cmd=0x%02x raw=%s reason=%s",
+                             request.address, request.command, sample, error)
+                raise
             if request.command == 0x55 or frame.status not in (0x02, 0x04):
                 return frame
+            if attempt < attempts:
+                logging.info("CFS retrying reply addr=%d cmd=0x%02x status=0x%02x data=%s attempt=%d/%d",
+                             frame.address, frame.command, frame.status, frame.data.hex(), attempt, attempts)
         return frame

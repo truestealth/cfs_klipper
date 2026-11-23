@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 FILES = ("__init__.py", "box.py", "configuration.py", "cutting.py", "errors.py",
          "events.py", "extrusion.py", "feeding.py", "finishing.py", "firmware.py",
          "lifecycle.py", "loading.py", "motion.py", "native.py", "operations.py",
-         "printing.py", "protocol.py", "recovery.py", "resume.py", "retraction.py",
+         "print_trial.py", "printing.py", "protocol.py", "recovery.py", "resume.py", "retraction.py",
          "runout.py", "state.py", "storage.py", "toolchange.py")
 BOX_CACHE = re.compile(r"box\.cpython-[0-9]+(?:\.opt-[0-9]+)?\.pyc")
 
@@ -268,10 +268,10 @@ def main():
             extras, backup, _, _, files = prepare(args.extras, args.backup)
             print("Target:", extras, "\nBackup:", backup)
             print("Replace box.py and create cfs/ with", len(files) - 1, "Python files.")
-            print("Preview only; CFS startup uses passive admission.")
+            print("Preview only; normal CFS commands are enabled by default.")
         elif args.action == "install":
             install(args.extras, args.backup)
-            print("Installed CFS extension; startup permits identity and telemetry only.")
+            print("Installed CFS extension; normal CFS commands are enabled by default.")
         else:
             restore(args.extras, args.backup)
             print("Restored original box.py; backup retained.")

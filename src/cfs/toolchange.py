@@ -29,6 +29,18 @@ class ToolChange:
             guard()
             return result
 
+        def phase(name, function, *args, **kwargs):
+            trial = getattr(box, "material_trial", None)
+            if trial is not None and trial.active and trial.action == "CHANGE":
+                return call(trial.change_phase, name, function, *args, **kwargs)
+            trial = getattr(box, "print_trial", None)
+            if trial is not None and trial.active and trial.owns_dispatch():
+                return call(trial.change_phase, name, function, *args, **kwargs)
+            return call(function, *args, **kwargs)
+
+        printing = getattr(box, "print_trial", None)
+        if printing is not None and printing.active and printing.owns_dispatch():
+            call(printing.prepare_change, vtnn)
         call(box.record_tn_cur_tnn, vtnn)
         tower = call(box.get_purge_in_prime_tower)
         source = box.last_cmd
@@ -95,8 +107,10 @@ class ToolChange:
             call(box.motion.z_down, distance=0.8)
             record_z()
             if box.is_use_ending_material:
-                call(box.is_use_ending_material_flush,
-                     err="z_err_extrusion_all_materials_err", vtnn=vtnn)
+                drained = call(box.is_use_ending_material_flush,
+                               err="z_err_extrusion_all_materials_err", vtnn=vtnn)
+                if drained is False and getattr(box.lifecycle, "passive", None) is False:
+                    return False
             if box.last_cmd is not None or call(box.get_filament_sensor_detect):
                 if call(box.move_to_cut) is False:
                     return fail("cut_err", {"vtnn": vtnn})
@@ -105,10 +119,12 @@ class ToolChange:
                 record_z()
             context = {"last_tnn": source, "tnn": target}
             if box.is_use_ending_material:
-                call(box.is_use_ending_material_flush,
-                     err="z_err_extrusion_all_materials_err", vtnn=vtnn)
+                drained = call(box.is_use_ending_material_flush,
+                               err="z_err_extrusion_all_materials_err", vtnn=vtnn)
+                if drained is False and getattr(box.lifecycle, "passive", None) is False:
+                    return False
             else:
-                result = call(box.box_retrude_material)
+                result = phase("UNLOAD", box.box_retrude_material)
                 run("M400")
                 if result is False:
                     return fail("retrude_err", context)
@@ -119,7 +135,7 @@ class ToolChange:
                 else:
                     call(box.motion.go_to_extrude_pos)
                     call(box.cutter.strike_clean_box, wait=False)
-            result = call(box.box_extrude_material, target)
+            result = phase("LOAD", box.box_extrude_material, target)
             run("M400")
             if result is False:
                 return fail("box_extrude_err", context)
@@ -128,7 +144,7 @@ class ToolChange:
             run("M400")
             if not tower:
                 for attempt in range(3):
-                    result = call(box.material_change_flush, source, target,
+                    result = phase("FLUSH", box.material_change_flush, source, target,
                                   error_report=attempt == 2)
                     if result or attempt == 2:
                         break

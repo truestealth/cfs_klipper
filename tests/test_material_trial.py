@@ -822,8 +822,11 @@ class MaterialTrialTests(unittest.TestCase):
                 self.make_box()
                 before = deepcopy(self.box.box_state.get_Tn_inner_data(1, "filament_sensor", subpart="material"))
                 self.outcomes[(0x08, b"\x00")] = outcome
-                with self.assertRaises((RuntimeError, ValueError)):
+                with self.assertLogs(level="INFO") as logs, self.assertRaises((RuntimeError, ValueError)):
                     self.run_trial()
+                status = "None" if outcome is None else "0x%02x" % outcome[3]
+                self.assertTrue(any("CFS rejected reply before decoding addr=1 cmd=0x08" in line
+                                    and "status=" + status in line for line in logs.output))
                 self.assertEqual(self.box.box_state.get_Tn_inner_data(1, "filament_sensor", subpart="material"), before)
                 self.assertEqual(self.gcode.scripts, [])
                 self.assertEqual(self.box.slot_events, {})

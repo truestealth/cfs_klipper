@@ -561,6 +561,307 @@ class RetractTrialTests(unittest.TestCase):
             self.box.preload_trial.run_retract(self.target, confirmed=True, trigger="MATERIAL")
         self.assertEqual(len(self.native.calls), 6)
         self.assert_released()
+
+    def prepare_head_assist(self, known=False):
+        trial = self.make_box()
+        self.queue_material()
+        self.native.responses[(1, 10)].insert(2, reply(1, 10, data=b'\x14\x1e\x00\x00'))
+        self.native.responses[(1, 8)].insert(2, reply(1, 8, data=bytes((self.mask,))))
+        self.native.responses[(1, 5)].insert(1, reply(1, 5, data=b'\x02'))
+        self.assist_events = []
+        self.pose = [42., 227.3, 49.982, 935.62684]
+        self.completed = list(self.pose)
+        self.scale = dict(speed_factor=1., extrude_factor=1.)
+        self.heater = SimpleNamespace(can_extrude=True, actual=220., target=220.,
+            min_extrude_temp=170., max_temp=300.)
+        self.heater.get_temp = lambda now: (self.heater.actual, self.heater.target)
+        move = self.box.gcode_move
+        move.absolute_extrude = True
+        move.get_status = lambda now: dict(self.scale, position=list(self.pose))
+        move.position_with_transform = lambda: list(self.pose)
+
+        def create(name, line, parameters):
+            return SimpleNamespace(name=name, line=line, parameters=parameters)
+
+        self.printer.gcode.create_gcode_command = create
+
+        def relative(command):
+            self.assertEqual((command.name, command.line, command.parameters), ('M83', 'M83', {}))
+            self.assist_events.append(('core', 'M83'))
+            move.absolute_extrude = False
+
+        def e_move(command):
+            self.assertFalse(move.absolute_extrude)
+            self.assertEqual(set(command.parameters), {'E', 'F'})
+            e, f = float(command.parameters['E']), float(command.parameters['F'])
+            self.assertIn((e, f), ((-20., 360.), (-30., 600.)))
+            self.assist_events.append(('core', command.line))
+            self.pose[3] += e
+
+        def wait():
+            self.assist_events.append(('wait', tuple(self.pose)))
+            self.completed[:] = self.pose
+
+        def submit():
+            self.assist_events.append(('submit', tuple(self.pose), tuple(self.completed)))
+
+        move.cmd_M83, move.cmd_G1 = relative, e_move
+        self.box.toolhead = SimpleNamespace(get_position=lambda: list(self.pose),
+            # An already-cut head may be physically at the cutter after a
+            # passive restart; E-only recovery must not require invented home.
+            get_status=lambda now: dict(homed_axes=''),
+            extruder=SimpleNamespace(get_heater=lambda: self.heater),
+            wait_moves=wait, flush_step_generation=submit)
+        self.box.cut_sensor = SimpleNamespace(switch_pin='actual-configured-pin', active=True, cut_present=1)
+        self.box.move_z, self.box.last_cmd_tmp = 49.322, 'T3B'
+        if known:
+            self.box.last_cmd = self.target
+            self.box.box_state.modify_Tn_data(1, self.target, 'filament')
+        send = self.native.cmd_send_data_with_response
+
+        def exchange(body, timeout, *args):
+            self.assist_events.append(('native', body[3], body[4:]))
+            return send(body, timeout, *args)
+
+        self.native.cmd_send_data_with_response = exchange
+
+        def material():
+            self.lifecycle.head_sensor.runout_helper.filament_present = 0
+            return reply(1, 17)
+
+        self.native.responses[(1, 17)] = [reply(1, 17), material]
+        return trial
+
+    def run_head_assist(self):
+        return self.box.preload_trial.run_retract(self.target, confirmed=True,
+            trigger='MATERIAL', head_assist=True)
+
+    def test_registered_head_assist_option_selects_the_bounded_route_and_rejects_other_values(self):
+        self.prepare_head_assist()
+        result = self.printer.gcode.commands['CFS_TEST_RETRACT'](NativeCommand(
+            {'TNN': self.target, 'TRIGGER': 'MATERIAL', 'HEAD_ASSIST': '1', 'CONFIRM': '1'}))
+        self.assertFalse(result['head'])
+        self.assertEqual([data for _, command, data in self.native.commands() if command == 17],
+                         [b'\x04\x00', b'\x04\x01'])
+        for value, trigger in (('-1', 'MATERIAL'), ('2', 'MATERIAL'), ('1', 'BUFFER')):
+            with self.subTest(value=value, trigger=trigger):
+                self.prepare_head_assist()
+                with self.assertRaises(CommandError):
+                    self.printer.gcode.commands['CFS_TEST_RETRACT'](NativeCommand(
+                        {'TNN': self.target, 'TRIGGER': trigger, 'HEAD_ASSIST': value, 'CONFIRM': '1'}))
+                self.assertEqual(self.native.calls, [])
+                self.assertEqual(self.assist_events, [])
+                self.assert_released()
+
+    def test_head_assist_queues_only_finite_core_E_then_immediate_material_and_preserves_hints(self):
+        for known in (False, True):
+            with self.subTest(known=known):
+                self.prepare_head_assist(known)
+                state = deepcopy((self.box.last_cmd, self.box.last_cmd_tmp, self.box.move_z,
+                    self.box.box_state.get_Tn_data(1, 'filament'), self.box.store.base_data))
+                saved = self.box.store.path.read_bytes()
+                result = self.run_head_assist()
+                self.assertEqual(result, dict(target='T1C', head=False, mode=0, material=15, connections=0, buffer=2))
+                self.assertEqual(self.native.commands(), [(1, 10, b''), (1, 8, b'\x00'), (1, 8, b'\x01'),
+                    (1, 5, b''), (1, 4, b'\x00\x01'), (1, 10, b''), (1, 17, b'\x04\x00'),
+                    (1, 10, b''), (1, 8, b'\x01'), (1, 5, b''),
+                    (1, 17, b'\x04\x01'), (1, 10, b''), (1, 8, b'\x00'), (1, 8, b'\x01'), (1, 5, b'')])
+                events = self.assist_events
+                first_core = events.index(('core', 'M83'))
+                self.assertEqual(events[first_core-3:first_core], [('native', 10, b''),
+                    ('native', 8, b'\x01'), ('native', 5, b'')])
+                self.assertEqual(events[first_core:first_core+6], [('core', 'M83'),
+                    ('core', 'G1 E-20 F360'), ('wait', (42., 227.3, 49.982, 915.62684)),
+                    ('core', 'G1 E-30 F600'), ('submit', (42., 227.3, 49.982, 885.62684),
+                     (42., 227.3, 49.982, 915.62684)), ('native', 17, b'\x04\x01')])
+                material = events.index(('native', 17, b'\x04\x01'))
+                self.assertEqual(events[material+1], ('wait', (42., 227.3, 49.982, 885.62684)))
+                self.assertEqual(self.pose, [42., 227.3, 49.982, 885.62684])
+                self.assertEqual(self.completed, self.pose)
+                self.assertEqual((self.native.calls[6][1], self.native.calls[10][1]), (10, 150))
+                self.assertEqual((self.box.last_cmd, self.box.last_cmd_tmp, self.box.move_z,
+                    self.box.box_state.get_Tn_data(1, 'filament'), self.box.store.base_data), state)
+                self.assertEqual(self.box.store.path.read_bytes(), saved)
+                self.assert_released()
+
+    def test_head_assist_invalid_initial_observations_or_core_dependencies_refuse_before_native(self):
+        changes = {
+            'head0': lambda: setattr(self.lifecycle.head_sensor.runout_helper, 'filament_present', 0),
+            'head_float': lambda: setattr(self.lifecycle.head_sensor.runout_helper, 'filament_present', 1.),
+            'cold': lambda: setattr(self.heater, 'actual', 160.),
+            'target_off': lambda: setattr(self.heater, 'target', 0.),
+            'nan': lambda: setattr(self.heater, 'actual', float('nan')),
+            'cannot_extrude': lambda: setattr(self.heater, 'can_extrude', False),
+            'too_hot': lambda: setattr(self.heater, 'actual', 300.),
+            'speed': lambda: self.scale.update(speed_factor=.5),
+            'extrude': lambda: self.scale.update(extrude_factor=1.1),
+            'no_cut': lambda: setattr(self.box.cut_sensor, 'cut_present', 0),
+            'float_cut': lambda: setattr(self.box.cut_sensor, 'cut_present', 1.),
+            'inactive_cut': lambda: setattr(self.box.cut_sensor, 'active', False),
+            'unconfigured_cut': lambda: setattr(self.box.cut_sensor, 'switch_pin', None),
+            'no_submit': lambda: setattr(self.box.toolhead, 'flush_step_generation', None),
+            'no_wait': lambda: setattr(self.box.toolhead, 'wait_moves', None),
+            'no_move': lambda: setattr(self.box.gcode_move, 'cmd_G1', None),
+            'no_relative': lambda: setattr(self.box.gcode_move, 'cmd_M83', None),
+            'no_command': lambda: setattr(self.printer.gcode, 'create_gcode_command', None),
+            'inconsistent_frame': lambda: setattr(self.box.gcode_move, 'position_with_transform', lambda: [0., 0., 0., 0.]),
+        }
+        for name, change in changes.items():
+            with self.subTest(change=name):
+                self.prepare_head_assist()
+                change()
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_head_assist()
+                self.assertEqual(self.native.calls, [])
+                self.assertEqual(self.assist_events, [])
+                self.assert_released()
+
+    def test_head_assist_accepts_only_explicit_bool_material_and_normal_initial_state(self):
+        for option in (1, '1', None, [], 0):
+            with self.subTest(option=option):
+                self.prepare_head_assist()
+                with self.assertRaises(ValueError):
+                    self.box.preload_trial.run_retract(self.target, True, 'MATERIAL', option)
+                self.assertEqual(self.native.calls, [])
+        self.prepare_head_assist()
+        with self.assertRaises(ValueError):
+            self.box.preload_trial.run_retract(self.target, True, 'BUFFER', True)
+        self.assertEqual(self.native.calls, [])
+        for status in (0x13, 0x19):
+            with self.subTest(status=status):
+                self.prepare_head_assist()
+                self.native.responses[(1, 10)][0] = reply(1, 10, status, b'\x14\x1e\x00\x04')
+                with self.assertRaises(RuntimeError):
+                    self.run_head_assist()
+                self.assertEqual(len(self.native.calls), 1)
+                self.assertFalse(any(event[0] == 'core' for event in self.assist_events))
+                self.assert_released()
+
+    def test_head_assist_buffer_failure_does_not_queue_any_head_move(self):
+        for bad in (reply(1, 17, 2), reply(1, 17, data=b'unexpected'), None):
+            with self.subTest(bad=bad):
+                self.prepare_head_assist()
+                self.native.responses[(1, 17)][0] = bad
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_head_assist()
+                self.assertEqual(len(self.native.calls), 7)
+                self.assertFalse(any(event[0] in ('core', 'submit', 'wait') for event in self.assist_events))
+                self.assertEqual(self.pose[3], 935.62684)
+                self.assert_released()
+
+    def test_head_assist_material_failure_leaves_only_finite_submitted_tail_no_barrier_or_postread(self):
+        for bad in (reply(1, 17, 0x19), reply(1, 17, data=b'unexpected'), None):
+            with self.subTest(bad=bad):
+                self.prepare_head_assist()
+                self.native.responses[(1, 17)][1] = bad
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_head_assist()
+                self.assertEqual(len(self.native.calls), 11)
+                self.assertEqual(self.assist_events[-1], ('native', 17, b'\x04\x01'))
+                self.assertEqual(sum(event[0] == 'wait' for event in self.assist_events), 1)
+                self.assertEqual(sum(event[0] == 'submit' for event in self.assist_events), 1)
+                self.assertEqual(self.pose, [42., 227.3, 49.982, 885.62684])
+                self.assertEqual(self.completed, [42., 227.3, 49.982, 915.62684])
+                self.assert_released()
+
+    def test_head_assist_rechecks_safety_after_each_core_effect_and_never_grants_host_actions(self):
+        for when in ('wait', 'submit'):
+            with self.subTest(when=when):
+                self.prepare_head_assist()
+                original = getattr(self.box.toolhead, 'wait_moves' if when == 'wait' else 'flush_step_generation')
+
+                def interrupt():
+                    original()
+                    with self.assertRaises(RuntimeError):
+                        self.box.host_guard()
+                    self.heater.actual = 160.
+
+                setattr(self.box.toolhead, 'wait_moves' if when == 'wait' else 'flush_step_generation', interrupt)
+                with self.assertRaises(RuntimeError):
+                    self.run_head_assist()
+                self.assertEqual(len(self.native.calls), 10)
+                self.assertEqual(sum(event[0] == 'core' and event[1] == 'G1 E-30 F600'
+                    for event in self.assist_events), int(when == 'submit'))
+                self.assert_released()
+
+    def test_head_assist_head_may_clear_after_buffer_but_never_before_it(self):
+        for early in (False, True):
+            with self.subTest(early=early):
+                self.prepare_head_assist()
+
+                def clear_head():
+                    self.lifecycle.head_sensor.runout_helper.filament_present = 0
+                    return reply(1, 10, data=b'\x14\x1e\x00\x00') if early else reply(1, 17)
+
+                self.native.responses[(1, 10 if early else 17)][1 if early else 0] = clear_head
+                if early:
+                    with self.assertRaises(RuntimeError):
+                        self.run_head_assist()
+                    self.assertEqual(len(self.native.calls), 6)
+                    self.assertFalse(any(event[0] == 'core' for event in self.assist_events))
+                else:
+                    self.assertFalse(self.run_head_assist()['head'])
+                self.assert_released()
+
+    def test_head_assist_pins_dependencies_and_source_through_buffer_before_core_effects(self):
+        changes = {
+            'toolhead': lambda: setattr(self.box, 'toolhead', SimpleNamespace(**vars(self.box.toolhead))),
+            'move': lambda: setattr(self.box, 'gcode_move', SimpleNamespace(**vars(self.box.gcode_move))),
+            'cut': lambda: setattr(self.box, 'cut_sensor', SimpleNamespace(**vars(self.box.cut_sensor))),
+            'heater': lambda: setattr(self.box.toolhead.extruder, 'get_heater', lambda: SimpleNamespace(**vars(self.heater))),
+            'source': lambda: setattr(self.box, 'last_cmd', 'T1A'),
+            'cut_release': lambda: setattr(self.box.cut_sensor, 'cut_present', 0),
+            'cancel': lambda: self.box.preload_trial.cancel(),
+        }
+        for name, change in changes.items():
+            with self.subTest(change=name):
+                self.prepare_head_assist()
+
+                def replace():
+                    change()
+                    return reply(1, 17)
+
+                self.native.responses[(1, 17)][0] = replace
+                with self.assertRaises(RuntimeError):
+                    self.run_head_assist()
+                self.assertEqual(len(self.native.calls), 7)
+                self.assertFalse(any(event[0] == 'core' for event in self.assist_events))
+                self.assert_released()
+
+    def test_head_assist_postreads_use_shifted_indexes_and_do_not_accept_ack_as_clearance(self):
+        for case, count in (('mode', 12), ('material', 13), ('connection', 14), ('buffer', 15), ('head', 15)):
+            with self.subTest(case=case):
+                self.prepare_head_assist()
+                if case == 'head':
+                    self.native.responses[(1, 17)][1] = reply(1, 17)
+                else:
+                    command, index, data = {'mode': (10, 3, b'\x14\x1e\x00\x02'),
+                        'material': (8, 3, b'\x00'), 'connection': (8, 4, b'\x04'),
+                        'buffer': (5, 2, b'\x01')}[case]
+                    self.native.responses[(1, command)][index] = reply(1, command, data=data)
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_head_assist()
+                self.assertEqual(len(self.native.calls), count)
+                self.assertEqual(sum(event[0] == 'wait' for event in self.assist_events), 2)
+                self.assertEqual(sum(event[0] == 'submit' for event in self.assist_events), 1)
+                self.assert_released()
+
+    def test_head_assist_buffer_ack_requires_fresh_empty_room_before_any_core_move(self):
+        for command, index, data, count in ((10, 2, b'\x14\x1e\x00\x04', 8),
+                (8, 2, b'\x00', 9), (8, 2, b'\x08', 9),
+                (5, 1, b'\x00', 10), (5, 1, b'\x01', 10)):
+            with self.subTest(command=command, data=data):
+                self.prepare_head_assist()
+                saved = self.box.store.path.read_bytes()
+                self.native.responses[(1, command)][index] = reply(1, command, data=data)
+                with self.assertRaises((RuntimeError, ValueError)):
+                    self.run_head_assist()
+                self.assertEqual(len(self.native.calls), count)
+                self.assertEqual([data for _, opcode, data in self.native.commands() if opcode == 17], [b'\x04\x00'])
+                self.assertFalse(any(event[0] in ('core', 'submit', 'wait') for event in self.assist_events))
+                self.assertEqual(self.pose, [42., 227.3, 49.982, 935.62684])
+                self.assertEqual(self.box.store.path.read_bytes(), saved)
+                self.assert_released()
         self.make_box()
         self.native.responses[(1, 17)] = [reply(1, 17, 0x13)]
         with self.assertRaises(RuntimeError):

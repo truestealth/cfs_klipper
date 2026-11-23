@@ -117,9 +117,13 @@ class Printer:
             "gcode": self.gcode,
             "webhooks": SimpleNamespace(register_endpoint=self.endpoints.__setitem__),
             "toolhead": object(),
-            "gcode_move": SimpleNamespace(recordPrintFileName=lambda *args, **kwargs: self.records.append((args, kwargs))),
+            "gcode_move": SimpleNamespace(
+                recordPrintFileName=lambda *args, **kwargs: self.records.append((args, kwargs)),
+                get_status=lambda eventtime: {"speed_factor": 1., "extrude_factor": 1.}),
             "print_stats": SimpleNamespace(state="standby"),
-            "virtual_sdcard": SimpleNamespace(work_handler_dispatch="sd", print_file_name_path="synthetic.json", current_file=SimpleNamespace(name="synthetic.gcode")),
+            "virtual_sdcard": SimpleNamespace(work_handler_dispatch="sd", cmd_from_sd=False,
+                must_pause_work=False, print_file_name_path="synthetic.json",
+                current_file=SimpleNamespace(name="synthetic.gcode")),
             "serial_485 custom": native,
         }
         if head_name is not None:
@@ -173,7 +177,8 @@ class LifecycleTests(unittest.TestCase):
 
     def test_registration_aliases_ready_order_and_borrowed_transport(self):
         self.make_box()
-        self.assertEqual(len(self.printer.gcode.commands), 101)
+        self.assertEqual(len(self.printer.gcode.commands), 102)
+        self.assertIn("CFS_PRINT_START_GUARD", self.printer.gcode.commands)
         original = self.printer.gcode.register_command("BOX_GET_BOX_STATE", None)
         self.printer.gcode.register_command("BOX_GET_BOX_STATE_OLD", original)
         wrapper = lambda gcmd: None

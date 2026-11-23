@@ -2,9 +2,44 @@
 
 from copy import deepcopy
 from dataclasses import replace
+import logging
 from math import isfinite
 
 from .native import UnsupportedRequest, build_request, slot_mask
+
+
+def bounded_change_flush(box, source, target):
+    """Validate the stock purge and its rounded segments before any motion."""
+    cfg = box.boxcfg
+    try:
+        length = box.finishing.get_flush_len(source, target)
+    except (ArithmeticError, ValueError, TypeError) as error:
+        raise ValueError("tool-change purge calculation is not finite") from error
+    velocity, percent = box.get_flush_velocity(source, target)
+    # A test cap bounds work without clamping the stock colour-derived purge.
+    if (type(length) not in (int, float) or not isfinite(length) or not 0 < length <= 2000
+            or not isinstance(velocity, (tuple, list)) or not isinstance(percent, (tuple, list))
+            or not velocity or len(velocity) != len(percent)
+            or not all(type(value) in (int, float) and isfinite(value) and value > 0
+                       for value in list(velocity) + list(percent))):
+        raise ValueError("tool-change purge requires bounded positive length and velocity/percent pairs")
+    effective = length * sum(percent)
+    if not isfinite(effective) or effective > 2000:
+        raise ValueError("tool-change purge exceeds its 2000 mm admission bound")
+    segments = []
+    if len(percent) == 1 and length >= 2 * cfg.buffer_empty_len:
+        first, need, maximum = (cfg.box_first_clean_length, cfg.box_need_clean_length,
+                                cfg.box_need_clean_length_max)
+        if (any(type(value) is not int or not 0 <= value <= 600 for value in (first, need, maximum))
+                or (effective > maximum and need == 0)):
+            raise ValueError("tool-change purge needs bounded integer segment lengths")
+        box.cal_flush_list(effective, segments)
+    else:
+        segments = [length * value for value in percent]
+    if (not segments or not all(type(value) in (int, float) and isfinite(value) and value > 0
+                                for value in segments) or sum(segments) > 2000):
+        raise ValueError("tool-change purge segments exceed their positive admission bound")
+    return length, tuple(velocity), tuple(percent), tuple(segments)
 
 
 class OperationCancelled(RuntimeError):
@@ -12,7 +47,7 @@ class OperationCancelled(RuntimeError):
 
 
 class PreloadTrial:
-    """Admit one confirmed native preload or retraction trial without host mechanics.
+    """Admit one confirmed native trial or an explicit already-cut head assist.
 
     Permission belongs to the current cooperative dispatch and exact request
     object. It cannot stop a command already executing inside the stock library
@@ -24,6 +59,7 @@ class PreloadTrial:
         self._token = self._request = None
         self._claimed = self._cancelled = False
         self._retract = False
+        self._head_assist = False
         self.address = None
 
     @property
@@ -56,7 +92,8 @@ class PreloadTrial:
         if self._retract:
             # The retained error is an initial observation, never normal data
             # for the decoder. Every write and subsequent read must be normal.
-            if (self._retract_step == 0 and frame is not None and frame.status in (0x13, 0x19)
+            if (not self._head_assist and self._retract_step == 0
+                    and frame is not None and frame.status in (0x13, 0x19)
                     and len(frame.data) == 4 and frame.data[3] == 4):
                 return
             if frame is None or frame.status != 0:
@@ -120,9 +157,11 @@ class PreloadTrial:
         box, lifecycle = self.box, self.box.lifecycle
         if confirmed is not True or not isinstance(tnn, str) or tnn not in box.box_state.Tnn_content:
             raise ValueError("test preload requires a physical TNN and explicit CONFIRM=1")
-        if self.active or box.material_trial.active:
+        if (self.active or box.material_trial.active
+                or getattr(getattr(box, "print_trial", None), "active", False)):
             raise RuntimeError("a test preload is already running")
         self._retract = False
+        self._head_assist = False
         if lifecycle is None or not lifecycle.passive:
             raise RuntimeError("test preload requires the passive lifecycle")
         lifecycle.check()
@@ -190,19 +229,22 @@ class PreloadTrial:
             self.cancel()
             self._request = self._token = None
 
-    def run_retract(self, tnn, confirmed=False, trigger="BUFFER"):
-        """Observe one explicit selected pull, with no host motion or source edits.
+    def run_retract(self, tnn, confirmed=False, trigger="BUFFER", head_assist=False):
+        """Observe one selected pull, preserving sources and unrelated host state.
 
         BUFFER establishes only empty-buffer observations. MATERIAL additionally
-        requires an absent head and empty connections; it is never an automatic
+        requires an absent head and empty connections at completion; it is never an automatic
         continuation. The native library may retry internally; the cooperative
-        deadline cannot interrupt an in-flight MCU action.
+        deadline cannot interrupt an in-flight MCU action. Explicit HEAD_ASSIST
+        owns only finite core E withdrawal after an already observed cut.
         """
         box, lifecycle = self.box, self.box.lifecycle
         if (confirmed is not True or not isinstance(tnn, str) or tnn not in box.box_state.Tnn_content
-                or trigger not in ("BUFFER", "MATERIAL")):
+                or trigger not in ("BUFFER", "MATERIAL") or type(head_assist) is not bool
+                or (head_assist and trigger != "MATERIAL")):
             raise ValueError("test retract requires a physical TNN, BUFFER/MATERIAL trigger and CONFIRM=1")
-        if self.active or box.material_trial.active or box.operations.active:
+        if (self.active or box.material_trial.active or box.operations.active
+                or getattr(getattr(box, "print_trial", None), "active", False)):
             raise RuntimeError("another CFS trial or operation is still owned")
         if lifecycle is None or not lifecycle.passive:
             raise RuntimeError("test retract requires the passive lifecycle")
@@ -222,14 +264,29 @@ class PreloadTrial:
         configuration = {key: deepcopy(value) for key, value in vars(box.boxcfg).items() if key != "config"}
         head = getattr(getattr(getattr(lifecycle, "head_sensor", None), "runout_helper", None),
                        "filament_present", None)
+        if head_assist and (type(head) not in (bool, int) or head != 1):
+            raise RuntimeError("head assistance requires an actual present head")
+        if head_assist:
+            try:
+                assist_objects = (box.toolhead, box.gcode_move, box.cut_sensor,
+                                  box.toolhead.extruder.get_heater())
+                assist_xyz = tuple(box.toolhead.get_position()[:3])
+            except (AttributeError, TypeError, KeyError):
+                raise RuntimeError("head assistance requires retained core motion and heater observations")
         token = object()
         self._deadline = deadline = lifecycle.reactor.monotonic() + (240 if trigger == "MATERIAL" else 60)
         self.address, self.target = address, tnn
         mask = slot_mask(tnn[2])
-        self._retract_requests = ((0x0A, b""), (0x08, b"\x00"), (0x08, b"\x01"), (0x05, b""),
-            (0x04, b"\x00\x01"), (0x0A, b""), (0x11, bytes((mask, int(trigger == "MATERIAL")))),
+        requests = ((0x0A, b""), (0x08, b"\x00"), (0x08, b"\x01"), (0x05, b""),
+                    (0x04, b"\x00\x01"), (0x0A, b""))
+        if head_assist:
+            requests += ((0x11, bytes((mask, 0))), (0x0A, b""), (0x08, b"\x01"), (0x05, b""))
+        self._retract_requests = requests + (
+            (0x11, bytes((mask, int(trigger == "MATERIAL")))),
             (0x0A, b""), (0x08, b"\x00"), (0x08, b"\x01"), (0x05, b""))
+        post_start = len(self._retract_requests) - 4
         self._retract, self._retract_started, self._retract_step = True, False, 0
+        self._head_assist = head_assist
 
         def check():
             context()
@@ -257,6 +314,32 @@ class PreloadTrial:
                     or type(current_head) not in (bool, int) or current_head not in (0, 1)
                     or (not self._retract_started and current_head != head)
                     or source != (box.last_cmd, box.box_state.get_Tn_data(address, "filament")))
+                if head_assist:
+                    status = box.gcode_move.get_status(lifecycle.reactor.monotonic())
+                    heater = box.toolhead.extruder.get_heater()
+                    actual, target = heater.get_temp(lifecycle.reactor.monotonic())
+                    position = box.toolhead.get_position()
+                    transformed = box.gcode_move.position_with_transform()
+                    unsafe = unsafe or (
+                        any(current is not original for current, original in zip(
+                            (box.toolhead, box.gcode_move, box.cut_sensor, heater), assist_objects))
+                        or len(position) != 4 or len(transformed) != 4 or len(status["position"]) != 4
+                        or any(type(value) not in (int, float) or not isfinite(value) for value in
+                               list(position) + list(transformed) + list(status["position"]) + list(assist_xyz))
+                        or any(abs(value-original) > 1e-6 for value, original in zip(position[:3], assist_xyz))
+                        or any(abs(value-original) > 1e-6 for value, original in zip(transformed, status["position"]))
+                        or not box.cut_sensor.switch_pin or box.cut_sensor.active is not True
+                        or type(box.cut_sensor.cut_present) not in (bool, int) or box.cut_sensor.cut_present != 1
+                        or any(type(status[key]) not in (int, float) or status[key] != 1
+                               for key in ("speed_factor", "extrude_factor"))
+                        or heater.can_extrude is not True
+                        or any(type(value) not in (int, float) or not isfinite(value)
+                               or not heater.min_extrude_temp <= value < heater.max_temp
+                               for value in (actual, target))
+                        or not all(callable(function) for function in (
+                            getattr(box.gcode, "create_gcode_command", None),
+                            getattr(box.gcode_move, "cmd_M83", None), getattr(box.gcode_move, "cmd_G1", None),
+                            getattr(box.toolhead, "wait_moves", None), getattr(box.toolhead, "flush_step_generation", None))))
             except (AttributeError, TypeError, KeyError):
                 self.cancel()
                 raise OperationCancelled("test retract observations became unavailable")
@@ -265,25 +348,44 @@ class PreloadTrial:
                 raise OperationCancelled("test retract ownership or observations changed")
 
         self._token, self._cancelled, self._guard = token, False, check
+
+        def call(function, *args):
+            check()
+            result = function(*args)
+            check()
+            return result
+
         try:
             observations = []
             for step, (command, data) in enumerate(self._retract_requests):
                 self._retract_step = step
+                if head_assist and step == post_start - 1:
+                    call(box.gcode_move.cmd_M83, box.gcode.create_gcode_command("M83", "M83", {}))
+                    call(box.gcode_move.cmd_G1, box.gcode.create_gcode_command(
+                        "G1", "G1 E-20 F360", {"E": "-20", "F": "360"}))
+                    call(box.toolhead.wait_moves)
+                    call(box.gcode_move.cmd_G1, box.gcode.create_gcode_command(
+                        "G1", "G1 E-30 F600", {"E": "-30", "F": "600"}))
+                    call(box.toolhead.flush_step_generation)
                 frame = self._send(command, data)
+                if head_assist and step == post_start - 1:
+                    call(box.toolhead.wait_moves)
                 observations.append(frame)
-                if step in (1, 8) and not frame.data[0] & mask:
+                if step in (1, post_start + 1) and not frame.data[0] & mask:
                     raise RuntimeError("test retract selected slot has no fresh material observation")
-                if step == 2 and frame.data[0] != mask:
+                if step in ((2, post_start - 3) if head_assist else (2,)) and frame.data[0] != mask:
                     raise RuntimeError("test retract requires only the selected CONNECTIONS lane")
-                if step == 9 and frame.data[0] not in ((0,) if trigger == "MATERIAL" else (0, mask)):
+                if head_assist and step == post_start - 2 and frame.data[0] != 2:
+                    raise RuntimeError("head assistance requires a fresh empty BUFFER before core withdrawal")
+                if step == post_start + 2 and frame.data[0] not in ((0,) if trigger == "MATERIAL" else (0, mask)):
                     raise RuntimeError("test retract final CONNECTIONS do not match its trigger")
             if observations[-1].data[0] != 2:
                 raise RuntimeError("fresh observations do not establish an empty BUFFER result")
             if trigger == "MATERIAL" and lifecycle.head_sensor.runout_helper.filament_present != 0:
                 raise RuntimeError("test MATERIAL retract still observes filament at the head")
             return {"target": tnn, "head": bool(lifecycle.head_sensor.runout_helper.filament_present),
-                    "mode": observations[7].data[3], "material": observations[8].data[0],
-                    "connections": observations[9].data[0], "buffer": observations[10].data[0]}
+                    "mode": observations[-4].data[3], "material": observations[-3].data[0],
+                    "connections": observations[-2].data[0], "buffer": observations[-1].data[0]}
         finally:
             self.cancel()
             self._request = self._token = None
@@ -309,6 +411,10 @@ class MaterialTrial:
         self._unknown_source = False
         self._unknown_retract_step = 0
         self._unknown_retract_pending = None
+        self._change_phase = None
+        self._change_step = 0
+        self._change_unload_step = 0
+        self._change_pending = None
 
     @property
     def active(self):
@@ -336,14 +442,20 @@ class MaterialTrial:
 
     def owns_phase(self, action, name):
         """Identify the owning root's claimed, incomplete recipe phase."""
+        if not self.owns_dispatch():
+            return False
+        changing = (self.action == "CHANGE" and action == "UNLOAD"
+                    and name == "BOX_RETRUDE_MATERIAL" and self._change_phase == "UNLOAD")
         if (not self.owns_dispatch() or self._lifecycle.current_dispatch() is not self._owner
-                or self.action != action or self._phase != action.lower()
-                or self._command_name != name or not self._command_claimed or self._command_completed):
+                or (not changing and (self.action != action or self._command_name != name))
+                or self._phase != action.lower() or not self._command_claimed or self._command_completed):
             return False
         self._guard()
         if (action == "UNLOAD" and not self._unknown_source
-                and (self.source != self.target or self.box.last_cmd != self.target
-                     or self.box.box_state.get_Tn_data(self.address, "filament") != self.target)):
+                and ((not changing and self.source != self.target)
+                     or self.box.last_cmd != (self.source if changing else self.target)
+                     or self.box.box_state.get_Tn_data(self.address, "filament")
+                        != (self.source if changing else self.target))):
             self.cancel()
             raise OperationCancelled("coordinated unload lost its known selected source")
         return True
@@ -352,7 +464,7 @@ class MaterialTrial:
         """Bound owned feed/withdrawal without changing printer scaling."""
         self._guard()
         box = self.box
-        if self.action == "UNLOAD" and not callable(getattr(box.toolhead, "flush_step_generation", None)):
+        if self.action in ("UNLOAD", "CHANGE") and not callable(getattr(box.toolhead, "flush_step_generation", None)):
             raise RuntimeError("coordinated unload requires retained step-generation submission")
         status = box.gcode_move.get_status(box._reactor.monotonic())
         if any(type(status[key]) not in (int, float) or status[key] != 1
@@ -429,6 +541,14 @@ class MaterialTrial:
                 allowed |= (request.command == 0x04 and request.data == b"\x00\x01")
                 allowed |= (request.command == 0x11 and request.data in
                             (bytes((mask, 0)), bytes((mask, 1))))
+                if self.action == "CHANGE" and request.command in (0x04, 0x11):
+                    steps = ((0x04, b"\x00\x01"), (0x11, bytes((mask, 0))),
+                             (0x11, bytes((mask, 1))))
+                    allowed = (self._change_unload_step < len(steps)
+                               and (request.command, request.data) == steps[self._change_unload_step]
+                               and self._change_pending is None)
+        elif self._phase == "flush" and self.action == "CHANGE":
+            allowed |= request.command == 0x0E and request.data == b"\x01"
         if self.box.lifecycle.current_dispatch() is self._head_owner:
             allowed = request.command == 0x10 and request.data == bytes((mask, 6, 0))
         if (request.diagnostic or request.request_state != 0xFF
@@ -439,10 +559,12 @@ class MaterialTrial:
             # bounded_request() copies the Request with a shorter timeout;
             # bind its unchanged body while allowing only one call in flight.
             self._unknown_retract_pending = request.body
+        if self.action == "CHANGE" and self._phase == "unload" and request.command in (0x04, 0x11):
+            self._change_pending = request.body
         return self._guard
 
     def bounded_request(self, request):
-        limit = 2 if request.command in (0x05, 0x08, 0x0A) else request.timeout
+        limit = 2 if request.command in (0x05, 0x08, 0x0A, 0x0E) else request.timeout
         return replace(request, timeout=min(limit, self._deadline - self.box._reactor.monotonic()))
 
     def validate_reply(self, request, frame):
@@ -467,6 +589,9 @@ class MaterialTrial:
                 valid = len(frame.data) == {0: 1, 5: 4}.get(stage, 0)
                 if valid and stage == 0:
                     valid = frame.data == b"\x00"
+            elif request.command == 0x0E:
+                import struct
+                valid = len(frame.data) == 4 and isfinite(struct.unpack(">f", frame.data)[0])
             else:
                 valid = frame.data == b""
         if not valid:
@@ -478,26 +603,38 @@ class MaterialTrial:
                 raise RuntimeError("unknown-source reply does not own the pending unload step")
             self._unknown_retract_pending = None
             self._unknown_retract_step += 1
+        if self.action == "CHANGE" and self._phase == "unload" and request.command in (0x04, 0x11):
+            if self._change_pending != request.body:
+                self.cancel()
+                raise RuntimeError("tool-change reply does not own its pending unload step")
+            self._change_pending = None
+            self._change_unload_step += 1
 
     def head_event(self):
         """Permit only the current load's first real, armed head arrival."""
         box = self.box
-        if (not self.active or self._cancelled or self.action != "LOAD"
+        if (not self.active or self._cancelled or self.action not in ("LOAD", "CHANGE")
                 or self._phase != "load" or self._head_owner is not None
                 or not box.operations.active or not box.filament_sensor_enable
-                or box.extrude_process_stage7_flag or box.operations._head_running
-                or self._lifecycle.head_sensor.runout_helper.filament_present != 1):
+                or box.extrude_process_stage7_flag or box.operations._head_running):
+            logging.info("CFS ignored box:extrude_process_stage7: material trial is unarmed or busy "
+                         "action=%s phase=%s target=%s", self.action, self._phase, box.extrude_tnn)
+            return
+        present = self._lifecycle.head_sensor.runout_helper.filament_present
+        if present != 1:
+            logging.info("CFS ignored box:extrude_process_stage7: material trial head_present=%s", present)
             return
         self._head_owner = self._lifecycle.current_dispatch()
         self._head_started = True
         try:
             self._guard()
             box.operations.head(self._lifecycle.move_head, self._lifecycle.stage6)
-        except Exception:
+        except Exception as error:
             self.cancel()
             # A reactor head callback has no command caller to receive this
             # failure. Its revoked scope stops the owning command at its next
             # guard instead of running any recovery from the callback.
+            logging.info("CFS material trial head callback stopped: %s", error)
             return
         finally:
             self._head_owner = None
@@ -588,12 +725,204 @@ class MaterialTrial:
                 or (self._unknown_source and cfg.Tn_extrude_temp < heater.min_extrude_temp)):
             raise ValueError("material-trial temperature exceeds configured heater limits")
         box.cutter._preflight_cut()
-        if self.action == "UNLOAD":
+        if self.action in ("UNLOAD", "CHANGE"):
             if position[1] > cfg.safe_pos_y:
                 raise RuntimeError("material trial requires a safe-Y entry before the original cutter approach")
             box.cutter._require_sensor()
             if box.cut_sensor.cut_present != 0:
                 raise RuntimeError("material trial requires an initially released cutter switch")
+
+    def _change_observations(self, loaded, after_flush=False):
+        """Keep LOAD/UNLOAD limits; completed FLUSH may leave a full buffer."""
+        self._phase = "after"
+        mode = self._read("GET_BOX_STATE")[3]
+        material = self._read("GET_FILAMENT_SENSOR_STATE", b"\x00")[0]
+        connections = self._read("GET_FILAMENT_SENSOR_STATE", b"\x01")[0]
+        buffer = self._read("GET_BUFFER_STATE")[0]
+        expected = self.target if loaded else None
+        if (mode != (2 if loaded else 0) or connections != (self._target_mask if loaded else 0)
+                or material & self._change_material_mask != self._change_material_mask
+                or (buffer == 1 and not after_flush) or (not loaded and buffer != 2)
+                or self._lifecycle.head_sensor.runout_helper.filament_present != int(loaded)
+                or self.box.last_cmd != expected
+                or self.box.box_state.get_Tn_data(self.address, "filament") != (self.target if loaded else "None")):
+            raise RuntimeError("fresh tool-change observations do not establish its phase result")
+        return dict(mode=mode, material=material, connections=connections, buffer=buffer)
+
+    def _change_flush_profile(self):
+        """Precompute the stock purge, including its segment rounding, without motion."""
+        return bounded_change_flush(self.box, self.source, self.target)
+
+    def change_phase(self, name, function, *args, **kwargs):
+        """Grant only the next direct helper in the registered tool coordinator."""
+        if not self.active or self.action != "CHANGE":
+            return function(*args, **kwargs)
+        self._guard()
+        expected = ("UNLOAD", "LOAD", "FLUSH")
+        if (self._change_step >= len(expected) or name != expected[self._change_step]
+                or self._change_phase is not None):
+            self.cancel()
+            raise RuntimeError("tool-change phases are out of order")
+        if name == "UNLOAD" and self._lifecycle.head_sensor.runout_helper.filament_present != 1:
+            raise RuntimeError("tool-change unloading requires the observed loaded head")
+        self._change_phase = name
+        self._phase = name.lower()
+        self.mask = slot_mask(self.source[2]) if name == "UNLOAD" else self._target_mask
+        try:
+            if name == "FLUSH" and self._change_flush_profile() != self._change_purge:
+                raise RuntimeError("tool-change purge changed after preflight")
+            result = function(*args, **kwargs)
+            self._guard()
+            if result is not True:
+                raise RuntimeError("tool-change %s phase did not complete" % name.lower())
+            if name == "UNLOAD" and self._change_unload_step != 3:
+                raise RuntimeError("tool-change unloading did not complete its single selected sequence")
+            self._change_result = self._change_observations(name != "UNLOAD", after_flush=name == "FLUSH")
+            self._change_step += 1
+        except Exception:
+            self.cancel()
+            raise
+        finally:
+            self._change_phase = None
+            self._phase = "change"
+        self._guard()
+        return result
+
+    def run_change(self, tool, confirmed=False):
+        """Execute one mapped registered T-command while ordinary mechanics stay passive."""
+        box, lifecycle, state = self.box, self.box.lifecycle, self.box.box_state
+        if (confirmed is not True or not isinstance(tool, str)
+                or tool not in set(state.Tnn_map) | set(state.Tn_map)):
+            raise ValueError("tool-change trial needs a registered tool and explicit CONFIRM=1")
+        if (self.active or box.preload_trial.active or box.operations.active
+                or getattr(getattr(box, "print_trial", None), "active", False)):
+            raise RuntimeError("another CFS trial or operation is still owned")
+        if lifecycle is None or not lifecycle.passive:
+            raise RuntimeError("tool-change trial requires the passive lifecycle")
+        lifecycle.check()
+        source = box.last_cmd
+        logical = state.Tn_map[tool] if tool in state.Tn_map else tool
+        target = state.Tnn_map[logical]
+        if source not in state.Tnn_content or source == target:
+            raise ValueError("tool-change trial needs a known loaded source and a different physical target")
+        address = state.Tnn_content[target]["addr"]
+        if (state.Tnn_content[source]["addr"] != address or box.native is None or box.boxcfg.version != 1
+                or box.device_versions.require_supported(address).version != "1.1.3"):
+            raise RuntimeError("tool-change trial requires one cfs0 MCU 1.1.3 and encoding 1")
+        pause = box._printer.lookup_object("pause_resume", None)
+        owner = lifecycle.current_dispatch()
+        handlers = getattr(box.gcode, "ready_gcode_handlers", None)
+        factory = getattr(box.gcode, "create_gcode_command", None)
+        if (pause is None or owner is None or not isinstance(handlers, dict)
+                or not callable(handlers.get(tool)) or not callable(factory)):
+            raise RuntimeError("tool-change trial requires retained dependencies and its registered tool handler")
+        self._lifecycle, self._owner = lifecycle, owner
+        self.action, self.source, self.target, self.address = "CHANGE", source, target, address
+        self._target_mask = slot_mask(target[2])
+        self.mask = slot_mask(source[2])
+        self._change_material_mask = self.mask | self._target_mask
+        self._deadline = lifecycle.reactor.monotonic() + 900
+        self._phase, self._reading = "before", None
+        self._change_phase, self._change_step, self._change_unload_step = None, 0, 0
+        self._change_pending = None
+        self._unknown_source, self._head_started = False, False
+        self._cancelled = self._root_done = False
+        self._command_name, self._command = tool, factory(tool, tool, {})
+        self._command_claimed = self._command_completed = False
+        token = self._token = object()
+        serial = box.operations._serial + 1
+        configuration = {key: deepcopy(value) for key, value in vars(box.boxcfg).items() if key != "config"}
+        mappings = deepcopy((state.Tn_map, state.Tnn_map, state.Tnn_content))
+        metadata = tuple(deepcopy(state.get_Tn_data(address, key, name[2]))
+                         for name in (source, target) for key in ("material_type", "color_value"))
+        context = lifecycle._report_guard(address, operation=False)
+
+        def check():
+            context()
+            lifecycle.guard_device(address)
+            context()
+            try:
+                head = lifecycle.head_sensor.runout_helper.filament_present
+                current = box.last_cmd, state.get_Tn_data(address, "filament")
+                if self._change_phase == "UNLOAD" and self._change_unload_step == 3:
+                    source_ok = current[0] in (source, None) and current[1] in (source, "None")
+                elif self._change_phase == "LOAD":
+                    source_ok = current[0] in (None, target) and current[1] in ("None", target)
+                else:
+                    expected = source if self._change_step == 0 else (None if self._change_step == 1 else target)
+                    source_ok = current == (expected, "None" if expected is None else expected)
+                active = box.operations.active
+                operation_ok = ((active and box.operations._serial == serial
+                    and (box.operations.source, box.operations.target, box.operations.address) == (source, target, address))
+                    or (not active and ((box.operations._serial == serial - 1 and self._change_step == 0)
+                        or (box.operations._serial == serial + 1 and self._change_step == 3))))
+                unsafe = (self._token is not token or self._cancelled or not self.owns_dispatch()
+                    or box.lifecycle is not lifecycle or not lifecycle.passive or not operation_ok
+                    or lifecycle.reactor.monotonic() >= self._deadline
+                    or configuration != {key: value for key, value in vars(box.boxcfg).items() if key != "config"}
+                    or mappings != (state.Tn_map, state.Tnn_map, state.Tnn_content)
+                    or metadata != tuple(state.get_Tn_data(address, key, name[2])
+                                         for name in (source, target) for key in ("material_type", "color_value"))
+                    or not source_ok or type(head) not in (bool, int) or head not in (0, 1)
+                    or (self._change_phase not in ("UNLOAD", "LOAD")
+                        and head != int(self._change_step != 1))
+                    or (self._change_phase == "LOAD" and self._head_started and head != 1)
+                    or state.get_Tn_data(0, uppart="enable") != 1
+                    or state.get_Tn_data(0, uppart="state") != "connect"
+                    or state.get_Tn_data(address, "state") != "connect" or not lifecycle.online(address)
+                    or not box.native.is_connected
+                    or any(lifecycle.online(other) or state.get_Tn_data(other, "state") == "connect"
+                           for other in range(1, 5) if other != address)
+                    or box.error is not None or box.inside_error or state.extrude_err
+                    or box.is_use_ending_material or box.inside_auto_refill or box.inside_extrusion_all_materials
+                    or box.material_auto_refill_flag or state.is_continue_print
+                    or box.print_stats.state != "standby" or box.virtual_sdcard.is_active()
+                    or box.virtual_sdcard.do_resume_status or pause.is_paused or not box.cut_sensor.active
+                    or not set("xyz").issubset(box.toolhead.get_status(lifecycle.reactor.monotonic())["homed_axes"]))
+                status = box.gcode_move.get_status(lifecycle.reactor.monotonic())
+                unsafe |= any(type(status[key]) not in (int, float) or status[key] != 1
+                              for key in ("speed_factor", "extrude_factor"))
+            except (AttributeError, KeyError, TypeError):
+                self.cancel()
+                raise OperationCancelled("tool-change observations became unavailable")
+            if unsafe:
+                self.cancel()
+                raise OperationCancelled("tool-change ownership or observations changed")
+
+        self._guard = check
+        try:
+            check()
+            self._geometry()
+            self._change_purge = self._change_flush_profile()
+            if (type(box.boxcfg.tn_final_extrude_len) not in (int, float)
+                    or not isfinite(box.boxcfg.tn_final_extrude_len)
+                    or abs(box.boxcfg.tn_final_extrude_len) > 200):
+                raise ValueError("tool-change final extrusion exceeds its finite admission bound")
+            mode = self._read("GET_BOX_STATE")[3]
+            material = self._read("GET_FILAMENT_SENSOR_STATE", b"\x00")[0]
+            connections = self._read("GET_FILAMENT_SENSOR_STATE", b"\x01")[0]
+            self._read("GET_BUFFER_STATE")
+            if (mode not in (0, 2) or material & self._change_material_mask != self._change_material_mask
+                    or connections != self.mask):
+                raise RuntimeError("fresh tool-change preconditions do not match source and target")
+            self._phase = "change"
+            handlers[tool](self._command)
+            check()
+            if not self._command_completed or self._change_step != 3:
+                raise RuntimeError("registered tool command did not complete the selected change")
+            observations = self._change_observations(True, after_flush=True)
+            if box.cut_sensor.cut_present != 0 or box.move_z is not None:
+                raise RuntimeError("tool change did not release its cutter and Z restoration")
+            return dict(observations, source=source, target=target, tool=tool)
+        finally:
+            self.cancel()
+            self._command = self._command_name = self._change_phase = None
+            self._change_pending = None
+            self._root_done = True
+            if box.operations.active and box.operations._serial == serial:
+                box.operations.cancel()
+            if self._head_owner is None:
+                self._token = None
 
     def _recipe(self):
         """Read the configured stock service recipe without rewriting its macros.
@@ -645,7 +974,8 @@ class MaterialTrial:
         if (action not in ("LOAD", "UNLOAD") or confirmed is not True
                 or not isinstance(tnn, str) or tnn not in box.box_state.Tnn_content):
             raise ValueError("material trial needs LOAD/UNLOAD, physical TNN and CONFIRM=1")
-        if self.active or box.preload_trial.active or box.operations.active:
+        if (self.active or box.preload_trial.active or box.operations.active
+                or getattr(getattr(box, "print_trial", None), "active", False)):
             raise RuntimeError("another CFS trial or operation is still owned")
         if lifecycle is None or not lifecycle.passive:
             raise RuntimeError("material trial requires the passive lifecycle")
@@ -851,6 +1181,15 @@ class OperationContext:
             self.box.heart_process_enable[self.address - 1] = False
         self.box.filament_sensor_enable = True
 
+    def acknowledge_error_clear(self, serial, source, target, address):
+        """Accept only the owned filament-error clear after verified draining."""
+        self._check(serial, check_error=False)
+        if (self._error != "filament_err" or self.box.error is not None
+                or (self.source, self.target, self.address) != (source, target, address)):
+            self.cancel()
+            raise OperationCancelled("CFS operation did not observe its filament-error clear")
+        self._error = None
+
     def cancel(self):
         if self._heartbeat_saved is not None:
             index, value = self._heartbeat_saved
@@ -895,13 +1234,18 @@ class OperationContext:
     def head(self, move_head, stage6):
         """Handle one permitted head event using required actual phase actions."""
         if not self.active or not self.box.filament_sensor_enable:
+            logging.info("CFS ignored box:extrude_process_stage7: operation=%s sensor_enabled=%s",
+                         self.active, self.box.filament_sensor_enable)
             return
         serial = self._serial
         if self.box.extrude_process_stage7_flag or self._head_running:
+            logging.info("CFS ignored box:extrude_process_stage7: stage7_done=%s head_callback_running=%s",
+                         self.box.extrude_process_stage7_flag, self._head_running)
             return
         self._check(serial)
         if self.box.extrude_process_inside_retry_loose:
             self.box.extrude_process_stage7_flag_when_retry_loose = True
+            logging.info("CFS deferred box:extrude_process_stage7: loose-filament retry in progress")
             return
         if not callable(move_head) or not callable(stage6):
             self.cancel()

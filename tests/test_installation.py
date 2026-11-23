@@ -91,7 +91,8 @@ class InstallationTests(unittest.TestCase):
             "import sys; sys.path.insert(0, sys.argv[1]); "
             "from extras.box import load_config; "
             "Config = type('Config', (), {'error': lambda self, msg: RuntimeError(msg), "
-            "'get': lambda self, name, default=None: default}); "
+            "'get': lambda self, name, default=None: default, "
+            "'getboolean': lambda self, name, default=None: default}); "
             "load_config(Config())"
         )
         result = subprocess.run([sys.executable, "-c", code, str(self.root)],

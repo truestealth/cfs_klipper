@@ -47,6 +47,9 @@ class ToolActionTests(unittest.TestCase):
             elif command == 0x08 and address in self.masks:
                 material, connections = self.masks[address]
                 raw = reply(address, command, data=bytes((material if data == b"\x00" else connections,)))
+            elif command == 0x11 and data[1] == 1 and raw is not None and raw[3] == 0 and address in self.masks:
+                material, connections = self.masks[address]
+                self.masks[address] = (material, connections & ~data[0])
             elif command == 0x0E:
                 import struct
                 value = self.wheels.setdefault(address, 100)
@@ -207,6 +210,8 @@ class ToolActionTests(unittest.TestCase):
 
     def test_ending_material_drains_before_composed_tool_loading(self):
         self.make_box()
+        self.box.last_cmd = "T1B"
+        self.fixture.buffer = 2
         self.box.is_use_ending_material = True
         self.command("T0")
         # Two drain segments and one segment in the later normal purge.
@@ -217,6 +222,8 @@ class ToolActionTests(unittest.TestCase):
 
     def test_late_ending_latch_runs_drain_then_tool_loading(self):
         self.make_box()
+        self.box.last_cmd = "T1B"
+        self.fixture.buffer = 2
         previous = self.gcode.on_script
         def latch(script):
             previous(script)

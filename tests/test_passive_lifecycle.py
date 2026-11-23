@@ -147,7 +147,10 @@ class PassiveLifecycleTests(unittest.TestCase):
         before = deepcopy(self.box.box_state.tn_save_data)
         self.box.events.process = lambda *args: self.fail("passive admission must not process slot actions")
         self.native.responses[(1, 0x0A)] = [reply(1, 0x0A, status=0x30, data=b"\x01\x02\x03\x00")]
-        self.lifecycle._request(1, "GET_BOX_STATE")
+        with self.assertLogs(level="INFO") as logs:
+            self.lifecycle._request(1, "GET_BOX_STATE")
+        self.assertTrue(any("CFS ignored slot event actions: passive admission address=1 "
+                            "status=0x30 data=01020300" in line for line in logs.output))
         self.assertEqual(self.box.slot_events[1]["data"], b"\x01\x02\x03\x00")
         self.assertEqual(self.box.box_state.tn_save_data, before)
         self.assertEqual(self.printer.gcode.scripts, [])
@@ -177,7 +180,10 @@ class PassiveLifecycleTests(unittest.TestCase):
         self.box.operations.begin("T1A", "T1B", 1)
         self.box.operations.arm_head()
         before = len(self.native.calls)
-        self.printer.send_event("box:extrude_process_stage7")
+        with self.assertLogs(level="INFO") as logs:
+            self.printer.send_event("box:extrude_process_stage7")
+        self.assertTrue(any("CFS ignored box:extrude_process_stage7: passive admission" in line
+                            for line in logs.output))
         self.assertEqual(moves, [])
         self.assertFalse(self.box.extrude_process_stage7_flag)
         self.assertIsNone(self.box.extrude_process_stage7_ret)

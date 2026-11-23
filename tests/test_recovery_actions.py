@@ -50,7 +50,7 @@ class RecoveryActionTests(unittest.TestCase):
         matrix = json.loads((Path(__file__).resolve().parents[1] / "docs/contract-matrix.json").read_text(encoding="utf-8"))
         names = {row["name"] for row in matrix["items"] if row["kind"] == "gcode"
                  and row["when"] != "configured switch_pin"}
-        self.assertEqual(set(self.gcode.commands), names)
+        self.assertEqual(set(self.gcode.commands), names | {"CFS_PRINT_START_GUARD"})
         self.assertEqual(len(names), 101)
 
     def test_native_runout_schedules_refill_then_completes_real_mapped_tool(self):

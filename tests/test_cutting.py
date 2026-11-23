@@ -150,6 +150,120 @@ class CuttingTests(unittest.TestCase):
         self.assertNotIn("BOX_POSITION", self.scripts)
         self.assertEqual(self.scripts[-1], "SET_VELOCITY_LIMIT ACCEL=1000.000 ACCEL_TO_DECEL=500.000")
 
+    def owned_trial(self, name):
+        self.clock = 10.
+        self.box.boxcfg.cut_run_count = 1
+        trial = SimpleNamespace(active=True, owns_dispatch=lambda: True)
+        def guard():
+            if not trial.active:
+                raise RuntimeError("trial revoked")
+        trial.guard = guard
+        trial.cancel = lambda: setattr(trial, 'active', False)
+        setattr(self.box, name, trial)
+        self.box._reactor.monotonic = lambda: self.clock
+        def advance(deadline):
+            self.clock = deadline
+            self.pause(deadline)
+        self.box._reactor.pause = advance
+        self.on_script = PoseReplay(self.position).run
+        return trial
+
+    def test_owned_single_stroke_accepts_delayed_current_gpio_without_more_motion(self):
+        for name in ('material_trial', 'print_trial'):
+            with self.subTest(owner=name):
+                self.setUp()
+                self.owned_trial(name)
+                waiting_scripts = []
+                def delayed_press():
+                    waiting_scripts.append(list(self.scripts))
+                    if self.clock >= 12.654:
+                        self.button_callback(self.clock, 1)
+                self.on_pause = delayed_press
+                self.assertTrue(self.cutter.move_to_cut())
+                self.assertGreaterEqual(self.clock, 12.654)
+                self.assertLessEqual(self.clock, 12.754)
+                self.assertTrue(all(scripts == waiting_scripts[0] for scripts in waiting_scripts))
+                self.assertEqual(self.scripts.count('G0 Y225.50 F6000.00\n M400'), 1)
+                self.assertNotIn('BOX_POSITION', self.scripts)
+                self.assertEqual(self.position[:2], [4, 225.5])
+                self.assertTrue(self.sensor.cut_present)
+                self.assertFalse(self.sensor.cut_happened)
+
+    def test_active_cut_waits_for_live_gpio_and_never_repeats_on_timeout(self):
+        for released in (False, True):
+            with self.subTest(released=released):
+                self.setUp()
+                self.owned_trial('print_trial')
+                del self.box.print_trial
+                self.box.lifecycle.passive = False
+                def press():
+                    if self.clock >= 13:
+                        self.button_callback(self.clock, 1)
+                        if released:
+                            self.button_callback(self.clock, 0)
+                self.on_pause = press
+                if released:
+                    self.assertFalse(self.cutter.move_to_cut())
+                    self.assertEqual(self.clock, 15)
+                    self.assertEqual(self.scripts[-1], "SET_VELOCITY_LIMIT ACCEL=1000.000 ACCEL_TO_DECEL=500.000")
+                else:
+                    self.assertTrue(self.cutter.move_to_cut())
+                    self.assertGreaterEqual(self.clock, 13)
+                self.assertEqual(self.scripts.count('G0 Y225.50 F6000.00\n M400'), 1)
+                self.assertNotIn('BOX_POSITION', self.scripts)
+
+    def test_owned_missing_or_released_pulse_times_out_same_stroke_at_five_seconds(self):
+        for name in ('material_trial', 'print_trial'):
+            for pulse in (False, True):
+                with self.subTest(owner=name, pulse=pulse):
+                    self.setUp()
+                    self.owned_trial(name)
+                    if pulse:
+                        def released_pulse():
+                            if 11. < self.clock < 11.2:
+                                self.button_callback(self.clock, 1)
+                                self.button_callback(self.clock, 0)
+                        self.on_pause = released_pulse
+                    with self.assertRaisesRegex(RuntimeError, 'first missed cutter observation'):
+                        self.cutter.move_to_cut()
+                    self.assertEqual(self.clock, 15.)
+                    self.assertLessEqual(max(self.pauses), 15.)
+                    self.assertEqual(self.scripts.count('G0 Y225.50 F6000.00\n M400'), 1)
+                    self.assertNotIn('BOX_POSITION', self.scripts)
+                    self.assertFalse(any('ACCEL=1000' in script for script in self.scripts))
+                    self.button_callback(15.1, 1)
+                    self.assertEqual(self.position[:2], [4, 225.5])
+
+    def test_owned_wait_revocation_cannot_accept_a_press_or_send_a_second_stroke(self):
+        for reason in ('trial', 'host', 'sensor'):
+            with self.subTest(reason=reason):
+                self.setUp()
+                trial = self.owned_trial('print_trial')
+                def revoke():
+                    if self.clock >= 11.1:
+                        if reason == 'trial': trial.active = False
+                        elif reason == 'host': self.epoch += 1
+                        else: self.sensor.invalidate()
+                        self.button_callback(self.clock, 1)
+                self.on_pause = revoke
+                with self.assertRaises(RuntimeError):
+                    self.cutter.move_to_cut()
+                self.assertLess(self.clock, 15.)
+                self.assertEqual(self.scripts.count('G0 Y225.50 F6000.00\n M400'), 1)
+                self.assertNotIn('BOX_POSITION', self.scripts)
+                self.assertFalse(any('ACCEL=1000' in script for script in self.scripts))
+
+    def test_owned_wait_cannot_accept_callback_after_overslept_deadline(self):
+        self.owned_trial('material_trial')
+        def oversleep(deadline):
+            self.clock = 15.1
+            self.button_callback(self.clock, 1)
+        self.box._reactor.pause = oversleep
+        with self.assertRaisesRegex(RuntimeError, 'first missed cutter observation'):
+            self.cutter.move_to_cut()
+        self.assertEqual(self.scripts.count('G0 Y225.50 F6000.00\n M400'), 1)
+        self.assertNotIn('BOX_POSITION', self.scripts)
+
     def test_first_x_keeps_original_entry_y_without_an_added_withdrawal(self):
         replay = PoseReplay(self.position)
         self.on_script = replay.run

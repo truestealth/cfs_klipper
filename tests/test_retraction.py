@@ -9,6 +9,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cfs.errors import format_error
+from cfs.firmware import DeviceVersions
 from cfs.native import Frame
 from cfs.retraction import Retraction
 from cfs.state import BoxState
@@ -118,6 +119,50 @@ class Fixture:
 
 
 class RetractionTests(unittest.TestCase):
+    def active_baseline(self):
+        box = Fixture(heads=(True, False))
+        box.lifecycle.passive = False
+        box.device_versions = DeviceVersions({2: "cfs0"})
+        box.device_versions.update(2, b"113" + b"B" * 19)
+        box._reactor = SimpleNamespace(monotonic=lambda: 0.)
+        box.gcode_move = SimpleNamespace(get_status=lambda now: {"extrude_factor": 2., "speed_factor": 2.})
+        box.toolhead.flush_step_generation = lambda: box.event(("submit",))
+        box.responses[2, 4, b"\x00\x01"].append((True, 0, b""))
+        box.responses[2, 10, b""].append((True, 0, b"\x14\x1e\x00\x00"))
+        box.observation(2, 1, 0)
+        box.buffer(2)
+
+        def retract(address, slot, trigger, report_err=True):
+            box.event(("retract", address, slot, trigger, report_err))
+            status = box.responses[address, slot, trigger]
+            status = status.popleft() if status else 0
+            box.last_replies[address] = Frame(address, 0x11, status, b"", b"")
+            return True
+        box.communication_retrude_process = retract
+        return box
+
+    def test_active_baseline_submits_scaled_tail_before_material_and_verifies_clear(self):
+        box = self.active_baseline()
+        self.assertTrue(Retraction(box).box_retrude_material())
+        sequence = [("retract", 2, "C", "BUFFER", True), ("extrude", -10., [180.], 222),
+                    ("gcode", "G0 E-15.00 F300.00"), ("submit",),
+                    ("retract", 2, "C", "MATERIAL", True), ("gcode", "M400"),
+                    ("wire", 2, 10, b""), ("wire", 2, 8, b"\x01"), ("wire", 2, 5, b""),
+                    ("head", False), ("filament", "T2C", None)]
+        indices = [box.events.index(event) for event in sequence]
+        self.assertEqual(indices, sorted(indices))
+        self.assertEqual([event[1] for event in box.events if event[0] == "gcode"],
+                         ["G91", "G0 E-15.00 F300.00", "G90", "M400"])
+        self.assertIsNone(box.last_cmd)
+
+    def test_active_baseline_does_not_treat_an_event_as_buffer_ack(self):
+        box = self.active_baseline()
+        box.responses[2, "C", "BUFFER"].append(0x30)
+        self.assertFalse(Retraction(box).box_retrude_material())
+        self.assertEqual(box.last_cmd, "T2C")
+        self.assertFalse(any(event[0] in ("extrude", "submit", "filament") for event in box.events))
+        self.assertNotIn(("retract", 2, "C", "MATERIAL", True), box.events)
+
     def test_known_clear_uses_exact_source_and_updates_only_normal_tail(self):
         box = Fixture()
         self.assertIs(Retraction(box).box_retrude_material(), True)

@@ -6,6 +6,7 @@ has been handled. A true sender outcome does not establish completed motion.
 """
 
 from dataclasses import dataclass
+import logging
 import struct
 
 from .firmware import parse_identity
@@ -83,7 +84,7 @@ def _slot_effect(address, slot, part, value):
     return Effect("set_slot", (address, slot, part, value))
 
 
-def _rfid_records(data):
+def _rfid_records(address, data):
     """Parse complete slot:value; records before applying any observations."""
     if not data:
         return {}
@@ -96,12 +97,19 @@ def _rfid_records(data):
         slot, value = record.split(b":", 1)
         if len(slot) == 1 and chr(slot[0]) in _SLOTS:
             # The original joins chr(byte), rather than UTF-8 decoding.
-            records[chr(slot[0])] = value.decode("latin-1")
+            name = chr(slot[0])
+            if name in records:
+                logging.info("CFS ignored previous RFID record addr=%d slot=%s reason=duplicate slot",
+                             address, name)
+            records[name] = value.decode("latin-1")
+        else:
+            logging.info("CFS ignored RFID record addr=%d slot_hex=%s size=%d reason=unknown slot",
+                         address, slot.hex(), len(value))
     return records
 
 
 def _rfid_effects(state, frame, request, context):
-    records = _rfid_records(frame.data)
+    records = _rfid_records(frame.address, frame.data)
     effects = []
     saved_box = state.tn_save_data["T%d" % frame.address]
     live_box = state.Tn_data["T%d" % frame.address]
@@ -174,12 +182,18 @@ def _normal_data(state, frame, request, profile, context):
             value = struct.unpack(">f", data)[0]
         else:
             value = 0
+            if data:
+                logging.info("CFS ignored wheel reply data addr=%d cmd=0x%02x data=%s reason=wheel reset",
+                             address, command, data.hex())
         state.modify_Tn_data(address, value, "measuring_wheel")
     elif command == 0x14:
         parse_identity(data, raw_reply=frame.raw)
         return [Effect("identity", (address, data, frame.raw))]
     elif command == 0x02:
         return _rfid_effects(state, frame, request, context)
+    elif data:
+        logging.info("CFS decoder left reply data uninterpreted addr=%d cmd=0x%02x request_data=%s data=%s",
+                     address, command, request.data.hex(), data.hex())
     return []
 
 
@@ -277,6 +291,8 @@ def decode_reply(state, frame, request, *, profile=None, context=None):
             if context.filament_error_message is None:
                 raise ValueError("formatted filament error is required for duplicate comparison")
             if context.last_err == context.filament_error_message:
+                logging.info("CFS ignored duplicate FILAMENT_ERR addr=%d cmd=0x%02x data=%s source=%s",
+                             frame.address, command, frame.data.hex(), context.last_cmd)
                 return DecodeResult(False, tuple(effects))
         effects.extend((_report(frame, request, context, "key_filament_err", context.last_cmd[2]),
                         Effect("set_global", ("filament", 0)), record,
@@ -295,4 +311,8 @@ def decode_reply(state, frame, request, *, profile=None, context=None):
                 effects.extend((_report(frame, request, context, key), record))
     # Exhausted MCU CRC/LENGTH, the remaining typed errors, and unknown status
     # all return False. Only the native adapter owns the additional retry loop.
+    logging.info("CFS decoder returned False addr=%d cmd=0x%02x status=0x%02x (%s) "
+                 "data=%s report_err=%s effects=%s",
+                 frame.address, command, status, STATUS_NAMES.get(status, "unknown"),
+                 frame.data.hex(), context.report_err, ",".join(effect.name for effect in effects))
     return DecodeResult(False, tuple(effects))

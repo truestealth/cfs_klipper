@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from cfs.resume import Resume
 from cfs.lifecycle import Lifecycle, LifecycleStopped
+from cfs.recovery import Recovery
 
 
 class ResumeTests(unittest.TestCase):
@@ -38,6 +39,7 @@ class ResumeTests(unittest.TestCase):
             quickly_wait_heating=lambda x: self.calls.append(("heat", x)),
             Tn_Extrude=lambda *a: True, boxcfg=SimpleNamespace(Tn_extrude=8),
             nozzle_clean=lambda: self.calls.append("clean"))
+        self.box.recovery = Recovery(self.box)
         self.resume = Resume(self.box)
 
     def test_queue_and_shutdown_preserve_replacement(self):

@@ -73,9 +73,9 @@ hardware acceptance remains separate. Every row has a current implementation not
 describe cache/observation separation, error behavior and deliberate save rules;
 [native integration](protocol.md#native-integration) records the implemented
 boundary and execution gates. The [lifecycle notes](protocol.md#lifecycle-integration)
-describe the new components and deliberate policies. Handler registration alone
-does not complete shared contracts: 101 commands are explicitly registered,
-including one blocked legacy command, plus two conditional Hall handlers. The 32
+describe the new components and deliberate policies. The stock inventory
+comprises 101 unconditional commands, including the blocked legacy route, and
+two conditional Hall handlers. The 32
 generated bindings have an isolated dispatch check. Separate composed PC tests
 exercise real Box phases with synthetic native replies, including cross-box
 changes, print cleanup and purge failures. Jinja tests use own public templates;
@@ -94,7 +94,7 @@ macro variables and consumers of `printer.box`:
 | `NEXT_FILAMENT` and the two `_99` wrappers | Preserve the temperature variable and exact `rawparams` forwarding through extruder/flush wrappers |
 | Material-present/absent load and quit macros | Keep their distinct ordered phase calls and existing error/material waits |
 | `BOX_INFO_REFRESH ADDR=... NUM=...` | Preload RUN precedes RFID/remainder requests; this is mechanically active, and `M400` is not physical-completion evidence |
-| Active `START_PRINT` | Preserve `INITIAL_TOOL` validation, heating before T, initial purge and the existing startup override |
+| Active `START_PRINT` | Guard the open file's first T before startup/heat/motion; explicit `INITIAL_TOOL` must match; retain heating before first-tool loading, initial purge and a NOTE |
 | End/cancel | Preserve `BOX_END` before `BOX_END_PRINT`, the shared cleanup and retained base aliases |
 | Pause/resume | Preserve `POST_WORK=0`, `BOX_ERROR_CLEAR` then `BOX_RESUME_EXTRUDE`, existing variables and forwarded resume velocity |
 | Runout definitions | Preserve the captured primary/head routing, including `printer.box.enable` ownership selection |
@@ -110,11 +110,14 @@ Both examined saved load wrappers omit required physical `TNN` on direct
 invocation. The replacement rejects that direct path; the reference LAN service
 instead supplies `TNN` while dispatching the material-present wrapper's command
 list. Full service-path compatibility remains unaccepted under
-`GAP-MACRO-LOAD-TARGET`, with no guessed target or automatic macro edits. The current phase
-preserves the existing `START_PRINT` mapping check and both load wrappers' missing
-`TNN` forwarding for behavior parity. Optimization/corrections are deferred for
-later consideration if needed; these observations do not require a repair in
-this phase or establish successful printing/loading.
+`GAP-MACRO-LOAD-TARGET`, with no guessed target or automatic macro edits.
+
+The `START_PRINT` adaptation runs `CFS_PRINT_START_GUARD` before motion or
+heating. In normal mode it reads the first tool from the open virtual SD
+file, validates logical-to-physical mapping, and checks any explicit
+`INITIAL_TOOL`. In passive mode it checks trial admission. A NOTE in the
+macro records this change. After heating, `BOX_START_PRINT_EXTRUDE_MATERIAL`
+retains the first-tool route.
 
 ## Direct Python consumers
 
@@ -211,26 +214,21 @@ resolution, passive ready/heartbeat/restart and failure cleanup. Composed failur
 checks assert the actual motion/source/error context after nested phases and all
 eight recovery leaves. None executes the stock binary or operates equipment.
 
-The installer family binds 27 tests for legacy sibling/modern caches. Separate
-target checks verified original entry/cache bytes, modes and modification times
-after stopped restoration, followed by passive reinstallation and ready startup.
-The restored stock process was not booted.
+Temporary-tree PC tests cover installation and rollback. Reference K1C
+hardware checks with one first-generation CFS on MCU 1.1.3 cover startup,
+rollback, T1A–T1D RFID/remainder display, two full T1C cycles and C→A→C
+changes. Two two-colour jobs completed, including one ordinary pause/resume.
+The three-colour OrcaSlicer T0→T2→T3 job reached the end after manual
+recovery from a T1C filament break.
 
-Reference-printer checks on MCU 1.1.3 cover passive startup and rollback,
-T1A–T1D preload with fresh RFID/remaining data and correct client display, and
-two consecutive full T1C load/unload cycles without manual assistance.
-Nozzle output, cutting, return to CFS and final sensor conditions were confirmed;
-configuration, spool data and stock native files were preserved.
+Normal-mode PC tests cover virtual SD startup, remapping, full tool changes,
+error clear and retry of the pending tool. Retry preserves the file, offset
+and target across `BOX_ERROR_CLEAR`. Resume requires material confirmed at
+the head. Startup with this logic was checked on hardware. The retry itself,
+a genuine empty-spool transition with replacement, and power-loss recovery
+still require hardware checks.
 
-The extension-only [single-operation](installation.md#single-operation-trial)
-and [load/unload](installation.md#material-operation-trial) trial commands are
-outside the original 103-command inventory. Their PC checks cover fresh
-pre/post observations, head callbacks, cutting, positioning and permission
-revocation. The lifecycle stays passive. Unknown-source unloading additionally
-requires absent host hints and one fresh selected lane; it does not invent a
-loaded source.
-
-All 18 hardware families remain planned until their full assertions are met,
-including tool changes, printing, recovery and other firmware versions.
-See [compatibility.md](compatibility.md) for validation status and
-[protocol.md](protocol.md) for the native API boundary.
+Diagnostic trial commands and `CFS_PRINT_START_GUARD` are extensions outside
+the 103-command stock inventory. The 18 hardware families retain planned
+status until their full assertions are met. See [compatibility](compatibility.md),
+the [native API boundary](protocol.md) and [installation modes](installation.md).

@@ -27,6 +27,7 @@ class CutSensor:
 
     def _button_handler(self, eventtime, state):
         if not self.active:
+            logging.info("CFS ignored cutter switch event: inactive time=%s state=%s", eventtime, state)
             return
         self.cut_present = state
         if state:
@@ -69,6 +70,36 @@ class Cutter:
         reactor = self.box._reactor
         self._call(check, reactor.pause, reactor.monotonic() + seconds)
 
+    def _wait_for_cut(self, check):
+        """Wait for the live switch after the stroke without moving the head."""
+        trial = next((owner for owner in (getattr(self.box, "material_trial", None),
+                                         getattr(self.box, "print_trial", None))
+                      if owner is not None and owner.active and owner.owns_dispatch()), None)
+        active = getattr(getattr(self.box, "lifecycle", None), "passive", None) is False
+        if trial is None and not active:
+            self._pause(check, 1)
+            return bool(self.sensor.cut_present)
+
+        def owned_check():
+            check()
+            if trial is not None:
+                trial.guard()
+            self._require_sensor()
+
+        reactor = self.box._reactor
+        deadline = reactor.monotonic() + 5.0
+        self._pause(owned_check, 1)
+        while True:
+            owned_check()
+            now = reactor.monotonic()
+            if now > deadline:
+                return False
+            if self.sensor.cut_present:
+                return True
+            if now >= deadline:
+                return False
+            self._pause(owned_check, min(.1, deadline - now))
+
     def _homed(self, check):
         return self._call(check, self.box.toolhead.get_status,
                           self.box._reactor.monotonic())["homed_axes"]
@@ -99,6 +130,9 @@ class Cutter:
             if getattr(cfg, name, None) is None:
                 raise ValueError("cutting requires configured %s" % name)
         check = self.box.host_guard()
+        if (self.sensor.switch_pin and self.sensor.cut_present
+                and getattr(getattr(self.box, "lifecycle", None), "passive", None) is False):
+            raise RuntimeError("cut entry needs a released cutter switch")
         if (self._call(check, self.box.get_filament_sensor_detect) is False
                 or "x" not in self._homed(check)):
             return
@@ -188,14 +222,27 @@ class Cutter:
                     self._run(check, "G0 Y%.2f F%.2f\n M400" % (cfg.pre_cut_pos_y, cfg.cut_velocity))
                     self._run(check, "G0 X%.2f F%.2f\n M400" % (cfg.pre_cut_pos_x, cfg.cut_velocity))
                     self._run(check, "G0 Y%.2f F%.2f\n M400" % (cfg.get_real_cut_pos_y(), cfg.cut_velocity))
-                self._pause(check, 1)
-                if self.sensor.cut_present:
+                if self._wait_for_cut(check):
                     self._call(check, box.gcode.respond_info, "[box] cut to return OK")
                     break
+                if getattr(getattr(box, "lifecycle", None), "passive", None) is False:
+                    self._restore_limits(check, limits)
+                    logging.warning("The CFS cutter switch did not confirm the current stroke")
+                    if report_error:
+                        # Keep the stock UI error while the head may still be
+                        # against the cutter. The normal reporter can move it.
+                        message = format_error("key_cut_err", {})
+                        self._call(check, box.gcode.respond_raw, message)
+                        box.last_err = message
+                    return False
                 trial = getattr(box, "material_trial", None)
                 if trial is not None and trial.active:
                     trial.guard()
                     raise RuntimeError("material trial stops after the first missed cutter observation")
+                trial = getattr(box, "print_trial", None)
+                if trial is not None and trial.active and trial.owns_dispatch():
+                    trial.cancel()
+                    raise RuntimeError("print trial stops after the first missed cutter observation")
                 self._run(check, "G0 Y%.2f F%.2f" % (cfg.pre_cut_pos_y, cfg.cut_velocity))
                 self._call(check, box.gcode.respond_info, "[box] cut to return failed")
                 self._call(check, self.motion.go_to_box_extrude_pos)

@@ -44,6 +44,13 @@ class PhaseActionTests(unittest.TestCase):
                        if self.buffer_event else reply(address, command, data=bytes((self.buffer,))))
             elif command == 0x03:
                 raw = reply(address, command, data=b"\x01\x02\x03\x04")
+            elif command == 0x04 and raw is not None and raw[3] == 0:
+                self.native.mode = 0 if data[1] else 2
+            elif command == 0x11 and data[1] == 1 and raw is not None and raw[3] == 0:
+                # Returning this simulated lane clears its connection switch.
+                # The independent head sensor is still set by the test.
+                self.connections &= ~data[0]
+                self.buffer = 2
             elif command == 0x10:
                 if data[1] == 4 and self.fire_head:
                     self.set_head(True)

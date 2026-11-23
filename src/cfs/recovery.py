@@ -1,19 +1,34 @@
 """Replay saved recovery phases without treating normal returns as completion."""
 
 import logging
+from dataclasses import dataclass
+from typing import Callable, Optional
 
 from .errors import _ERRORS
 
 
 _MACRO_ERRORS = frozenset("macro_" + name for name in (
     "cut_err", "retrude_err", "box_extrude_err", "extruder_extrude_err", "flush_err"))
+_LOAD_ERRORS = ("box_extrude_err", "filament_err", "extruder_extrude_err", "flush_err")
+
+
+@dataclass
+class PausedTool:
+    job: object
+    position: int
+    logical: str
+    source: Optional[str]
+    target: str
+    check_device: Callable[[], None]
+    ready: bool = False
 
 
 class Recovery:
     def __init__(self, box):
         self.box = box
+        self.paused_tool = None
 
-    def _calls(self):
+    def _calls(self, check=None):
         """Allow child phase ownership while retaining the saved device identities."""
         box = self.box
         checks = [box.lifecycle._report_guard(operation=False)]
@@ -28,6 +43,8 @@ class Recovery:
             addresses.add(context["addr"])
         checks.extend(box.lifecycle._report_guard(address, operation=False)
                       for address in addresses)
+        if check is not None:
+            checks.append(check)
 
         def call(function, *args, **kwargs):
             for check in checks:
@@ -40,6 +57,86 @@ class Recovery:
         for check in checks:
             check()
         return call
+
+    def save_paused_tool(self, job, position, logical):
+        box = self.box
+        target = box.error_tnn["tnn"]
+        if (job is None or position is None or job is not box.virtual_sdcard.current_file
+                or job.closed or box.error not in _LOAD_ERRORS
+                or target is None or box.box_state.Tnn_map.get(logical) != target):
+            return
+        address = box.box_state.get_Tnn_content(target)["addr"]
+        # NOTE: virtual SD advances past the failed tool command on pause.
+        # Clearing the error must leave this job's incomplete change pending.
+        self.paused_tool = PausedTool(job, position, logical, box.error_tnn["last_tnn"],
+                                     target, box.lifecycle._report_guard(address, operation=False))
+
+    def _current_paused_tool(self):
+        pending = self.paused_tool
+        if pending is not None and (pending.job is not self.box.virtual_sdcard.current_file
+                                    or pending.job.closed):
+            self.paused_tool = pending = None
+        return pending
+
+    def _check_paused_tool(self, pending):
+        box = self.box
+        pending.check_device()
+        if (self._current_paused_tool() is not pending or box.print_stats.state != "paused"
+                or box.virtual_sdcard.file_position != pending.position
+                or box.box_state.Tnn_map.get(pending.logical) != pending.target):
+            raise RuntimeError("CFS paused tool no longer matches the job position or mapping")
+
+    def _head_has_target(self, target):
+        box = self.box
+        return (box.last_cmd == target and box.has_actual_head_sensor()
+                and box.get_filament_sensor_detect() is True)
+
+    def confirm_paused_resume(self):
+        pending = self._current_paused_tool()
+        if pending is None:
+            return False
+        self._check_paused_tool(pending)
+        if not pending.ready or not self._head_has_target(pending.target):
+            raise RuntimeError("CFS %s is pending. Insert filament and press Retry." % pending.target)
+        return True
+
+    def _retry_paused_tool(self, pending):
+        box = self.box
+        check = lambda: self._check_paused_tool(pending)
+        call = self._calls(check)
+        if call(box.if_in_resume):
+            return False
+        if not box.has_actual_head_sensor() or set(box.motion._homed(check)) != set("xyz"):
+            raise RuntimeError("CFS retry requires a head filament sensor and homed XYZ")
+        target = pending.target
+        if not call(box.is_material_available, target):
+            call(box.gcode.respond_info, "CFS %s is empty. Insert filament and press Retry." % target)
+            return False
+        head_present = call(box.get_filament_sensor_detect)
+        if box.last_cmd not in (None, target) or (head_present and box.last_cmd != target):
+            raise RuntimeError("CFS retry cannot identify the filament already in the head")
+        if box.error is not None and (box.error not in _LOAD_ERRORS or box.error_tnn["tnn"] != target):
+            raise RuntimeError("CFS retry is blocked by another error")
+        if not (pending.ready and head_present):
+            pending.ready = False
+            kind = "extruder" if head_present else "filament"
+            if self._material_retry(kind, (pending.source, target), check) is not True:
+                return False
+            if box.error is not None:
+                return False
+            call(box.do_after_extrude)
+            call(box.gcode.run_script_from_command, "M400")
+            if not call(self._head_has_target, target):
+                call(box.gcode.respond_info, "CFS %s lost head-sensor confirmation." % target)
+                return False
+            pending.ready = True
+        if box.error is not None:
+            return False
+        check()
+        # RESUME rechecks the head in BOX_RESUME_EXTRUDE before moving back.
+        box.gcode.run_script_from_command("RESUME")
+        self.paused_tool = None
+        return True
 
     def clear_err(self):
         """Clear host bookkeeping without changing filament or refill state."""
@@ -84,10 +181,22 @@ class Recovery:
         self.error_clear()
 
     def cmd_Tnn_retry_process(self, gcmd):
-        self.Tnn_retry_process()
+        try:
+            self.Tnn_retry_process()
+        except (OSError, ValueError, RuntimeError) as error:
+            raise gcmd.error(str(error)) from error
 
     def Tnn_retry_process(self):
         box = self.box
+        had_pending = self.paused_tool is not None
+        pending = self._current_paused_tool()
+        if pending is not None:
+            return self._retry_paused_tool(pending)
+        if had_pending:
+            return False
+        if (box.error is None and getattr(box.lifecycle, "passive", None) is False
+                and getattr(getattr(box, "virtual_sdcard", None), "current_file", None) is not None):
+            return False
         call = self._calls()
         if box.error is not None:
             call(box.gcode.respond_info, "Tnn_retry_process: %s" % box.error)
@@ -187,9 +296,11 @@ class Recovery:
         call(box.motion.restore_printer_accel)
         return True
 
-    def _material_retry(self, kind):
-        box, call = self.box, self._calls()
+    def _material_retry(self, kind, tools=None, check=None):
+        box, call = self.box, self._calls(check)
         source, target = box.error_tnn["last_tnn"], box.error_tnn["tnn"]
+        if tools is not None:
+            source, target = tools
         if target is None and (kind != "extruder" or source is None):
             return
         if kind == "retrude":
@@ -197,7 +308,12 @@ class Recovery:
                        box.box_state.get_Tnn_content(source)["addr"])
         else:
             address = box.box_state.get_Tnn_content(target)["addr"]
-        if call(box.communication_set_box_mode, address, "IDLE") is False:
+        if tools is not None and kind == "extruder":
+            mode = call(box.communication_set_box_mode, address, "PRINT",
+                        num=box.box_state.get_Tnn_content(target)["num"])
+        else:
+            mode = call(box.communication_set_box_mode, address, "IDLE")
+        if mode is False:
             return False
         call(self.clear_err)
         if kind == "retrude":
@@ -211,6 +327,9 @@ class Recovery:
         if kind != "extruder":
             if not self._stage(call, source, target, "box_extrude_err", box.box_extrude_material, target):
                 return False
+        if tools is not None and not call(self._head_has_target, target):
+            call(box.gcode.respond_info, "CFS %s did not reach the head sensor." % target)
+            return False
         if kind == "box":
             call(box.motion.go_to_extrude_pos)
         if not self._stage(call, source, target, "extruder_extrude_err", box.extruder_extrude, target):

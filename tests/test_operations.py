@@ -178,6 +178,67 @@ class OperationTests(unittest.TestCase):
         self.assertFalse(self.context.active)
         self.assertFalse(self.box.filament_sensor_enable)
 
+    def test_owned_filament_error_clear_keeps_context_and_can_arm_the_target(self):
+        self.context.cancel()
+        self.box.error, self.box.error_tnn = 'filament_err', {'last_tnn': 'T1A'}
+        self.context.begin('T1A', 'T1B', 1)
+        serial, history = self.context._serial, self.context.error_context
+        self.box.error = None
+        self.context.acknowledge_error_clear(serial, 'T1A', 'T1B', 1)
+        self.assertIsNone(self.context._error)
+        self.assertIsNone(self.box.error)
+        self.assertIs(self.context.error_context, history)
+        self.assertEqual(history, {'last_tnn': 'T1A'})
+        self.assertEqual((self.context._serial, self.context.source, self.context.target, self.context.address),
+                         (serial, 'T1A', 'T1B', 1))
+        self.context.arm_head()
+        self.assertTrue(self.context.active)
+        self.assertTrue(self.box.filament_sensor_enable)
+        self.assertEqual(self.box.extrude_tnn, 'T1B')
+
+    def test_error_acknowledgement_rejects_other_errors_identities_and_stale_devices(self):
+        for case in ('not_cleared', 'new_error', 'other_captured_error', 'source', 'target',
+                     'address', 'binding', 'device', 'head_target'):
+            with self.subTest(case=case):
+                self.context.cancel()
+                self.box.extrude_tnn = None
+                self.box.error = 'load_error' if case == 'other_captured_error' else 'filament_err'
+                self.context.begin('T1A', 'T1B', 1)
+                serial = self.context._serial
+                self.box.error = ('filament_err' if case == 'not_cleared'
+                                  else 'new_error' if case == 'new_error' else None)
+                expected = ['T1A', 'T1B', 1]
+                if case == 'source': expected[0] = 'T1C'
+                elif case == 'target': expected[1] = 'T1C'
+                elif case == 'address': expected[2] = 2
+                elif case == 'binding': self.box._binding_generation += 1
+                elif case == 'device': self.box.device_versions.invalidate(1)
+                elif case == 'head_target': self.box.extrude_tnn = 'T1C'
+                observed_error, captured_error = self.box.error, self.context._error
+                with self.assertRaises(OperationCancelled):
+                    self.context.acknowledge_error_clear(serial, *expected)
+                self.assertFalse(self.context.active)
+                self.assertEqual((self.box.error, self.context._error), (observed_error, captured_error))
+                if case == 'device':
+                    self.box.device_versions.update(1, b'113' + b'A' * 19)
+
+    def test_stale_error_acknowledgement_cannot_change_a_new_same_target_operation(self):
+        self.context.cancel()
+        self.box.error = 'filament_err'
+        self.context.begin('T1A', 'T1B', 1)
+        old_serial = self.context._serial
+        self.context.cancel()
+        self.context.begin('T1A', 'T1B', 1)
+        new_serial = self.context._serial
+        self.box.error = None
+        with self.assertRaises(OperationCancelled):
+            self.context.acknowledge_error_clear(old_serial, 'T1A', 'T1B', 1)
+        self.assertTrue(self.context.active)
+        self.assertEqual((self.context._serial, self.context._error), (new_serial, 'filament_err'))
+        self.context.acknowledge_error_clear(new_serial, 'T1A', 'T1B', 1)
+        self.context.arm_head()
+        self.assertTrue(self.box.filament_sensor_enable)
+
 
 if __name__ == "__main__":
     unittest.main()

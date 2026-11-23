@@ -5,6 +5,7 @@ import shlex
 import struct
 import unittest
 from copy import deepcopy
+from types import SimpleNamespace
 
 from macro_harness import Host, Model
 from test_box_data import CommandError
@@ -73,6 +74,8 @@ class WorkflowFixture:
         self.printer.position[:] = [120., 150., 30., 0.]
         self.box.gcode_move.last_position = list(self.printer.position)
         self.completed = list(self.printer.position)
+        self.e_origin = 0.
+        self.wheel = 0.
         self.material = 15
         self.connections = 4 if unknown_source else (1 if loaded else 0)
         self.buffer = 0 if unknown_source else 2
@@ -83,6 +86,9 @@ class WorkflowFixture:
         self.events = []
         self.token = None
         self.fail_primitive = None
+        if not passive:
+            self.box.gcode_move.get_status = lambda now: {"speed_factor": 1., "extrude_factor": 1.}
+            self.printer.objects['toolhead'].flush_step_generation = self.submit_steps
         self.printer.heater.target = 0
         self.set_head(loaded or unknown_source)
         if loaded:
@@ -121,6 +127,43 @@ class WorkflowFixture:
 
     def close(self):
         self.base.doCleanups()
+
+    def submit_steps(self):
+        self.events.append(('submit', tuple(self.printer.position), tuple(self.completed)))
+
+    def prepare_toolchange(self, volume=200.):
+        """Supply retained file/colour APIs, without replacing Box's coordinator."""
+        self.hints = []
+        self.submitted = list(self.completed)
+        def submit():
+            self.submit_steps()
+            self.submitted[:] = self.printer.position
+        self.printer.objects['toolhead'].flush_step_generation = submit
+        self.box.box_state.modify_Tn_data(0, 'connect', uppart='state')
+        self.printer.objects['toolhead'].max_velocity = 300.
+        sd = self.box.virtual_sdcard
+        sd.gcode_metadata = {}
+        sd.current_file = SimpleNamespace(name='synthetic.gcode')
+        sd.print_file_name_path = 'synthetic-recovery.json'
+        self.box.gcode_move.recordPrintFileName = lambda *args, **kwargs: self.hints.append((args, kwargs))
+        self.box.box_state.modify_Tn_data(1, '0FF0000', 'color_value', 'A')
+        self.box.box_state.modify_Tn_data(1, '00000FF', 'color_value', 'C')
+
+        class Colour:
+            r = g = b = 0
+
+            def __getitem__(self, index):
+                if index != 0:
+                    raise IndexError(index)
+                return self
+
+        self.colour_pairs = []
+        def flushing_volume(old, new):
+            self.colour_pairs.append(((old.r, old.g, old.b), (new.r, new.g, new.b)))
+            return volume
+        self.box._ffi_pair = (SimpleNamespace(new=lambda kind: Colour()),
+            SimpleNamespace(get_flushing_volume=flushing_volume))
+        return self
 
     def set_head(self, present):
         self.printer.objects['filament_switch_sensor head'].runout_helper.filament_present = present
@@ -192,7 +235,9 @@ class WorkflowFixture:
                     continue
                 value = float(params[axis])
                 absolute = move.absolute_coord and (axis != 'E' or move.absolute_extrude)
-                position[index] = value if absolute else position[index] + value
+                position[index] = ((value + (self.e_origin if axis == 'E' else 0)) if absolute
+                                   else position[index] + value)
+            self.wheel -= position[3] - before[3]
             move.last_position = list(position)
             if before != position:
                 self.moves.append(dict(token=self.token, line=command.get_commandline(),
@@ -207,9 +252,23 @@ class WorkflowFixture:
             self.printer.heater.target = float(params.get('S', 0))
             if name == 'M109':
                 self.heat()
+        elif name == 'G92':
+            if set(params) != {'E'}:
+                raise AssertionError('only the owned tool tail resets E')
+            self.e_origin = position[3] - float(params['E'])
+        elif name == 'M204':
+            self.printer.objects['toolhead'].max_accel = float(params['S'])
+        elif name == 'SET_PIN':
+            pin = self.printer.objects['output_pin ' + params['PIN']]
+            pin.last_value = float(params['VALUE']) / pin.scale
+        elif name == 'SET_VELOCITY_LIMIT':
+            toolhead = self.printer.objects['toolhead']
+            for key, attr in (('ACCEL', 'max_accel'), ('ACCEL_TO_DECEL', 'max_accel_to_decel')):
+                if key in params:
+                    setattr(toolhead, attr, float(params[key]))
         elif name == 'G4':
             self.reactor.time += float(params.get('P', 0)) / 1000
-        elif name not in ('RESPOND', 'SET_PIN', 'SET_VELOCITY_LIMIT', 'BED_MESH_CLEAR'):
+        elif name not in ('RESPOND', 'BED_MESH_CLEAR'):
             raise AssertionError('unmodeled workflow primitive: ' + name)
 
     def exchange(self, body, timeout, *args):
@@ -231,6 +290,8 @@ class WorkflowFixture:
             result = bytes((self.material if data == b'\x00' else self.connections,))
         elif opcode == 0x05:
             result = bytes((self.buffer,))
+        elif opcode == 0x0E:
+            result = struct.pack('>f', self.wheel)
         elif opcode == 0x04:
             self.native.mode = 2 if data[1] == 0 else 0
         elif opcode == 0x10:
@@ -447,7 +508,7 @@ class MaterialWorkflowTests(unittest.TestCase):
         self.assertEqual(fixture.tokens[-1], 'RESTORE_POSITION')
         self.assertFalse(fixture.box.operations.active)
 
-    def test_service_continues_after_command_errors_and_internal_exceptions(self):
+    def test_service_continues_after_command_errors_and_runtime_refusals(self):
         for internal in (False, True):
             with self.subTest(internal=internal):
                 fixture = self.fixture()
@@ -465,12 +526,13 @@ class MaterialWorkflowTests(unittest.TestCase):
                 if internal:
                     self.assertIsNone(fixture.box.last_cmd)
 
-    def test_final_head_failure_is_reported_after_source_bookkeeping_clears(self):
+    def test_final_head_failure_is_reported_without_clearing_source(self):
         fixture = self.fixture()
         fixture.service(LOAD_RECIPE)
         fixture.clear_head = False
         fixture.service(QUIT_RECIPE)
-        self.assertIsNone(fixture.box.last_cmd)
+        self.assertEqual(fixture.box.last_cmd, 'T1C')
+        self.assertEqual(fixture.box.box_state.get_Tn_data(1, 'filament'), 'T1C')
         self.assertTrue(fixture.box.get_filament_sensor_detect())
         self.assertEqual(fixture.box.error, 'macro_retrude_err')
         self.assertIn('BOX_RETRUDE_MATERIAL', fixture.box.error_next_macro)

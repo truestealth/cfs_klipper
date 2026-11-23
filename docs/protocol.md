@@ -2,13 +2,9 @@
 
 English | [Русский](protocol.ru.md)
 
-The package is `cfs`; the Klipper object remains `box`. It borrows the stock
-`serial_485` object and starts in passive identity/telemetry mode. Reference CFS
-MCU 1.1.3 validation includes four preload checks and two consecutive complete
-T1C load/unload cycles without manual assistance.
-
-Stable section anchors allow implementation and tests to reference this document.
-Add a verified target command here before using it in an operation.
+The Klipper `box` object uses the stock `serial_485` object in both operating
+modes. The reference hardware is a K1C with K1 Series CFS Upgrade, first-generation
+CFS and MCU firmware 1.1.3. See the [reference results](compatibility.md#coverage).
 
 ## Boundaries and evidence
 
@@ -70,10 +66,10 @@ do not establish completed loading or switching.
 
 Execution gates block all opcode `0x13` requests, typed legacy encoding-0
 `EXTRUDE_PROCESS`, typed stages above 7, and unaddressed diagnostics (`ADDR=0`).
-Confirmed wire stages are 0–7. Their mapping to public STAGE values, host/log
-phase names and full operations remains a separate open question. Raw diagnostics
-do not turn an unknown payload into a verified typed operation, and optional
-`0x12` is never selected automatically.
+Typed requests use stages 0–7. The baseline load sequence below documents the
+stages it uses. Public `BOX_EXTRUDE_PROCESS STAGE=` retains the stock parser's
+argument binding, which differs from the internal wire-stage field. `0x12` is
+outside the ordinary load sequence.
 
 The [native](../tests/test_native.py), [decoder](../tests/test_protocol.py),
 [firmware](../tests/test_firmware.py) and [integration](../tests/test_box_native.py)
@@ -83,12 +79,12 @@ tests cover the API boundary, frames and version selection.
 
 ## Lifecycle, errors and operation context
 
-`load_config` always registers passive admission: by default only typed reads `0x02`, `0x03`,
+With `passive: true` in `[box]`, only typed reads `0x02`, `0x03`,
 `0x05`, `0x08`, `0x0A` and `0x14` may reach the borrowed native API. Raw diagnostics,
 wheel requests, `CREATE_CONNECT` and writes are blocked, as are host actions.
 Automatic preload/RUN, sensor toggles, head feed, runout tightening, pause and
 heating are suppressed. Reports retain their client text without executing
-mechanical error tails. There is no general mechanics switch. The separate
+mechanical error tails. The separate
 [explicit preload trial](installation.md#single-operation-trial) can grant one
 selected `0x0D` RUN without changing that passive lifecycle; its request and
 dispatch ownership do not apply to ordinary commands or background callbacks.
@@ -101,8 +97,8 @@ returns the fallback byte `100`, which does not confirm a full spool or a fresh
 remaining-material estimate. Both replies were observed on the reference unit.
 The host preserves known colours/materials while recording `vender=unknown`;
 these getter replies can therefore replace previously saved metadata. The full
-RFID acquisition/estimation path can move motors and is not started by default
-passive admission. A saved tag ID or remaining value must be distinguished from a fresh
+RFID acquisition/estimation path can move motors and is not started automatically
+in passive mode. A saved tag ID or remaining value must be distinguished from a fresh
 MCU observation.
 
 For ordinary baseline 1.1.3 `0x0A` replies, `DATA[2]` contains pending motor
@@ -112,11 +108,10 @@ and bit 7 marks delivery of a persistent condition.
 A background heartbeat can consume an indication before another read.
 These flags are separate from physical switches and operation completion.
 
-The following operation policies describe the active component contract tested
-with explicit PC construction. Registration provides 101 unconditional commands
-and two conditional Hall commands. On `klippy:ready`, the
-lifecycle resolves its dependencies, borrows serial, emits `box:ready` and then
-starts its own heartbeat timer. Presence uses the address manager's `online == 1`
+Registration provides 101 unconditional commands and two conditional Hall
+commands. On `klippy:ready`, the lifecycle resolves dependencies, borrows
+serial, emits `box:ready` and starts its heartbeat timer. Presence uses the
+address manager's `online == 1`
 and the serial port's existence, independently of the native connection flag.
 On connection it deliberately reads identity before `0x0A`, so the latter uses
 the correct profile. Reconnection requires a fresh identity; a different serial
@@ -158,7 +153,7 @@ filtering.
 `slot_events` holds per-address diagnostics; the slot event executor separately
 updates metadata and schedules guarded refreshes. Power-on refresh, head motion
 and stage 6 use real supplied actions and fail explicitly when needed but absent.
-Tool changes and recovery have synthetic PC checks, not hardware acceptance. See [compatibility](compatibility.md) and the
+See the [hardware and PC results](compatibility.md#coverage) and the
 [lifecycle](../tests/test_lifecycle.py), [error](../tests/test_errors.py) and
 [operation](../tests/test_operations.py) component tests.
 
@@ -166,10 +161,9 @@ Tool changes and recovery have synthetic PC checks, not hardware acceptance. See
 
 ## Firmware version requirements
 
-The current baseline is CFS MCU 1.1.3; 1.5.2 and 1.5.3 are additional targets
-awaiting hardware validation. Static comparison also covers 1.2.2, 1.4.2 and
-1.5.0 cfs0/G32 images. The code contains exact profiles for **1.1.3, 1.2.2,
-1.4.2, 1.5.0, 1.5.2 and 1.5.3**, with no fallback for an unknown version.
+The `cfs0` profiles cover **1.1.3, 1.2.2, 1.4.2, 1.5.0, 1.5.2 and 1.5.3**.
+The reference hardware runs 1.1.3. The other profiles are based on static G32
+image comparison and PC checks.
 
 Before relying on version-specific behavior, read the running firmware through
 the retained native API and keep its raw version/identity per box. A bundled
@@ -262,10 +256,9 @@ every incoming frame. Keep borrowed connection ownership with Klipper.
 
 ## Operation coverage
 
-The complete specification covers initialization, connection, loading, unloading,
-cutting, tool changes, purging, pause/resume, failures/recovery, sensors, RFID and
-spool data. Each group needs its own verified commands, observations, waits and
-failure paths. The loading section below is one part of that full contract.
+The [contract matrix](contract-matrix.md) records commands, observations and checks
+for initialization, connection, tool changes, purging, pause/resume, recovery,
+sensors, RFID and spool data.
 
 <a id="loading"></a>
 
@@ -274,12 +267,13 @@ failure paths. The loading section below is one part of that full contract.
 The [explicit load/unload trial](installation.md#material-operation-trial) owns
 one selected slot and validates fresh head, hub, buffer, mode and source state.
 It executes the configured macro recipe, including heating, cutting, cleaning,
-flush and position restoration, while the default lifecycle stays passive.
+flush and position restoration within diagnostic mode.
 
 ### Preload
 
-OPEN configures power-on preload; RUN performs it. Full power-on refresh runs
-before RFID/remaining queries. Passive admission permits typed reads and
+OPEN permits preload, RUN starts it and `POWER_ON` separately configures whether
+RUN is requested at startup. Power-on refresh runs before RFID/remaining queries.
+Passive admission permits typed reads and
 suppresses automatic RUN and slot-event actions. The
 [preload trial](installation.md#single-operation-trial) checks baseline mode and
 fresh MATERIAL/CONNECTIONS before one selected RUN, then requires a normal IDLE

@@ -51,6 +51,12 @@ class Resume:
 
     def cmd_box_resume_extrude(self, gcmd):
         box, state = self.box, self.box.box_state
+        try:
+            if box.recovery.confirm_paused_resume():
+                # Retry has already loaded and purged this tool.
+                return True
+        except RuntimeError as error:
+            raise gcmd.error(str(error)) from error
         guard = box.lifecycle._report_guard(operation=False)
 
         def call(fn, *args, **kwargs):

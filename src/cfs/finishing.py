@@ -1,5 +1,9 @@
 """Finishing primitives shared by material-change routes."""
 
+from math import isfinite
+
+from .firmware import BASELINE_VERSION
+
 
 class Finishing:
     def __init__(self, box):
@@ -107,6 +111,14 @@ class Finishing:
         guard()
         velocity, percent = box.get_flush_velocity(last_tnn, tnn)
         guard()
+        if getattr(getattr(box, "lifecycle", None), "passive", None) is False:
+            profile = box.device_versions.profile(box.box_state.get_Tnn_content(tnn)["addr"])
+            if profile is not None and profile.version == BASELINE_VERSION:
+                scale = box.gcode_move.get_status(box._reactor.monotonic())["speed_factor"]
+                if type(scale) not in (int, float) or not isfinite(scale) or scale <= 0:
+                    raise ValueError("filament change needs a valid Klipper speed factor")
+                velocity = [min(value, 360 / scale) for value in velocity]
+                guard()
         _, target_temp, temp = box.get_flush_temp(last_tnn, tnn)
         guard()
         box.quickly_wait_heating(temp)
@@ -198,7 +210,11 @@ class Finishing:
                 box.last_err = None
                 return False
         guard()
-        result = box.box_retrude_material(report_error=False)
+        trial = getattr(box, "print_trial", None)
+        if trial is not None and trial.active and trial.owns_dispatch():
+            result = trial.change_phase("UNLOAD", box.box_retrude_material, report_error=False)
+        else:
+            result = box.box_retrude_material(report_error=False)
         guard()
         if result is False:
             content = box.box_state.get_Tnn_content(box.last_cmd)
@@ -218,7 +234,14 @@ class Finishing:
         if not box.last_err and box.box_state.Tn_data["enable"] != 0 and box.last_cmd is not None:
             address = box.box_state.get_Tnn_content(box.last_cmd)["addr"]
         guard = box.host_guard(address)
-        self.box_end()
+        result = self.box_end()
         guard()
+        trial = getattr(box, "print_trial", None)
+        if result is False:
+            if trial is not None and trial.active and trial.owns_dispatch():
+                trial.cancel()
+                raise RuntimeError("print end did not complete its cut and withdrawal")
+            if getattr(getattr(box, "lifecycle", None), "passive", None) is False:
+                raise RuntimeError("print end did not complete its cut and withdrawal")
         box.motion.move_to_safe_pos()
         guard()

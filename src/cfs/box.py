@@ -1,10 +1,11 @@
-"""Box contract components and the passive Klipper entry point.
+"""Box contract components and the Klipper entry point.
 
 Explicit construction supports PC checks of state, settings and storage. It
 does not obtain a printer or a serial object, start timers, or run mechanics.
 """
 
 from copy import deepcopy
+from contextlib import nullcontext
 import importlib
 import logging
 from math import isfinite
@@ -30,6 +31,7 @@ from .lifecycle import Lifecycle
 from .motion import Motion
 from .native import NativeSerial, Request, UnsupportedRequest, build_request, diagnostic_request, slot_mask
 from .operations import MaterialTrial, OperationContext, PreloadTrial
+from .print_trial import PrintTrial
 from .protocol import DecodeContext, decode_reply
 from .state import BoxState
 from .storage import SpoolStore
@@ -59,7 +61,7 @@ class Box:
 
     ``base_dir`` is supplied by the caller; PC tests always use a temporary
     directory. Construction alone does not obtain printer objects or schedule
-    work. The Klipper entry point registers an observation-only lifecycle.
+    work. The Klipper entry point selects the requested lifecycle.
     """
 
     def __init__(self, config, base_dir, config_paths=None):
@@ -105,6 +107,7 @@ class Box:
         self.operations = OperationContext(self)
         self.preload_trial = PreloadTrial(self)
         self.material_trial = MaterialTrial(self)
+        self.print_trial = PrintTrial(self)
         self.speed_factor = None
         self.start_print_retraction_distance = 0
         self.error_next_macro = []
@@ -131,6 +134,10 @@ class Box:
         if self.lifecycle is None or not self.lifecycle.running:
             raise RuntimeError("the CFS host lifecycle is not ready")
         if self.lifecycle.passive:
+            if self.material_trial.active and self.material_trial.owns_dispatch():
+                return self.material_trial.guard(address)
+            if self.print_trial.active:
+                return self.print_trial.guard(address)
             return self.material_trial.guard(address)
         guard = self.lifecycle._report_guard(address)
         guard()
@@ -220,7 +227,14 @@ class Box:
         return self.extrusion.get_flush_len(source, target)
 
     def get_flush_velocity(self, source, target):
-        return self.extrusion.get_flush_velocity(source, target)
+        velocity, percent = self.extrusion.get_flush_velocity(source, target)
+        change = self.material_trial
+        if ((change.active and change.action == "CHANGE" and change.owns_dispatch())
+                or self.print_trial.owns_dispatch()):
+            # Only owned trials use this 6 mm/s ceiling; invalid values stay invalid.
+            velocity = [min(value, 360) if type(value) in (int, float) and isfinite(value) else value
+                        for value in velocity]
+        return velocity, percent
 
     def get_flush_temp(self, source, target):
         return self.extrusion.get_flush_temp(source, target)
@@ -406,7 +420,8 @@ class Box:
             raise
         return lifecycle
 
-    def _reject_passive_host_command(self, gcmd):
+    def _reject_passive_host_command(self, gcmd, name):
+        logging.info("CFS rejected host command %s: passive admission", name)
         raise gcmd.error("cfs: admission mode blocks host actions")
 
     def register_host_commands(self, printer):
@@ -418,9 +433,59 @@ class Box:
             if self.lifecycle is not None and self.lifecycle.passive:
                 action = handler
                 def handler(gcmd, name=name, action=action):
-                    if not self.material_trial.allows_command(name, gcmd):
-                        return self._reject_passive_host_command(gcmd)
-                    return self.material_trial.call_command(action, gcmd)
+                    if self.material_trial.allows_command(name, gcmd):
+                        return self.material_trial.call_command(action, gcmd)
+                    if self.print_trial.allows_command(name, gcmd):
+                        try:
+                            return self.print_trial.call_command(action, gcmd)
+                        except Exception:
+                            self._pause_trial_file()
+                            raise
+                    if (name == "BOX_CHECK_MATERIAL_REFILL" and not gcmd.get_command_parameters()
+                            and self.print_trial.active and self.print_trial._started
+                            and self.print_stats.state == "printing" and not self.print_trial._runout
+                            and not self.is_use_ending_material and self.error is None
+                            and not self.box_filament_err and not self.inside_error
+                            and not self.material_auto_refill_flag and not self.inside_auto_refill
+                            and not self.inside_extrusion_all_materials):
+                        # A deferred normal-withdrawal callback may arrive after
+                        # loading. Suppress it without granting scope or disabling
+                        # the head helper; genuine runout keeps its separate path.
+                        logging.info("CFS ignored %s: no runout in active print", name)
+                        return
+                    scope = None
+                    if (self.print_trial.active and self.print_stats.state == "paused"
+                            and not self.operations.active
+                            and name in ("BOX_ERROR_CLEAR", "BOX_RESUME_EXTRUDE", "BOX_TNN_RETRY_PROCESS")):
+                        scope = self.print_trial.execution("control")
+                    head = getattr(getattr(getattr(self.lifecycle, "head_sensor", None),
+                                           "runout_helper", None), "filament_present", None)
+                    if (name == "BOX_CHECK_MATERIAL_REFILL" and self.print_trial.active
+                            and self.print_trial._runout and self.is_use_ending_material
+                            and type(head) in (bool, int) and head == 0):
+                        # The retained RunoutHelper owns its own callback. Its
+                        # real head-clear command follows an observed MCU 0x50;
+                        # it does not inherit a general background write grant.
+                        scope = self.print_trial.execution("callback")
+                    if scope is not None:
+                        with scope:
+                            if self.print_trial.allows_command(name, gcmd):
+                                try:
+                                    return self.print_trial.call_command(action, gcmd)
+                                except Exception:
+                                    self._pause_trial_file()
+                                    raise
+                    return self._reject_passive_host_command(gcmd, name)
+            elif self.lifecycle is not None:
+                action = handler
+                def handler(gcmd, name=name, action=action):
+                    try:
+                        return action(gcmd)
+                    except (OSError, ValueError, RuntimeError) as error:
+                        if not getattr(getattr(self, "virtual_sdcard", None), "cmd_from_sd", False):
+                            raise
+                        logging.warning("CFS command %s stopped: %s", name, error)
+                        raise gcmd.error("cfs: %s: %s" % (name, error)) from error
             self.gcode.register_command(name, handler)
 
         for name, method in Motion.COMMANDS.items():
@@ -481,7 +546,19 @@ class Box:
         def command(gcmd):
             self.t_command = name
             logical = self.box_state.Tn_map[name] if virtual else name
-            self.Tn_action(logical)
+            sd = getattr(self, "virtual_sdcard", None)
+            from_sd = (self.lifecycle is not None and not self.lifecycle.passive
+                       and getattr(sd, "cmd_from_sd", False))
+            if from_sd:
+                job = getattr(sd, "current_file", None)
+                next_position = getattr(sd, "next_file_position", None)
+            result = self.Tn_action(logical)
+            if result is False and from_sd:
+                # A retained recovery pause owns the next step. Otherwise an
+                # SD tool selection failure must stop before model extrusion.
+                if not sd.must_pause_work:
+                    raise gcmd.error("cfs: could not select tool %s" % name)
+                self.recovery.save_paused_tool(job, next_position, logical)
         return command
 
     def cmd_extrude_2_process(self, gcmd):
@@ -565,7 +642,10 @@ class Box:
 
     def set_head_runout_enabled(self, enabled):
         if self.lifecycle is not None and self.lifecycle.passive:
-            raise RuntimeError("CFS admission mode does not change runout sensors")
+            if not self.print_trial.owns_dispatch():
+                logging.info("CFS rejected head runout setting: passive admission enabled=%s", enabled)
+                raise RuntimeError("CFS admission mode does not change runout sensors")
+            self.print_trial.guard()
         name = self.boxcfg.filament_sensor
         if name is not None:
             self.gcode.run_script_from_command(
@@ -604,6 +684,7 @@ class Box:
             self.lifecycle.shutdown()
         self.preload_trial.cancel()
         self.material_trial.cancel()
+        self.print_trial.cancel()
         self.operations.cancel()
         self._binding_generation += 1
         self._printer = printer
@@ -621,6 +702,7 @@ class Box:
         """Invalidate own pending work without closing the borrowed transport."""
         self.preload_trial.cancel()
         self.material_trial.cancel()
+        self.print_trial.cancel()
         self._binding_generation += 1
         self.operations.cancel()
         for address in range(1, 5):
@@ -633,6 +715,9 @@ class Box:
         self.slot_events.clear()
 
     def invalidate_device(self, address, raw_reply=None):
+        if self.print_trial.active and self.print_trial.address == address:
+            self.print_trial.cancel()
+            self._pause_trial_file()
         if self.material_trial.active and self.material_trial.address == address:
             self.material_trial.cancel()
         if self.preload_trial.active and self.preload_trial.address == address:
@@ -653,6 +738,9 @@ class Box:
             self.state_extensions.pop(address, None)
             raise
         if self.device_versions.generation(address) != previous:
+            if self.print_trial.active and self.print_trial.address == address:
+                self.print_trial.cancel()
+                self._pause_trial_file()
             if self.material_trial.active and self.material_trial.address == address:
                 self.material_trial.cancel()
             if self.preload_trial.active and self.preload_trial.address == address:
@@ -708,19 +796,35 @@ class Box:
                        if self.lifecycle is not None and self.lifecycle.passive else None)
         material_guard = (self.material_trial.admit(request)
                           if self.lifecycle is not None and self.lifecycle.passive else None)
+        print_guard = (self.print_trial.admit(request)
+                       if self.lifecycle is not None and self.lifecycle.passive else None)
+        protocol_scope = (self.print_trial.capture_protocol(request)
+                          if self.lifecycle is not None and self.lifecycle.passive else None)
         if material_guard is not None:
             request = self.material_trial.bounded_request(request)
             retries_en = False
+        elif print_guard is not None:
+            request = self.print_trial.bounded_request(request)
+            retries_en = False
         if (self.lifecycle is not None and self.lifecycle.passive
                 and (request.diagnostic or request.command not in (0x02, 0x03, 0x05, 0x08, 0x0A, 0x14))
-                and trial_guard is None and material_guard is None):
+                and trial_guard is None and material_guard is None and print_guard is None):
+            logging.info("CFS rejected native request: passive admission address=%d command=0x%02X diagnostic=%s",
+                         request.address, request.command, request.diagnostic)
             raise UnsupportedRequest("CFS admission mode permits only typed identity and telemetry reads")
         if request.address not in range(1, 5):
+            logging.info("CFS rejected native request: unconfirmed address=%d command=0x%02X",
+                         request.address, request.command)
             raise UnsupportedRequest("unaddressed diagnostics have no confirmed CFS context")
         address = request.address
         profile = self.device_versions.profile(address)
         if request.command not in (0x01, 0x14, 0x55):
-            profile = self.device_versions.require_supported(address)
+            try:
+                profile = self.device_versions.require_supported(address)
+            except ValueError as error:
+                logging.info("CFS rejected native request: address=%d command=0x%02X reason=%s",
+                             address, request.command, error)
+                raise
         binding = self._binding_generation
         generation = self.device_versions.generation(address)
 
@@ -729,6 +833,8 @@ class Box:
                 trial_guard()
             if material_guard is not None:
                 material_guard()
+            if print_guard is not None:
+                print_guard()
             if self.lifecycle is not None and self.lifecycle.running:
                 self.lifecycle.guard_device(address)
             if (binding != self._binding_generation
@@ -737,10 +843,12 @@ class Box:
 
         try:
             options = {"retries_en": retries_en, "check_context": check_context}
-            if trial_guard is not None or material_guard is not None:
+            if trial_guard is not None or material_guard is not None or print_guard is not None:
                 options["retry_errors"] = False
             frame = self.native.exchange(request, **options)
-        except StaleReplyError:
+        except StaleReplyError as error:
+            logging.info("CFS stopped native exchange addr=%d cmd=0x%02x reason=%s",
+                         address, request.command, error)
             raise
         except (OSError, ValueError):
             # An old failure must not invalidate a device installed by a
@@ -749,59 +857,140 @@ class Box:
             if request.command == 0x14:
                 self.invalidate_device(address)
             raise
-        check_context()
-        self.last_replies[address] = frame
-        if trial_guard is not None:
-            self.preload_trial.validate_reply(request, frame)
-        if material_guard is not None:
-            self.material_trial.validate_reply(request, frame)
+        try:
+            check_context()
+            self.last_replies[address] = frame
+            if trial_guard is not None:
+                self.preload_trial.validate_reply(request, frame)
+            if material_guard is not None:
+                self.material_trial.validate_reply(request, frame)
+            if print_guard is not None:
+                self.print_trial.validate_reply(request, frame)
+        except (RuntimeError, ValueError) as error:
+            logging.info("CFS rejected reply before decoding addr=%d cmd=0x%02x "
+                         "request_data=%s status=%s data=%s reason=%s", address, request.command,
+                         request.data.hex(), "0x%02x" % frame.status if frame else None,
+                         frame.data.hex() if frame else None, error)
+            raise
         if request.command == 0x14 and (frame is None or frame.status != 0):
             self.invalidate_device(address, raw_reply=frame.raw if frame else None)
             generation = self.device_versions.generation(address)
-        if context is None:
-            if self.lifecycle is not None and self.lifecycle.running:
-                self.print_state = self.print_stats.state
-                if frame is not None and frame.status == 0x50 and self.last_cmd:
-                    self.filament_error_message = format_error("key_filament_err", {
-                        "request_address": address, "slot": self.last_cmd[2],
-                    })
-            context = DecodeContext(
-                report_err=report_err,
-                last_cmd=self.last_cmd, error=self.error, last_err=self.last_err,
-                print_state=self.print_state,
-                box_filament_err=self.box_filament_err,
-                is_use_ending_material=self.is_use_ending_material,
-                filament_error_message=self.filament_error_message,
-            )
+        manager = protocol_scope(frame) if protocol_scope is not None else nullcontext()
+        with manager:
+            if context is None:
+                if self.lifecycle is not None and self.lifecycle.running:
+                    self.print_state = self.print_stats.state
+                    if frame is not None and frame.status == 0x50 and self.last_cmd:
+                        self.filament_error_message = format_error("key_filament_err", {
+                            "request_address": address, "slot": self.last_cmd[2],
+                        })
+                context = DecodeContext(
+                    report_err=report_err,
+                    last_cmd=self.last_cmd, error=self.error, last_err=self.last_err,
+                    print_state=self.print_state,
+                    box_filament_err=self.box_filament_err,
+                    is_use_ending_material=self.is_use_ending_material,
+                    filament_error_message=self.filament_error_message,
+                )
+            try:
+                result = decode_reply(self.box_state, frame, request, profile=profile, context=context)
+            except ValueError as error:
+                logging.info("CFS rejected reply data addr=%d cmd=0x%02x request_data=%s raw=%s reason=%s",
+                             address, request.command, request.data.hex(), frame.raw.hex() if frame else None, error)
+                check_context()
+                if request.command == 0x14:
+                    self.invalidate_device(address, raw_reply=frame.raw if frame else None)
+                raise
+            handlers = self._data_effect_handlers(request)
+            handlers.update(self._effect_handlers)
+            missing = {effect.name for effect in result.effects} - handlers.keys()
+            if missing:
+                logging.info("CFS rejected reply effects addr=%d cmd=0x%02x raw=%s missing=%s",
+                             address, request.command, frame.raw.hex() if frame else None, ",".join(sorted(missing)))
+                raise MissingProtocolEffect("unbound protocol effects: " + ", ".join(sorted(missing)))
+            for effect in result.effects:
+                check_context()
+                effect_result = handlers[effect.name](*effect.args)
+                if effect.name == "identity" and binding == self._binding_generation:
+                    # Accepting this request's own new identity legitimately
+                    # advances its generation; external changes never do.
+                    generation = self.device_versions.generation(address)
+                elif (effect.name == "timeout_process" and self.lifecycle is not None
+                      and handlers[effect.name] == self.lifecycle.timeout_process
+                      and binding == self._binding_generation
+                      and type(effect_result) is int and effect_result == generation + 1
+                      and effect_result == self.device_versions.generation(address)):
+                    # This handler's own guarded disconnect is a normal False
+                    # outcome; a different binding/device change is still stale.
+                    generation = effect_result
+                check_context()
+            return result.value
+
+    def _pause_trial_file(self):
+        """Stop future lines of the owned file without parking or clearing state."""
+        sd = getattr(self, "virtual_sdcard", None)
+        current = getattr(sd, "current_file", None)
+        path = getattr(self.print_trial, "path", None)
+        if current is not None and path is not None and Path(current.name).resolve() == path:
+            sd.do_pause()
+
+    def cmd_test_print_arm(self, gcmd):
+        parameters = gcmd.get_command_parameters()
         try:
-            result = decode_reply(self.box_state, frame, request, profile=profile, context=context)
-        except ValueError:
-            check_context()
-            if request.command == 0x14:
-                self.invalidate_device(address, raw_reply=frame.raw if frame else None)
-            raise
-        handlers = self._data_effect_handlers(request)
-        handlers.update(self._effect_handlers)
-        missing = {effect.name for effect in result.effects} - handlers.keys()
-        if missing:
-            raise MissingProtocolEffect("unbound protocol effects: " + ", ".join(sorted(missing)))
-        for effect in result.effects:
-            check_context()
-            effect_result = handlers[effect.name](*effect.args)
-            if effect.name == "identity" and binding == self._binding_generation:
-                # Accepting this request's own new identity legitimately
-                # advances its generation; external changes never do.
-                generation = self.device_versions.generation(address)
-            elif (effect.name == "timeout_process" and self.lifecycle is not None
-                  and handlers[effect.name] == self.lifecycle.timeout_process
-                  and binding == self._binding_generation
-                  and type(effect_result) is int and effect_result == generation + 1
-                  and effect_result == self.device_versions.generation(address)):
-                # This handler's own guarded disconnect is a normal False
-                # outcome; a different binding/device change is still stale.
-                generation = effect_result
-            check_context()
-        return result.value
+            tools = parameters.get("TOOLS", "").split(",")
+            result = self.print_trial.arm(parameters.get("FILENAME"), parameters.get("SHA256"),
+                tools, confirmed=gcmd.get_int("CONFIRM", 0) == 1)
+            self.lifecycle.watch_print_trial()
+        except (OSError, ValueError, RuntimeError, AttributeError, KeyError) as error:
+            raise gcmd.error("cfs: print admission: %s" % error) from error
+        self.gcode.respond_info("CFS print admission (not started): %s" % result)
+        return result
+
+    def cmd_print_start_guard(self, gcmd):
+        try:
+            if self.lifecycle is not None and not self.lifecycle.passive:
+                self.lifecycle.check()
+                explicit = gcmd.get_int("INITIAL_TOOL", -1, minval=-1, maxval=15)
+                sd = self.virtual_sdcard
+                first = sd.get_first_Tn(None) if sd.current_file is not None else None
+                if explicit != -1 and first != "T%d" % explicit:
+                    raise ValueError("INITIAL_TOOL does not match the first tool in the G-code")
+                if first is not None:
+                    if first not in self.box_state.Tn_map:
+                        raise ValueError("unknown first G-code tool %s" % first)
+                    slot = self.box_state.resolve_tool(first)
+                    address = self.box_state.get_Tnn_content(slot)["addr"]
+                    if not (self.native.is_connected and self.lifecycle.online(address)
+                            and self.box_state.get_Tn_data(address, "state") == "connect"):
+                        raise RuntimeError("first tool %s maps to disconnected CFS slot %s" % (first, slot))
+                    self.device_versions.require_supported(address)
+                return
+            return self.print_trial.start_guard(gcmd)
+        except (OSError, ValueError, RuntimeError, AttributeError, KeyError) as error:
+            self._pause_trial_file()
+            raise gcmd.error("cfs: print start: %s" % error) from error
+
+    def cmd_test_print_control(self, gcmd):
+        try:
+            if gcmd.get_int("CONFIRM", 0) != 1:
+                raise ValueError("print control requires CONFIRM=1")
+            action = gcmd.get_command_parameters().get("ACTION")
+            if action == "PAUSE":
+                status = self.toolhead.get_status(self._reactor.monotonic())
+                if (self.print_stats.state != "printing" or self.operations.active
+                        or not set("xyz").issubset(status["homed_axes"])
+                        or status["position"][1] > self.boxcfg.safe_pos_y):
+                    raise RuntimeError("controlled pause requires an idle tool-change path and safe-Y head")
+            return self.print_trial.control(action, self.gcode.run_script_from_command, action)
+        except (OSError, ValueError, RuntimeError, AttributeError, KeyError) as error:
+            self._pause_trial_file()
+            raise gcmd.error("cfs: print control: %s" % error) from error
+
+    def cmd_test_print_disarm(self, gcmd):
+        if gcmd.get_int("CONFIRM", 0) != 1:
+            raise gcmd.error("cfs: print disarm requires CONFIRM=1")
+        self.print_trial.cancel()
+        self._pause_trial_file()
 
     def cmd_test_preload(self, gcmd):
         try:
@@ -823,12 +1012,23 @@ class Box:
         self.gcode.respond_info("CFS test material observations: %s" % result)
         return result
 
+    def cmd_test_tool_change(self, gcmd):
+        try:
+            result = self.material_trial.run_change(
+                gcmd.get_command_parameters().get("TOOL"),
+                confirmed=gcmd.get_int("CONFIRM", 0) == 1)
+        except (OSError, ValueError, RuntimeError, AttributeError, KeyError) as error:
+            raise gcmd.error("cfs: test tool change: %s" % error) from error
+        self.gcode.respond_info("CFS test tool-change observations: %s" % result)
+        return result
+
     def cmd_test_retract(self, gcmd):
         try:
             trigger = gcmd.get_command_parameters().get("TRIGGER", "BUFFER")
             result = self.preload_trial.run_retract(
                 gcmd.get_command_parameters().get("TNN"),
-                confirmed=gcmd.get_int("CONFIRM", 0) == 1, trigger=trigger)
+                confirmed=gcmd.get_int("CONFIRM", 0) == 1, trigger=trigger,
+                head_assist=gcmd.get_int("HEAD_ASSIST", 0, minval=0, maxval=1) == 1)
         except (OSError, ValueError, RuntimeError, AttributeError, KeyError) as error:
             raise gcmd.error("cfs: test retract: %s" % error) from error
         self.gcode.respond_info("CFS test %s observations (not full unload): %s" % (trigger, result))
@@ -974,6 +1174,9 @@ class Box:
     def cmd_do_after_pause(self, gcmd):
         if self.lifecycle is None or not self.lifecycle.running:
             raise gcmd.error("cfs: the Klipper lifecycle is not ready")
+        if (self.lifecycle.passive and self.print_trial.active
+                and not self.print_trial.owns_dispatch() and self.print_stats.state == "paused"):
+            return self.print_trial.control("PAUSE", self.lifecycle.do_after_pause)
         self.lifecycle.do_after_pause()
 
     def cmd_get_five_way_state(self, gcmd):
@@ -1068,7 +1271,9 @@ class Box:
 
     def cmd_box_enable_CFS_print(self, gcmd):
         if self.lifecycle is not None and self.lifecycle.passive:
-            self._reject_passive_host_command(gcmd)
+            if not self.print_trial.owns_dispatch():
+                self._reject_passive_host_command(gcmd, "BOX_ENABLE_CFS_PRINT")
+            self.print_trial.guard()
         enabled = gcmd.get_int("ENABLE", minval=0, maxval=1)
         self.box_state.modify_Tn_data(0, enabled, uppart="enable")
         # CFS uses its custom head event while ordinary runout is disabled.
@@ -1113,8 +1318,8 @@ class Box:
         )
 
 
-def load_config(config):
-    """Load the K1 CFS extension with mechanics disabled for PC admission.
+def load_config(config, *, passive=True):
+    """Load the K1 CFS extension for the normal or diagnostic entry point.
 
     The retained base-info module owns the data root. The configured native
     section is loaded by Klipper, then borrowed only at ready; this entry point
@@ -1138,7 +1343,7 @@ def load_config(config):
         printer.load_object(config, "serial_485 " + bus)
         box = Box(config, base_dir)
         box.register_lifecycle(
-            printer, passive=True,
+            printer, passive=passive,
             families={address: "cfs0" for address in range(1, 5)})
         return box
     except Exception as error:

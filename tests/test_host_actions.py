@@ -137,15 +137,15 @@ class HostActionTests(unittest.TestCase):
                 self.make_box(switch=switch)
                 expected = required if switch else required - hall
                 self.assertEqual(set(self.gcode.commands) & required, expected)
-                self.assertEqual(len(self.gcode.commands), 103 if switch else 101)
-                self.assertIs(self.gcode.commands["BOX_NOZZLE_CLEAN"], self.gcode.commands["TEST_BOX_CLEAN"])
+                self.assertEqual(len(self.gcode.commands), 104 if switch else 102)
                 self.assertEqual(len(self.printer.buttons), int(bool(switch)))
                 self.assertIn("BOX_EXTRUDER_EXTRUDE", self.gcode.commands)
                 self.assertIsNone(self.box._ffi_pair)
                 self.assertEqual(self.native.calls, [])
                 self.assertEqual(self.gcode.scripts, [])
-                with self.assertRaisesRegex(RuntimeError, "not ready"):
-                    self.command("BOX_BLOW")
+                for name in ("BOX_BLOW", "BOX_NOZZLE_CLEAN", "TEST_BOX_CLEAN"):
+                    with self.assertRaisesRegex(RuntimeError, "not ready"):
+                        self.command(name)
 
     def test_registered_cut_sensor_keeps_initial_observation_and_invalidates_shutdown(self):
         self.make_box(switch="synthetic_pin")
@@ -251,11 +251,17 @@ class HostActionTests(unittest.TestCase):
         self.assertIsNone(self.command("BOX_CUT_MATERIAL"))
         self.assertEqual(self.box.error, "macro_cut_err")
         self.assertEqual(self.box.error_next_macro, ["BOX_CUT_MATERIAL"])
-        self.assertEqual(self.reactor.pauses, [1] * 5)
+        self.assertAlmostEqual(sum(self.reactor.pauses), 5.)
+        self.assertAlmostEqual(self.reactor.pauses[0], 1.)
+        self.assertTrue(all(0 < delay <= .1000001 for delay in self.reactor.pauses[1:]))
+        # The synthetic positions can share Y; the buffered X command
+        # identifies the start of each separate sensed stroke.
+        stroke = "G0 X%.2f F%.2f\n M400" % (
+            self.box.boxcfg.pre_cut_pos_x, self.box.boxcfg.cut_velocity)
+        self.assertEqual(self.gcode.scripts.count(stroke), 1)
         self.assertEqual(self.box.last_err, '!! {"code":"key841", "msg":"cut error, cut sensor not detected, cutting not rebound", "values": []}')
         self.assertFalse(self.box.inside_error)
-        # The failed sensed path has no normal acceleration-restore tail.
-        self.assertFalse(any("ACCEL=1500.000" in script for script in self.gcode.scripts))
+        self.assertIn("SET_VELOCITY_LIMIT ACCEL=1500.000 ACCEL_TO_DECEL=1000.000", self.gcode.scripts)
 
     def test_native_wheel_requires_fresh_successful_finite_sample(self):
         self.make_box()

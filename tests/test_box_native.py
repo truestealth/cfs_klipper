@@ -212,9 +212,12 @@ class BoxNativeTests(unittest.TestCase):
         before = self.box.get_status(0)
         for raw in (reply(2, 0x0A, data=b"\x01" * 4), reply(1, 0x0A, data=b"\x01" * 3), b"broken"):
             self.native.replies.append(raw)
-            with self.subTest(raw=raw), self.assertRaises(ValueError):
-                self.box.send_native(request)
-            self.assertEqual(self.box.get_status(0), before)
+            with self.subTest(raw=raw):
+                with self.assertLogs(level="INFO") as logs, self.assertRaises(ValueError):
+                    self.box.send_native(request)
+                self.assertTrue(any("CFS rejected " in line and "addr=1 cmd=0x0a" in line
+                                    and "raw=" + raw.hex() in line for line in logs.output))
+                self.assertEqual(self.box.get_status(0), before)
         self.native.replies.append(reply(1, 0x14, data=b"bad" + b"A" * 19))
         with self.assertRaises(ValueError):
             self.box.send_native(build_request(1, "GET_VERSION_SN"))

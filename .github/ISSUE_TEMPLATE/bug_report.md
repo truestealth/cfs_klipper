@@ -20,6 +20,8 @@ What happened, and what did you expect? / Что произошло и чего 
 - OS / ОС:
 - Python version / Версия Python (`python --version`):
 - Commit / Коммит:
+- Printer model and firmware / Модель и прошивка принтера:
+- CFS model and MCU version / Модель CFS и версия MCU:
 
 ## Logs / Логи
 

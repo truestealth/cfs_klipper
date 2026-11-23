@@ -2,6 +2,12 @@
 
 English | [Русский](README.ru.md)
 
+> [!WARNING]
+> This software is provided **as is**, without any express or implied warranty.
+> You install and use it at your own risk. To the extent permitted by applicable
+> law, the authors and contributors accept no liability for claims, losses or
+> damage arising from installation, software errors, use or inability to use it.
+
 An open replacement for the stock Klipper `[box]` module on the Creality K1C
 with the K1 Series CFS Upgrade. It retains the stock `serial_485` library,
 CFS MCU firmware, touchscreen, Creality Print and user settings.
@@ -11,15 +17,15 @@ cutting, tool changes, purging, print lifecycle, recovery, sensors, RFID and spo
 data. Firmware **1.1.3** is the baseline; examined differences through 1.5.3 are
 documented in the [firmware history](docs/compatibility.md#firmware-history).
 
-The host implementation has PC tests. On the reference K1C, preload was verified
-for all four slots, and two consecutive full T1C load/unload cycles completed
-without manual assistance. Printing and additional firmware versions still
-require hardware validation.
+The reference K1C completed four-slot preload, full load/unload cycles, C→A→C
+tool changes, and two- and three-colour prints on MCU **1.1.3**. Pause/resume
+was exercised during printing. The three-colour OrcaSlicer print finished after
+operator recovery. Automated **Retry** after a break is covered by PC tests.
+See the [reference printer results](docs/installation.md#reference-printer-evidence).
 
-Startup is **passive by default**: identity and telemetry are available, while
-ordinary mechanical actions are blocked. Explicit
-[test commands](docs/installation.md#material-operation-trial) permit individual
-operations without changing that default.
+The standard entry point accepts ordinary slicer and printer commands through
+Klipper virtual SD. Set `passive: true` in `[box]` for telemetry and
+[scoped diagnostic commands](docs/installation.md#material-operation-trial).
 
 ## Project layout
 

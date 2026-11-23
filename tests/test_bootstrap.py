@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+import runpy
 import sys
 import tempfile
 from types import ModuleType, SimpleNamespace
@@ -33,6 +34,7 @@ class BootstrapTests(unittest.TestCase):
         self.printer.load_object = load_object
         self.config = FakeConfig({"bus": "custom", "version": 1})
         self.config.get_printer = lambda: self.printer
+        self.config.getboolean = lambda name, default=None: self.config.get(name, default)
         base_info = ModuleType("extras.base_info")
         base_info.base_dir = str(self.root)
         self.base_info = base_info
@@ -60,6 +62,18 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(Path(box.flushing_sign), self.root / "creality/userdata/config/flushing_sign")
         self.assertIsNone(box.config_paths)  # Retain the established save paths.
         self.assertIsNone(box.preloading_poweron)
+
+    def test_packaged_entry_loads_active_box_and_registers_retained_start_guard(self):
+        entry = Path(__file__).resolve().parents[1] / 'klipper' / 'box.py'
+        with patch.dict(sys.modules, {'extras.cfs.box': sys.modules['cfs.box']}):
+            box = runpy.run_path(str(entry), run_name='extras.box')['load_config'](self.config)
+        self.assertFalse(box.lifecycle.passive)
+        self.assertEqual(self.loads, ['serial_485 custom'])
+        self.assertEqual(self.native.calls, [])
+        self.assertEqual(self.printer.gcode.scripts, [])
+        for name in ('BOX_ENABLE_CFS_PRINT', 'CFS_PRINT_START_GUARD', 'T0', 'T15'):
+            self.assertIn(name, self.printer.gcode.commands)
+        self.assertNotIn('CFS_TEST_PRINT_ARM', self.printer.gcode.commands)
 
     def test_saved_settings_and_recovery_hints_are_preserved_without_restoring_live_state(self):
         document = {"base_data": new_base_data(), "enable": 0,

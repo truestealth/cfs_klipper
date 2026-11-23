@@ -29,6 +29,7 @@ class Lifecycle:
         self.is_shutdown = True
         self._generation = 0
         self._timer = None
+        self._print_trial_timer = None
         self._callbacks = set()
         self._initial_wait_done = False
         self.address = 0
@@ -48,10 +49,15 @@ class Lifecycle:
         box.register_host_commands(self.printer)
         box.gcode.register_command("BOX_CREATE_CONNECT", box.cmd_create_connect)
         box.gcode.register_command("DO_AFTER_PAUSE", box.cmd_do_after_pause)
+        box.gcode.register_command("CFS_PRINT_START_GUARD", box.cmd_print_start_guard)
         if self.passive:
             box.gcode.register_command("CFS_TEST_PRELOAD", box.cmd_test_preload)
             box.gcode.register_command("CFS_TEST_LOAD", lambda gcmd: box.cmd_test_material(gcmd, "LOAD"))
             box.gcode.register_command("CFS_TEST_UNLOAD", lambda gcmd: box.cmd_test_material(gcmd, "UNLOAD"))
+            box.gcode.register_command("CFS_TEST_TOOL_CHANGE", box.cmd_test_tool_change)
+            box.gcode.register_command("CFS_TEST_PRINT_ARM", box.cmd_test_print_arm)
+            box.gcode.register_command("CFS_TEST_PRINT_CONTROL", box.cmd_test_print_control)
+            box.gcode.register_command("CFS_TEST_PRINT_DISARM", box.cmd_test_print_disarm)
         self.printer.register_event_handler("klippy:ready", self.ready)
         self.printer.register_event_handler("klippy:shutdown", self.shutdown)
         self.printer.register_event_handler("box:extrude_process_stage7", self.head_event)
@@ -105,6 +111,8 @@ class Lifecycle:
             self._initial_wait_done = False
             if self.passive:
                 logging.info("CFS admission ready: identity and telemetry only; host actions blocked")
+            else:
+                logging.info("CFS ready: normal Box commands enabled")
             self.printer.send_event("box:ready")
             self.check(generation)
             self._timer = self.reactor.register_timer(
@@ -120,6 +128,9 @@ class Lifecycle:
             raise LifecycleStopped("CFS lifecycle stopped or changed")
 
     def shutdown(self):
+        trial = getattr(self.box, "print_trial", None)
+        if trial is not None:
+            trial.cancel()
         self.running, self.is_shutdown = False, True
         self.box.resume.shutdown()
         # These describe extension-owned work, which cannot survive shutdown.
@@ -132,6 +143,9 @@ class Lifecycle:
         if self._timer is not None:
             self.reactor.unregister_timer(self._timer)
             self._timer = None
+        if self._print_trial_timer is not None:
+            self.reactor.unregister_timer(self._print_trial_timer)
+            self._print_trial_timer = None
         for timer in tuple(self._callbacks):
             self.reactor.unregister_timer(timer)
         self._callbacks.clear()
@@ -143,10 +157,36 @@ class Lifecycle:
         self.box.box_state.modify_Tn_data(0, "disconnect", uppart="state")
         self.box.unbind_native()
 
+    def watch_print_trial(self):
+        """Revoke one job on expiry/termination without issuing cleanup motion."""
+        self.check()
+        if self._print_trial_timer is not None:
+            return
+        generation = self._generation
+
+        def poll(eventtime):
+            if not self.running or generation != self._generation:
+                if self._print_trial_timer is not None:
+                    self.reactor.unregister_timer(self._print_trial_timer)
+                self._print_trial_timer = None
+                return self.reactor.NEVER
+            if not self.box.print_trial.poll():
+                self.box._pause_trial_file()
+                if self._print_trial_timer is not None:
+                    self.reactor.unregister_timer(self._print_trial_timer)
+                self._print_trial_timer = None
+                return self.reactor.NEVER
+            return eventtime + 1.0
+
+        self._print_trial_timer = self.reactor.register_timer(poll, self.reactor.monotonic() + 1.0)
+
     def schedule(self, callback):
         """Schedule removable own work, never a borrowed native timer."""
         self.check()
         generation = self._generation
+        trial = getattr(self.box, "print_trial", None)
+        scope = trial.capture() if trial is not None else None
+        print_token = trial._token if scope is not None else None
         holder = []
 
         def run(eventtime):
@@ -155,7 +195,16 @@ class Lifecycle:
                 self._callbacks.discard(timer)
                 self.reactor.unregister_timer(timer)
             if self.running and generation == self._generation:
-                callback(eventtime)
+                if scope is None:
+                    callback(eventtime)
+                else:
+                    try:
+                        with scope():
+                            callback(eventtime)
+                    except (RuntimeError, ValueError):
+                        if trial._token is None or trial._token is print_token:
+                            self.box._pause_trial_file()
+                        logging.exception("CFS print callback stopped")
             return self.reactor.NEVER
 
         timer = self.reactor.register_timer(run, self.reactor.monotonic())
@@ -232,6 +281,9 @@ class Lifecycle:
             if not self.passive and mode != "1":
                 self._request(address, "SET_BOX_MODE", b"\x00\x01")
                 guard()
+            if self.passive:
+                logging.info("CFS skipped automatic mode/preload setup addr=%d mode=%s reason=passive admission",
+                             address, mode)
             self.preloading_permission(address)
             guard()
             if not self.passive and self.box.preloading_poweron and self.head_present() is False:
@@ -317,9 +369,13 @@ class Lifecycle:
         device = self.box.device_versions.generation(address) if address else None
         serial = self.box.operations._serial
         active_operation = operation and self.box.operations.active
+        trial = getattr(self.box, "print_trial", None)
+        print_guard = trial.context_guard() if trial is not None else None
 
         def check():
             self.check(generation)
+            if print_guard is not None:
+                print_guard()
             if (binding != self.box._binding_generation or
                     (operation and serial != self.box.operations._serial) or
                     (address is not None and device != self.box.device_versions.generation(address))):
@@ -332,13 +388,15 @@ class Lifecycle:
 
     def report_error(self, key, facts):
         self.box.print_state = self.box.print_stats.state
-        if self.passive:
+        if self.passive and not self._owns_print_dispatch():
             # Admission reports preserve recovery hints; they must not pause,
             # restore motion, or change temperatures as the full reporter can.
             guard = self._report_guard(facts.get("address"), operation=False)
             guard()
             message = format_error(key, facts)
             if self.last_error != message:
+                logging.info("CFS suppressed error recovery actions addr=%s key=%s reason=passive admission",
+                             facts.get("address"), key)
                 self.box.gcode.respond_raw(message)
                 guard()
                 # Retained virtual SD treats box.last_err as a pause request.
@@ -353,13 +411,16 @@ class Lifecycle:
         self.box.slot_events[address] = {
             "data": bytes(data), "generation": self.box.device_versions.generation(address),
         }
-        if not self.passive:
+        if not self.passive or self._owns_print_dispatch():
             self.box.events.process(address, data)
+        else:
+            logging.info("CFS ignored slot event actions: passive admission address=%d status=0x30 data=%s",
+                         address, self.box.slot_events[address]["data"].hex())
 
     def record_error(self, reason, context):
         guard = self._report_guard(context.get("addr"))
         guard()
-        if self.passive:
+        if self.passive and not self._owns_print_dispatch():
             # Retain the source/reason without enabling a sensor from an
             # unsolicited runout report during the observation-only startup.
             context = dict(context, filament_sensor_enable=False)
@@ -367,13 +428,16 @@ class Lifecycle:
         guard()
 
     def schedule_tighten_up(self):
-        if not self.passive:
+        if not self.passive or self._owns_print_dispatch():
             self.box.runout.schedule_tighten_up()
+        else:
+            logging.info("CFS ignored tighten-up callback: passive admission")
 
     def run_gcode(self, script):
         guard = self._report_guard(operation=False)
         guard()
-        if self.passive:
+        if self.passive and not self._owns_print_dispatch():
+            logging.info("CFS ignored automatic G-code: passive admission script=%r", script)
             return
         self.box.gcode.run_script_from_command(script)
         guard()
@@ -391,7 +455,8 @@ class Lifecycle:
         return None
 
     def do_after_pause(self):
-        if self.passive:
+        if self.passive and not self._owns_print_dispatch():
+            logging.info("CFS rejected host command DO_AFTER_PAUSE: passive admission")
             raise RuntimeError("CFS admission mode blocks pause actions")
         guard = self._report_guard()
         guard()
@@ -406,11 +471,38 @@ class Lifecycle:
 
     def head_event(self):
         if not self.running:
+            logging.info("CFS ignored box:extrude_process_stage7: lifecycle is not ready")
             return
+        print_head, print_token = False, None
         try:
             if self.passive:
-                self.box.material_trial.head_event()
+                if self.box.material_trial.active:
+                    self.box.material_trial.head_event()
+                elif (getattr(self.box, "print_trial", None) is not None
+                      and self.box.print_trial.active and self.box.operations.active
+                      and self.box.filament_sensor_enable and not self.box.extrude_process_stage7_flag):
+                    print_head, print_token = True, self.box.print_trial._token
+                    with self.box.print_trial.execution("head"):
+                        self.box.operations.head(self.move_head, self.stage6)
+                else:
+                    logging.info("CFS ignored box:extrude_process_stage7: passive admission "
+                                 "operation=%s sensor_enabled=%s stage7_done=%s",
+                                 self.box.operations.active, self.box.filament_sensor_enable,
+                                 self.box.extrude_process_stage7_flag)
                 return
             self.box.operations.head(self.move_head, self.stage6)
-        except OperationCancelled:
+        except OperationCancelled as error:
+            logging.info("CFS ignored box:extrude_process_stage7: %s", error)
             return
+        except (RuntimeError, ValueError):
+            if not print_head:
+                raise
+            trial = self.box.print_trial
+            if trial._token is None or trial._token is print_token:
+                trial.cancel()
+                self.box._pause_trial_file()
+            logging.exception("CFS print head callback stopped")
+
+    def _owns_print_dispatch(self):
+        trial = getattr(self.box, "print_trial", None)
+        return trial is not None and trial.owns_dispatch()

@@ -27,18 +27,13 @@ decisions. Keep changes small and avoid unrelated refactoring.
 Read the [architecture](docs/architecture.md), [protocol](docs/protocol.md), and
 [compatibility coverage](docs/compatibility.md) before implementing CFS behavior.
 Python 3.8 is the development and CI default, pinned in [.python-version](.python-version).
-Keep the existing `serial_485` transport;
-validate the exact native API path instead of opening another serial connection.
-The current bootstrap intentionally refuses activation. The [development installer](docs/installation.md)
-tests only scoped file deployment and rollback; it does not certify startup.
-Preserve explicit blockers, including the missing target in examined saved load
-wrappers, rather than adding a guessed default or changing user macros.
+Keep the existing `serial_485` transport and validate the exact native API calls.
+Use the [installation guide](docs/installation.md) for normal and passive startup,
+deployment and rollback. Preserve the inputs and behavior of retained macros.
 
 Add loading and native-call tests with the corresponding implementations. Cover
-missing observations, negative replies and timeout paths, not only acknowledgements.
-PC tests use synthetic data and do not access equipment. Do not treat a PC result
-as hardware acceptance. Add modules and synthetic fixtures when verified behavior
-needs them; do not add placeholder modules or an application packaging layer.
+missing observations, negative replies and timeouts. Record PC and printer
+results with the environment used for each check.
 
 Use synthetic test data. Do not include proprietary binaries, raw analysis output,
 credentials, personal information, or machine-specific configuration in a PR.

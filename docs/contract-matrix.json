@@ -863,7 +863,7 @@
       "blockers": [
         "GAP-MACRO-LOAD-TARGET"
       ],
-      "implementation_note": "Explicit physical TNN loading is implemented. Both examined saved load wrappers omit TNN on direct invocation and fail before loading with the replacement on that direct path; the original binary was not executed. The reference LAN service supplies TNN to the two feed commands while dispatching the material-present command list; full service-path compatibility remains unaccepted under GAP-MACRO-LOAD-TARGET. No default target is inferred or user macro rewritten. Current-phase policy: reproduce the previous observed behavior, including the existing START_PRINT mapping check and missing TNN forwarding in both load wrappers. Keep these paths unchanged; consider optimization/corrections later only if needed. This does not establish successful printing/loading or hardware acceptance."
+      "implementation_note": "Explicit physical TNN loading is implemented. Direct invocation of either examined load wrapper omits TNN. The reference LAN service passes TNN to the feed commands on the material-present path."
     },
     {
       "id": "CMD-BOX_EXTRUDER_EXTRUDE",
@@ -1112,7 +1112,7 @@
       "name": "BOX_TNN_RETRY_PROCESS",
       "parameters": "none",
       "when": "always",
-      "contract": "Select the saved reason-specific retry path, preserve the resume guard, macro replay rules and after-extrusion/cooling/RESUME decisions based on saved error context.",
+      "contract": "Retry a pending tool load for the same paused virtual-SD job and mapping. Verify the slot and the actual head sensor before resuming at the saved offset. Other errors follow their reason-specific retry paths.",
       "stage": 8,
       "checks": [
         "PC-CMD-REGISTRATION",
@@ -1133,7 +1133,7 @@
       "name": "BOX_ERROR_CLEAR",
       "parameters": "none",
       "when": "always",
-      "contract": "Perform the reason-specific conditional IDLE requests and host error/context/macro-queue clearing; clearing host state does not establish a physical rollback.",
+      "contract": "Perform reason-specific IDLE requests and clear host error and macro-queue state. Preserve an incomplete tool change for the same paused virtual-SD job.",
       "stage": 8,
       "checks": [
         "PC-CMD-REGISTRATION",
@@ -1642,7 +1642,7 @@
       "name": "BOX_RESUME_EXTRUDE",
       "parameters": "none",
       "when": "always",
-      "contract": "Run the specialised resume feed path using saved/remapped target and current observations, with its own positioning, heat, fan, E and cleaning sequence.",
+      "contract": "Gate resume after a failed tool load on completed Retry and fresh head confirmation. Otherwise run the specialised resume feed path using the mapped target and current observations.",
       "stage": 8,
       "checks": [
         "PC-CMD-REGISTRATION",
@@ -7830,7 +7830,7 @@
       "blockers": [
         "GAP-MACRO-LOAD-TARGET"
       ],
-      "implementation_note": "Explicit physical TNN loading is implemented. Both examined saved load wrappers omit TNN on direct invocation and fail before loading with the replacement on that direct path; the original binary was not executed. The reference LAN service supplies TNN to the two feed commands while dispatching the material-present command list; full service-path compatibility remains unaccepted under GAP-MACRO-LOAD-TARGET. No default target is inferred or user macro rewritten. Current-phase policy: reproduce the previous observed behavior, including the existing START_PRINT mapping check and missing TNN forwarding in both load wrappers. Keep these paths unchanged; consider optimization/corrections later only if needed. This does not establish successful printing/loading or hardware acceptance."
+      "implementation_note": "Direct macro invocation omits TNN. The reference LAN service supplies TNN to the feed commands when it dispatches the material-present path."
     },
     {
       "id": "MACRO-LOAD-WITHOUT-MATERIAL",
@@ -7849,7 +7849,7 @@
       "blockers": [
         "GAP-MACRO-LOAD-TARGET"
       ],
-      "implementation_note": "Explicit physical TNN loading is implemented. Both examined saved load wrappers omit TNN on direct invocation and fail before loading with the replacement on that direct path; the original binary was not executed. The reference LAN service supplies TNN to the two feed commands while dispatching the material-present command list; full service-path compatibility remains unaccepted under GAP-MACRO-LOAD-TARGET. No default target is inferred or user macro rewritten. Current-phase policy: reproduce the previous observed behavior, including the existing START_PRINT mapping check and missing TNN forwarding in both load wrappers. Keep these paths unchanged; consider optimization/corrections later only if needed. This does not establish successful printing/loading or hardware acceptance."
+      "implementation_note": "Direct macro invocation omits TNN. The physical slot must come from the caller."
     },
     {
       "id": "MACRO-QUIT-MATERIAL",
@@ -7888,9 +7888,9 @@
       "id": "MACRO-START-PRINT",
       "kind": "macro",
       "name": "START_PRINT",
-      "parameters": "INITIAL_TOOL=0..15 when CFS enabled; BED_TEMP, EXTRUDER_TEMP with existing macro defaults; variable prepare",
+      "parameters": "Optional INITIAL_TOOL=0..15 must match the current virtual-SD file's first T; BED_TEMP, EXTRUDER_TEMP and prepare retain macro defaults",
       "when": "captured user startup override",
-      "contract": "Preserve the enable predicate, initial-tool validation and explicit first T after heating; existing preparation and purge choices remain owned by the macro.",
+      "contract": "When CFS is enabled, run CFS_PRINT_START_GUARD before preparation, heating or motion. Use the active file's first logical T when INITIAL_TOOL is omitted and reject a conflicting explicit index. Preserve preparation and purge choices and load the first tool after heating.",
       "stage": 7,
       "checks": [
         "PC-MACRO-START",
@@ -7900,7 +7900,7 @@
       "evidence": "partial",
       "implementation": "partial",
       "blockers": [],
-      "implementation_note": "Synthetic public Jinja fixtures and separate local pinned-source checks cover selected behavior; no user macro is changed. Synthetic public checks cover initial-tool bounds; local saved-template checks cover startup branching. Public CI does not reproduce the entire machine-specific preparation/heating/purge chain or current override selection. Public tests cover real Jinja snapshots, nested re-rendering, rawparams and ignored G-code comments. Commented macro definitions and older snapshot selection across the complete active include/override chain remain unverified (GAP-MACRO-SNAPSHOT). Current-phase policy: reproduce the previous observed behavior, including the existing START_PRINT mapping check and missing TNN forwarding in both load wrappers. Keep these paths unchanged; consider optimization/corrections later only if needed. This does not establish successful printing/loading or hardware acceptance."
+      "implementation_note": "PC tests cover the guard and first-tool load using normal and passive virtual-SD entry points. The reference K1C completed multi-colour jobs on MCU 1.1.3."
     },
     {
       "id": "MACRO-INITIAL-PURGE",
@@ -8175,7 +8175,7 @@
       "blockers": [
         "GAP-MACRO-SNAPSHOT"
       ],
-      "implementation_note": "The reference active include chain/overrides were captured and compared, then fingerprints were freshly rechecked before and after the installed trial. Existing START_PRINT/load-wrapper behavior stays intentionally unchanged; complete macro operation cycles remain unaccepted."
+      "implementation_note": "The reference active include chain/overrides were captured and compared, then fingerprints were freshly rechecked before and after the installed trial. Both load wrappers remain unchanged. The separately approved START_PRINT guard and NOTE require fresh include/configuration checks; complete macro operation cycles retain separate hardware acceptance."
     },
     {
       "id": "DEPENDENCY-CHELPER",
@@ -8263,7 +8263,7 @@
         "tests/test_resume.py::ResumeTests.test_file_metadata_fallback_and_none_result",
         "tests/test_recovery.py::RecoveryTests.test_command_wrappers_discard_normal_false",
         "tests/test_runout.py::RunoutTests.test_drain_none_extrusion_result_continues",
-        "tests/test_material_workflow.py::MaterialWorkflowTests.test_service_continues_after_command_errors_and_internal_exceptions"
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_service_continues_after_command_errors_and_runtime_refusals"
       ],
       "remaining": "Cross-products of disconnect/rebinding, every command and every negative native status are not exhausted; the bound tests cover specific False/None/exception and deferred-work branches."
     },
@@ -8409,10 +8409,21 @@
         "tests/test_tool_actions.py::ToolActionTests.test_known_source_to_another_box_uses_each_firmware_profile",
         "tests/test_tool_actions.py::ToolActionTests.test_box_end_runs_actual_cut_unload_and_safe_position",
         "tests/test_tool_actions.py::ToolActionTests.test_box_end_source_replacement_cannot_unload_the_replacement",
-        "tests/test_material_workflow.py::MaterialWorkflowTests.test_final_head_failure_is_reported_after_source_bookkeeping_clears",
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_final_head_failure_is_reported_without_clearing_source",
         "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_unload_uses_shared_buffer_then_selected_material_without_source_assignment",
         "tests/test_material_workflow.py::MaterialWorkflowTests.test_passive_unknown_source_buffer_failure_stops_before_assists_and_return",
-        "tests/test_material_workflow.py::MaterialWorkflowTests.test_passive_unknown_source_trial_keeps_the_complete_cold_stock_order"
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_passive_unknown_source_trial_keeps_the_complete_cold_stock_order",
+        "tests/test_cfs_retract_trial.py::RetractTrialTests.test_registered_head_assist_option_selects_the_bounded_route_and_rejects_other_values",
+        "tests/test_cfs_retract_trial.py::RetractTrialTests.test_head_assist_queues_only_finite_core_E_then_immediate_material_and_preserves_hints",
+        "tests/test_cfs_retract_trial.py::RetractTrialTests.test_head_assist_invalid_initial_observations_or_core_dependencies_refuse_before_native",
+        "tests/test_cfs_retract_trial.py::RetractTrialTests.test_head_assist_accepts_only_explicit_bool_material_and_normal_initial_state",
+        "tests/test_cfs_retract_trial.py::RetractTrialTests.test_head_assist_buffer_failure_does_not_queue_any_head_move",
+        "tests/test_cfs_retract_trial.py::RetractTrialTests.test_head_assist_material_failure_leaves_only_finite_submitted_tail_no_barrier_or_postread",
+        "tests/test_cfs_retract_trial.py::RetractTrialTests.test_head_assist_rechecks_safety_after_each_core_effect_and_never_grants_host_actions",
+        "tests/test_cfs_retract_trial.py::RetractTrialTests.test_head_assist_head_may_clear_after_buffer_but_never_before_it",
+        "tests/test_cfs_retract_trial.py::RetractTrialTests.test_head_assist_pins_dependencies_and_source_through_buffer_before_core_effects",
+        "tests/test_cfs_retract_trial.py::RetractTrialTests.test_head_assist_postreads_use_shifted_indexes_and_do_not_accept_ack_as_clearance",
+        "tests/test_cfs_retract_trial.py::RetractTrialTests.test_head_assist_buffer_ack_requires_fresh_empty_room_before_any_core_move"
       ]
     },
     {
@@ -8478,7 +8489,10 @@
         "tests/test_tool_actions.py::ToolActionTests.test_late_ending_latch_runs_drain_then_tool_loading",
         "tests/test_finishing.py::FinishingTests.test_end_late_ending_flag_runs_drain_before_cut_and_retract",
         "tests/test_recovery_actions.py::RecoveryActionTests.test_box_end_drains_residue_then_runs_actual_unload",
-        "tests/test_macro_integration.py::MacroIntegrationTests.test_end_and_cancel_dispatch_cleanup_before_base"
+        "tests/test_macro_integration.py::MacroIntegrationTests.test_end_and_cancel_dispatch_cleanup_before_base",
+        "tests/test_print_integration.py::PrintIntegrationTests.test_real_registered_print_start_and_same_source_t_use_selected_native_scope",
+        "tests/test_print_integration.py::PrintIntegrationTests.test_retained_traditional_tool_tokens_preserve_parameter_and_raw_body_contract",
+        "tests/test_print_integration.py::PrintIntegrationTests.test_actual_t_route_head_callback_and_end_release_scopes"
       ]
     },
     {
@@ -8579,7 +8593,11 @@
         "tests/test_cutting.py::CuttingTests.test_unknown_entry_or_limit_is_not_replaced_with_gcode_coordinates",
         "tests/test_cutting.py::CuttingTests.test_no_filament_skips_entry_gate_without_a_recovery_move",
         "tests/test_cutting.py::CuttingTests.test_entry_is_rechecked_after_optional_homing",
-        "tests/test_cutting.py::CuttingTests.test_trayless_entry_uses_pre_cut_y_when_safe_y_is_absent"
+        "tests/test_cutting.py::CuttingTests.test_trayless_entry_uses_pre_cut_y_when_safe_y_is_absent",
+        "tests/test_cutting.py::CuttingTests.test_owned_single_stroke_accepts_delayed_current_gpio_without_more_motion",
+        "tests/test_cutting.py::CuttingTests.test_owned_missing_or_released_pulse_times_out_same_stroke_at_five_seconds",
+        "tests/test_cutting.py::CuttingTests.test_owned_wait_revocation_cannot_accept_a_press_or_send_a_second_stroke",
+        "tests/test_cutting.py::CuttingTests.test_owned_wait_cannot_accept_callback_after_overslept_deadline"
       ]
     },
     {
@@ -9584,7 +9602,7 @@
         "tests/test_phase_actions.py::PhaseActionTests.test_unknown_present_unload_uses_shared_buffer_then_selected_material",
         "tests/test_material_workflow.py::MaterialWorkflowTests.test_prepared_load_then_quit_uses_the_same_full_state",
         "tests/test_material_workflow.py::MaterialWorkflowTests.test_existing_source_is_cut_and_retracted_before_the_new_load",
-        "tests/test_material_workflow.py::MaterialWorkflowTests.test_final_head_failure_is_reported_after_source_bookkeeping_clears",
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_final_head_failure_is_reported_without_clearing_source",
         "tests/test_material_trial.py::MaterialTrialTests.test_rear_unload_is_rejected_before_heat_requests_or_a_recovery_move",
         "tests/test_material_trial.py::MaterialTrialTests.test_unknown_source_unload_uses_shared_buffer_then_selected_material_without_source_assignment",
         "tests/test_material_workflow.py::MaterialWorkflowTests.test_passive_unknown_source_buffer_failure_stops_before_assists_and_return",
@@ -9640,7 +9658,10 @@
         "tests/test_tool_actions.py::ToolActionTests.test_alias_of_same_source_skips_cut_unload_and_load",
         "tests/test_tool_actions.py::ToolActionTests.test_retained_continue_flag_uses_its_distinct_route",
         "tests/test_tool_actions.py::ToolActionTests.test_source_replacement_during_nested_load_stops_the_next_phase",
-        "tests/test_tool_actions.py::ToolActionTests.test_late_ending_latch_runs_drain_then_tool_loading"
+        "tests/test_tool_actions.py::ToolActionTests.test_late_ending_latch_runs_drain_then_tool_loading",
+        "tests/test_toolchange_trial.py::ToolChangeTrialTests.test_registered_physical_tool_executes_computed_purge_and_coordinated_change",
+        "tests/test_toolchange_trial.py::ToolChangeTrialTests.test_bad_computed_purge_is_rejected_before_cutting",
+        "tests/test_toolchange_trial.py::ToolChangeTrialTests.test_unload_errors_stop_before_target_loading_and_return"
       ]
     },
     {
@@ -9689,7 +9710,12 @@
         "tests/test_tool_actions.py::ToolActionTests.test_box_end_source_replacement_cannot_unload_the_replacement",
         "tests/test_finishing.py::FinishingTests.test_end_late_ending_flag_runs_drain_before_cut_and_retract",
         "tests/test_recovery_actions.py::RecoveryActionTests.test_box_end_drains_residue_then_runs_actual_unload",
-        "tests/test_pc_integration.py::PCIntegrationTests.test_position_disabled_box_end_preserves_pending_drain_and_source"
+        "tests/test_pc_integration.py::PCIntegrationTests.test_position_disabled_box_end_preserves_pending_drain_and_source",
+        "tests/test_print_integration.py::PrintIntegrationTests.test_registered_ui_pause_resume_and_disarm_keep_control_scopes_finite",
+        "tests/test_print_integration.py::PrintIntegrationTests.test_real_runout_then_head_clear_admits_one_registered_refill_producer",
+        "tests/test_print_integration.py::PrintIntegrationTests.test_old_scheduled_callback_neither_executes_nor_pauses_rearmed_job",
+        "tests/test_print_integration.py::PrintIntegrationTests.test_deferred_normal_withdrawal_callback_after_loading_is_a_scope_free_noop",
+        "tests/test_print_integration.py::PrintIntegrationTests.test_stale_refill_noop_rejects_parameters_unstarted_jobs_and_pending_work"
       ]
     },
     {
@@ -9744,7 +9770,8 @@
       "level": "pc",
       "assertions": [
         "Exercise PAUSE POST_WORK=0 integration, after-pause hooks, guarded phase commands and same-content resume.",
-        "A virtual-SD resume guard differs from print_stats paused; RESUME decisions use the required saved error context."
+        "A virtual-SD resume guard differs from print_stats paused; RESUME decisions use the required saved error context.",
+        "An active tool load survives error clear at the same file offset. Require the target slot and real head confirmation before resuming. Refuse changed file, offset or mapping."
       ],
       "status": "implemented",
       "test": [
@@ -9757,7 +9784,10 @@
         "tests/test_resume.py::ResumeTests.test_queue_and_shutdown_preserve_replacement",
         "tests/test_recovery_actions.py::RecoveryActionTests.test_retry_box_loading_runs_real_phases_and_resumes_from_error_state",
         "tests/test_recovery_actions.py::RecoveryActionTests.test_resume_same_content_composes_real_purge_and_restores_speed",
-        "tests/test_recovery_actions.py::RecoveryActionTests.test_queued_resume_target_clears_on_shutdown_but_does_not_execute_early"
+        "tests/test_recovery_actions.py::RecoveryActionTests.test_queued_resume_target_clears_on_shutdown_but_does_not_execute_early",
+        "tests/test_print_integration.py::ActivePrintIntegrationTests.test_paused_t2_direct_resume_holds_then_retry_loads_c_before_sd_restarts",
+        "tests/test_print_integration.py::ActivePrintIntegrationTests.test_paused_t2_retry_keeps_job_paused_if_head_clears_after_purge",
+        "tests/test_print_integration.py::ActivePrintIntegrationTests.test_paused_t2_retry_refuses_changed_file_mapping_or_position"
       ]
     },
     {
@@ -9808,7 +9838,7 @@
         "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_has_its_own_successful_shared_context_tail",
         "tests/test_failure_states.py::FailureStateTests.test_each_recovery_leaf_exception_preserves_the_state_at_its_failure",
         "tests/test_cutting.py::CuttingTests.test_cut_event_keeps_original_cut_position_until_the_caller_returns",
-        "tests/test_material_workflow.py::MaterialWorkflowTests.test_service_continues_after_command_errors_and_internal_exceptions"
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_service_continues_after_command_errors_and_runtime_refusals"
       ],
       "validation_note": "Actual composed Python components now assert shared Z/velocity/acceleration, fan/source/error hints and operation/head/heartbeat ownership after nested cut/load/flush False, None and exceptions, plus the distinct normal and exception tails of all eight recovery leaves. False/None caller-boundary returns follow real phase execution; separate effect injections interrupt actual phases with exceptions. Physical rollback is not inferred."
     },
@@ -10028,17 +10058,23 @@
       "id": "PC-MACRO-START",
       "level": "pc",
       "assertions": [
-        "INITIAL_TOOL is validated as a tool index from zero through fifteen; an enabled CFS start with no initial tool reports the established error.",
-        "Existing preparation, heating and optional first T are ordered before the user initial purge.",
-        "Preserve START_PRINT.prepare and the existing bed/extruder-temperature defaults without importing machine-specific values into the replacement.",
-        "Do not duplicate first-tool loading by combining the explicit T route with a separately re-enabled commented native-start template."
+        "An explicit INITIAL_TOOL is in 0..15 and must match the active file's first logical T; omitted INITIAL_TOOL resolves from that file.",
+        "The passive print trial checks worker ownership and observes STATE, MATERIAL, CONNECTIONS, BUFFER and the actual head before startup effects.",
+        "The reviewed macro keeps its NOTE and preparation/heating/purge choices; BOX_START_PRINT_EXTRUDE_MATERIAL follows heating.",
+        "A repeated same-source T preserves its no-cut/no-purge branch rather than requiring a positive diagonal purge."
       ],
       "status": "partial",
       "test": [
-        "tests/test_macro_integration.py::MacroIntegrationTests.test_synthetic_start_index_boundaries_fail_before_dispatch"
+        "tests/test_macro_integration.py::MacroIntegrationTests.test_synthetic_start_index_boundaries_fail_before_dispatch",
+        "tests/test_print_integration.py::PrintIntegrationTests.test_only_actual_open_file_worker_can_claim_registered_start_guard",
+        "tests/test_print_integration.py::PrintIntegrationTests.test_start_guard_checks_actual_selected_sensor_frames_without_source_substitution",
+        "tests/test_print_trial.py::PrintTrialTests.test_conflicting_initial_tool_or_wrong_open_file_revokes",
+        "tests/test_print_trial.py::PrintTrialTests.test_duplicate_initial_t0_uses_real_same_source_without_cut_or_matrix_purge",
+        "tests/test_print_integration.py::ActivePrintIntegrationTests.test_regular_orca_start_changes_three_slots_and_unloads_at_end_without_arming",
+        "tests/test_print_integration.py::ActivePrintIntegrationTests.test_wrong_initial_tool_stops_before_mesh_heating_or_cfs_commands"
       ],
-      "validation_note": "Public CI executes own synthetic templates with real Jinja2 and bounded dispatch. Separate local checks execute pinned retained renderer/saved templates; neither establishes the live printer include chain or physical completion.",
-      "remaining": "Synthetic public checks cover initial-tool bounds; local saved-template checks cover startup branching. Public CI does not reproduce the entire machine-specific preparation/heating/purge chain or current override selection."
+      "validation_note": "Public CI uses synthetic Jinja and the real registered Box/lifecycle guard with bounded retained-style virtual-SD/native substitutes. Complete custom macro execution and physical print completion are separate checks.",
+      "remaining": "Custom preparation, heating, purge and active include variants beyond the reference printer configuration."
     },
     {
       "id": "PC-MACRO-END",
@@ -10163,7 +10199,7 @@
         "tests/test_macro_integration.py::MacroIntegrationTests.test_macro_dispatches_registered_box_data_command",
         "tests/test_macro_integration.py::MacroIntegrationTests.test_connect_renames_existing_and_forwards_raw_parameters",
         "tests/test_macro_integration.py::MacroIntegrationTests.test_comments_do_not_dispatch_commands",
-        "tests/test_material_workflow.py::MaterialWorkflowTests.test_service_continues_after_command_errors_and_internal_exceptions",
+        "tests/test_material_workflow.py::MaterialWorkflowTests.test_service_continues_after_command_errors_and_runtime_refusals",
         "tests/test_material_trial.py::MaterialTrialTests.test_swallowed_alias_exception_revokes_scope_before_restore"
       ],
       "validation_note": "Public CI executes own synthetic templates with real Jinja2 and bounded dispatch. Separate local checks execute pinned retained renderer/saved templates; neither establishes the live printer include chain or physical completion.",
@@ -10325,7 +10361,7 @@
       10,
       20
     ],
-    "host_actions": "Ordinary host commands remain blocked before mutation. Explicit preload grants one exact selected RUN request; separate confirmed load/unload grants only the owning phase, selected address/slot and armed head callback. Neither grant changes lifecycle.passive or enables background mechanics.",
+    "host_actions": "Ordinary host commands remain blocked before mutation. Confirmed preload, load/unload and full tool-change trials grant only their selected operation. One reviewed print file owns the actual virtual-SD worker and finite token-bound head/protocol/scheduled/control scopes. Every admission retains lifecycle.passive; unrelated work cannot borrow it.",
     "metadata": "each passive initialization reads a fresh MATERIAL mask before applying saved labels to live state",
     "errors": "passive diagnostics use Lifecycle.last_error and leave the retained virtual-SD pause hint box.last_err unchanged",
     "acceptance": "Reference MCU 1.1.3/CPython 3.8.2/MIPS checks cover passive startup, rollback, T1A-T1D preload/RFID/remaining data and two consecutive full T1C load/unload cycles. The operator confirmed client display and both complete cycles without manual assistance. Full hardware families, recovery and other versions remain pending.",
@@ -10398,7 +10434,7 @@
       "ownership": "Root OperationContext, exact current dispatch, one exact recipe command at a time and one armed head callback; retained aliases must preserve exact parameters and invoke the registered base exactly once. Lifecycle/binding/device/configuration/idle snapshots and ownership cleanup/dedup remain project policies.",
       "native_policy": "Only target-address typed phase bodies; normal reply shape/status before decoding; no trial host CRC/LENGTH resend, retries_en=False; reads at most 2 seconds and other requests bounded by native timeout/remaining 900-second cooperative budget",
       "failure_policy": "Revoke the one-use phase grant on first failure, including a swallowed alias exception or omitted base call; unlike the ordinary service queue, do not continue after an error. Stop before loading recovery, failed-stage relief, repeated missed-switch cut or unload retry. Keep fresh observations, ownership cleanup and duplicate-event rejection rather than copying stale-cache fallback or leaked source permissions. No speculative stop/cut/unload/heat/fan/mode/position restore or cache rewind. In-flight native waits/MCU actions/queued moves remain noninterruptible.",
-      "limits": "LOAD begins with an empty head and no loaded source; replacement is also covered by synthetic phase tests. User macros and START_PRINT remain unchanged. External service execution, printing, recovery and live fault timing require separate validation.",
+      "limits": "LOAD begins with an empty head and no loaded source; replacement is also covered by synthetic phase tests. Existing recipes/load wrappers are unchanged. The separately reviewed START_PRINT integration belongs to single-file print admission; physical print/recovery and live fault timing require separate validation.",
       "checks": [
         "PC-INTEGRATION-DEPENDENCIES",
         "PC-INTEGRATION-EVENTS"
@@ -10440,6 +10476,46 @@
         },
         "sequence": "Original cold cut then retraction heating if required, shared BUFFER, E assist and selected MATERIAL; no extra preheat, automatic recovery, heater-off or return move on failure."
       }
+    },
+    "native_retraction_trial": {
+      "command": "CFS_TEST_RETRACT TNN=<physical slot> TRIGGER=<BUFFER|MATERIAL> [HEAD_ASSIST=0|1] CONFIRM=1",
+      "baseline": "One connected cfs0 MCU1.1.3, encoding1, passive/standby, source hints both absent or both matching the selected lane",
+      "head_assist": "Explicit HEAD_ASSIST=1 is MATERIAL-only. Require actual present head, active pressed cutter switch, hot heater, factors1 and retained core dependencies before any request. After IDLE/BUFFER require fresh normal STATE0, selected CONNECTIONS and BUFFER2 before blocking E-20/F360, then finite E-30/F600 and step submission immediately before one MATERIAL. Wait only after normal ACK; require fresh mode0/C0/B2/head0. No XYZ, cut, home, heating or source assignment.",
+      "validation": "Synthetic PC checks; physical head-assist recovery remains separate",
+      "checks": ["PC-OP-UNLOAD"]
+    },
+    "tool_change_trial": {
+      "command": "CFS_TEST_TOOL_CHANGE TOOL=<registered logical or physical T-command> CONFIRM=1",
+      "scope": "Extension-only full change through the registered coordinator; outside the 103-command inventory",
+      "baseline": "One connected cfs0 MCU 1.1.3, encoding1, passive/standby, known loaded source and a different same-hub target",
+      "sequence": "Validate homed geometry, safe-Y entry, actual source/head, both selected MATERIAL bits and computed purge before cutting; fresh observations between UNLOAD, LOAD and FLUSH",
+      "limits": "900-second cooperative budget; first phase failure revokes later effects and automatic retry; native waits and queued motion remain noninterruptible",
+      "validation": "PC checks and two complete bounded C->A->C standby changes on the reference cfs0 1.1.3, without manual assistance or slipping; other configurations and print transitions remain separate",
+      "checks": [
+        "PC-OP-TOOLCHANGE",
+        "PC-CMD-PRINT"
+      ]
+    },
+    "print_trial": {
+      "commands": [
+        "CFS_TEST_PRINT_ARM FILENAME=<file> SHA256=<sha256> TOOLS=<two physical slots> CONFIRM=1",
+        "CFS_PRINT_START_GUARD [INITIAL_TOOL=<-1 or 0..15>]",
+        "CFS_TEST_PRINT_CONTROL ACTION=<PAUSE|RESUME|CANCEL_PRINT|BOX_TNN_RETRY_PROCESS|BOX_ERROR_CLEAR> CONFIRM=1",
+        "CFS_TEST_PRINT_DISARM CONFIRM=1"
+      ],
+      "scope": "Extension-only one-file admission in optional passive mode. Arming does not move the printer or start a print.",
+      "baseline": "One connected cfs0 MCU 1.1.3, encoding1; two actual distinct physical slots; actual file and internal logical/physical maps",
+      "startup": "Reviewed START_PRINT guard runs before preparation/heating/motion; omitted INITIAL_TOOL resolves from the actual first T, explicit INITIAL_TOOL must match. Fresh normal STATE/MATERIAL/CONNECTIONS/BUFFER and actual head/source must agree; unknown source is not assigned.",
+      "macro": "Separate explicitly reviewed START_PRINT adaptation with backup and NOTE; first-tool load after heating via BOX_START_PRINT_EXTRUDE_MATERIAL; file installer and both load wrappers are unchanged",
+      "ownership": "Exact approved file/hash/stat/metadata, configuration/maps/material/device identity, actual virtual-SD worker and token-captured finite children; pause retains the same open file and resume verifies its new actual worker",
+      "limits": "2 MiB, one START_PRINT/END_PRINT, both approved physical tools, at most eight tool actions including startup, 2048 native requests and 1800-second cooperative budget",
+      "errors": "Real 0x50 runout remains an error/event and reaches the original decoder; it is never normalized to success. Other abnormal/malformed replies or changed pins revoke future effects. Cancel/EOF/shutdown/expiry revoke; no speculative mechanical cleanup.",
+      "validation": "PC tests cover registered handlers and bounded worker, callback and control ownership. On the reference K1C with MCU 1.1.3, two-colour printing and ordinary pause/resume completed. Automated material-ending and fault recovery have PC coverage.",
+      "checks": [
+        "PC-CMD-PRINT",
+        "PC-OP-PRINT-LIFECYCLE",
+        "PC-MACRO-START"
+      ]
     }
   }
 }

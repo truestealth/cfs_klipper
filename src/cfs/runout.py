@@ -105,6 +105,10 @@ class Runout:
         temperature = call(box.get_material_target_temp, box.last_cmd)
         speed = call(box.get_material_max_extrusion_speed, box.last_cmd)
         velocity = box.boxcfg.Tn_extrude_velocity[0] if speed is None else speed * 60
+        trial = getattr(box, "print_trial", None)
+        if (trial is not None and trial.owns_dispatch()
+                and type(velocity) in (int, float) and math.isfinite(velocity)):
+            velocity = min(velocity, 360)
         call(box.quickly_wait_heating, temperature)
         for command in ("SET_PIN PIN=fan0 VALUE=0", "G4 P3000", "M400"):
             run(command)
@@ -132,7 +136,14 @@ class Runout:
 
     def is_use_ending_material_flush(self, **context):
         box = self.box
-        call = self._calls(self._source_addresses())
+        source = box.last_cmd
+        addresses = self._source_addresses()
+        active = getattr(box.lifecycle, "passive", None) is False
+        operation = box.operations if active else None
+        serial = operation._serial if operation is not None else None
+        if active and not addresses:
+            raise RuntimeError("CFS drain needs the current filament source")
+        call = self._calls(addresses)
         call(box.set_head_runout_enabled, False)
         call(box.gcode.run_script_from_command, "M400")
         if call(self.extrusion_all_materials) is False:
@@ -142,6 +153,8 @@ class Runout:
             reason = context.pop("err")
             call(box.lifecycle.record_error, reason, context)
             return False
+        if active and (not box.retraction.path_cleared(call, addresses[0]) or box.last_cmd != source):
+            raise RuntimeError("CFS drain did not confirm a clear filament path")
         if box.last_cmd is not None:
             content = box.box_state.get_Tnn_content(box.last_cmd)
             call(box.box_state.modify_Tn_data, content["addr"], "none", "vender", content["num"])
@@ -150,6 +163,8 @@ class Runout:
         box.is_use_ending_material = False
         box.box_filament_err = False
         call(box.clear_err)
+        if operation is not None and operation.active and operation._error == "filament_err":
+            call(operation.acknowledge_error_clear, serial, source, operation.target, operation.address)
         box.last_cmd_tmp, box.last_cmd = box.last_cmd, None
 
     def cmd_extrusion_all_materials(self, gcmd):

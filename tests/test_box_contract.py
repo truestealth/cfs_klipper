@@ -33,6 +33,8 @@ class Config:
     def get(self, name, default=None):
         return default
 
+    getboolean = get
+
     def get_printer(self):
         raise AssertionError("Missing bus must fail before printer lookup")
 

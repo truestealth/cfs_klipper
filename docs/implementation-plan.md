@@ -2,11 +2,11 @@
 
 English | [Русский](implementation-plan.ru.md)
 
-**Status:** stages 1–9 provide the host implementation and PC checks. On the
-reference K1C with CFS MCU 1.1.3, passive startup, rollback, T1A–T1D preload and
-two consecutive full T1C load/unload cycles are verified. Stage 10 continues with
-tool changes, printing, recovery and other firmware versions. Remaining
-requirements are in the [contract matrix](contract-matrix.md).
+**Status:** reference K1C checks with one first-generation CFS (MCU 1.1.3)
+cover startup, rollback, load/unload, tool changes and completed two- and
+three-colour jobs. The three-colour job required manual recovery after a
+filament break. The [contract matrix](contract-matrix.md) records the evidence
+and remaining requirements.
 
 ## Target and design
 
@@ -85,7 +85,7 @@ power-loss data cleanup without losing the material cache.
 native API calls and per-address identities/profiles are implemented. Twelve
 native-command handlers join the nine data handlers in substitute-based tests.
 The stock native API is used on the reference printer; other profiles remain
-PC-tested. Startup is passive, with explicitly scoped mechanical trials. See the [native integration boundaries](protocol.md#native-integration)
+PC-tested. Passive mode provides explicitly scoped mechanical trials. See the [native integration boundaries](protocol.md#native-integration)
 and runnable references in the [matrix](contract-matrix.md).
 
 Obtain the configured stock Klipper serial object and use its supported request
@@ -118,7 +118,7 @@ context and shared client reporting are implemented. All 103 required command
 names are registered. Tests cover heartbeat ownership, head results during a
 native wait and explicit failure for unavailable phase actions. See
 [lifecycle integration](protocol.md#lifecycle-integration) and the
-[matrix](contract-matrix.md). The entry point uses passive startup.
+[matrix](contract-matrix.md). The entry point supports normal and passive startup.
 
 Implement command/event registration as the handlers become functional, dependency
 lookup, ready/shutdown behavior, connect/reconnect and per-address heartbeat.
@@ -201,8 +201,10 @@ inputs retain their required meanings throughout the operation.
 
 ### 8. Complete runout, recovery, pause/resume and power-loss behavior
 
-The host paths below have synthetic component and composed PC checks. Stage 9
-adds bounded retained producer/macro execution; physical behavior remains unverified.
+On the printer, ordinary pause/resume and manual recovery after a filament
+break were observed. Loading the pending tool through `BOX_TNN_RETRY_PROCESS`
+after `BOX_ERROR_CLEAR` has PC coverage. Hardware checks cover startup with
+that logic present.
 
 Implement runout/draining, same-material replacement selection, candidate sensor
 checks, alias remapping and deferred tool changes. Complete reason-specific
@@ -221,13 +223,12 @@ preflight and temporary-tree install/rollback tests are present. Separate local
 checks execute pinned retained modules and saved macros. Both examined saved
 load wrappers omit required `TNN` on direct invocation. The reference LAN service
 supplies it while dispatching the material-present command list; full service
-compatibility still needs validation. The baseline live include/override fingerprints have been compared;
-future trials must recheck their environment. Hardware acceptance remains
-required. The installer deploys the passive admission bootstrap.
+compatibility still needs validation. The baseline include/override order has
+been checked. The installer deploys the normal entry point with optional passive startup.
 
 PC admission implements `load_config`, the retained data-root
 and dependency lookup, failure cleanup and exact shared-state checks after nested
-failures/recovery. The first startup polls identity and telemetry without automatic
+failures/recovery. Passive startup polls identity and telemetry without automatic
 mechanics; host actions and raw diagnostics are blocked. This does not complete
 stage 10. See [passive startup](installation.md#passive-startup).
 
@@ -263,13 +264,14 @@ configuration, CFS hardware and MCU identity. Validate **1.1.3 first**:
 
 The [single-operation trial](installation.md#single-operation-trial) and
 [load/unload trial](installation.md#material-operation-trial) keep the lifecycle
-passive and grant only the selected operation. Current reference checks cover
-T1A–T1D preload and two consecutive full T1C load/unload cycles without manual
-assistance, including nozzle output, cutting and return to CFS. Configuration,
-spool data and stock native files are preserved.
+passive. Reference-printer checks cover T1A–T1D, two consecutive full T1C
+load/unload cycles and C→A→C changes. Two two-colour jobs completed, one with
+ordinary pause/resume. The three-colour OrcaSlicer T0→T2→T3 job reached the
+end after manual recovery from a T1C filament break.
 
-Full tool changes, printing and recovery remain in stage 10; all 18 hardware
-families retain their planned status until their complete assertions are met.
+The remaining hardware checks include retry of the pending tool, spool
+replacement at runout, and power-loss recovery. The
+[contract matrix](contract-matrix.md) lists the acceptance criteria.
 
 Then validate other targeted versions separately. Record results for the number
 of physical CFS units actually tested; PC simulation of four boxes does not

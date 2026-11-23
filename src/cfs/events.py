@@ -44,6 +44,8 @@ class SlotEvents:
             try:
                 guard()
             except LifecycleStopped:
+                logging.info("CFS ignored slot metadata refresh addr=%d mask=0x%02x reason=stale context",
+                             address, mask)
                 return
             for command in ("GET_RFID", "GET_REMAIN_LEN"):
                 box.send_native(build_request(address, command, bytes((mask,))))
@@ -84,6 +86,9 @@ class SlotEvents:
                         else:
                             state.modify_Tn_data(address, "unknown", "color_value", slot)
                             state.modify_Tn_data(address, "unknown", "material_type", slot)
+            elif event != 0:
+                logging.info("CFS ignored slot event addr=%d slot=%s event=0x%02x reason=unknown event",
+                             address, slot, event)
             guard()
         state.update_same_material_list(box.store.get_material_name)
         guard()

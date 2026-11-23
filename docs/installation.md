@@ -2,20 +2,21 @@
 
 [Русский](installation.ru.md)
 
-The installer copies the extension into an existing Klipper `extras` directory.
-It leaves the stock `serial_485` library, MCU firmware, configuration, macros
-and user data in place. Startup is passive; the test commands below grant one
-explicit operation at a time.
+The installer replaces the Klipper Box entry and adds the CFS extension. It
+preserves stock `serial_485.so`, MCU firmware, configuration, macros and user data.
+Normal CFS operation is enabled by default.
 
 ## Installation and rollback
 
-Run from the checkout with Python 3.8 or later. Stop Klipper before installing or
-restoring files. Inspect the target's service wrapper before using it: its start
-branch may copy factory configuration or restart an MCU service.
+Run from the checkout or extracted package with Python 3.8 or later. Stop
+Klipper before installing or restoring files. Check the target's service wrapper
+before using its start branch: it may copy factory configuration or restart an
+MCU service.
 
-The extras directory and backup parent must exist. The backup path must be new
-and separate from extras; `extras/box.py` must be a regular file and `extras/cfs`
-must be absent. The default action previews changes:
+The extras directory and backup parent must exist. Choose a new backup path
+outside extras. The installer requires a regular `extras/box.py` and an absent
+`extras/cfs`. When updating an installed build, restore it first with its matching
+installer and backup. The first command previews the changes.
 
 ```sh
 python tools/install.py --extras /path/to/klipper/klippy/extras --backup /path/to/new-backup
@@ -23,52 +24,45 @@ python tools/install.py install --extras /path/to/klipper/klippy/extras --backup
 python tools/install.py restore --extras /path/to/klipper/klippy/extras --backup /path/to/new-backup
 ```
 
-Installation backs up the original `box.py` and its entry caches, including
-sibling `box.pyc` and `__pycache__/box.cpython-*.pyc`, with hashes, modes and
-timestamps. It then copies the fixed Python source list and invalidates the
-entry caches. Other extras, native libraries and data are unchanged.
+Installation backs up `box.py` and its entry caches (`box.pyc` and
+`__pycache__/box.cpython-*.pyc`) with hashes, modes and timestamps. Restore
+verifies the backup and installed sources, removes the extension and its
+recognized generated caches, and restores the original files and metadata.
+Keep the backup. A native entry such as `box.so` can shadow `box.py` and is
+rejected. The installer retains `box_wrapper.so`.
 
-Restore verifies the backup and installed sources, removes the owned package
-and recognized generated caches, and restores the original entry/cache bytes
-and metadata. Extra package entries, unknown caches, changed sources, links and
-path traversal are rejected. Native entry points such as `box.so` are rejected
-because they can shadow `box.py`; `box_wrapper.so` is retained.
-
-New backups use manifest version 3. Version 2 modern-cache backups remain
-supported; version 2 with a sibling `box.pyc` requires a separately verified
-restore because its manifest cannot identify that cache's origin.
-
-Keep the backup after restoration and verify the files before restarting.
-The target must stay quiescent throughout: the installer does not lock out
-other writers or provide a power-loss transaction. An installation error attempts
-rollback; if restore itself fails, retain `box.py.original` for recovery.
+New backups use manifest version 3. Version 2 backups with a sibling `box.pyc`
+need separate verification before restore. The installer assumes no other
+writers. If its rollback fails, retain `box.py.original` for recovery.
 
 <a id="passive-startup"></a>
 
-## Passive startup
+## Normal and passive startup
 
-`load_config` obtains the data root from `extras.base_info.base_dir` and loads
-`serial_485 <bus>` using `[box] bus`. It borrows that transport rather than opening
-another connection. On `klippy:ready` it resolves the motion, print, sensor,
-address-manager and cooperative-dispatch dependencies, emits `box:ready` and
-starts heartbeat. The retained address-manager configuration must stay enabled.
+Keep the stock address manager enabled and set `[box] bus` to the existing
+`serial_485` section name. The extension uses exact firmware profiles for
+first-generation `cfs0` boxes, with **1.1.3** as the baseline.
 
-The entry supplies first-generation `cfs0` context for addresses 1–4. Version
-selection uses exact firmware profiles, with **1.1.3** as the baseline.
+In normal mode the slicer sends CFS mapping and enable commands, then runs
+ordinary tool changes in the virtual-SD job through `END_PRINT`. Where the
+retained `START_PRINT` uses `CFS_PRINT_START_GUARD`, the guard checks the first
+tool in that file and its mapped CFS.
 
-Passive admission allows typed identity and telemetry requests `0x02/03/05/08/0A/14`.
-Ordinary mechanical commands, native writes and automatic preload are blocked;
-there is no general mechanics switch. Automatic head/runout/error paths cannot
-start motion or heating. Existing G-code outside Box keeps its own behavior:
-`BOX_INFO_REFRESH` includes preload, and temperature wrappers can heat before
-reaching a guarded Box command.
+If a failed tool load pauses the job, clearing the error retains the target
+slot for that job and file position. Replace the filament and choose **Retry**.
+An empty slot, a missing head-sensor confirmation or a changed job keeps the
+print from resuming.
 
-The spool cache remains at `<base_dir>/creality/userdata/box/tn_data.json` with
-`material_database.json` beside it. The flushing marker remains at
-`<base_dir>/creality/userdata/config/flushing_sign`. Fresh MATERIAL masks are read
-before saved labels are applied, including reconnect. RFID/remaining reads and
-explicit data commands can persist compatible cache updates; passive mode does
-not mean read-only storage. `SAVE_BOX_CFG` retains the factory configuration paths.
+Set `passive: true` in `[box]` to use the diagnostic commands below. Passive
+mode allows identity and telemetry requests `0x02/03/05/08/0A/14` and blocks
+ordinary Box motion, native writes and automatic preload. External macros keep
+their behavior and may heat or move before reaching a guarded Box command.
+
+Data paths still use `extras.base_info.base_dir` as `<base_dir>`. Spool
+metadata is in `<base_dir>/creality/userdata/box/tn_data.json` and
+`material_database.json`. The flushing marker is in
+`<base_dir>/creality/userdata/config/flushing_sign`. Telemetry and data
+commands can update the metadata cache in passive mode.
 
 <a id="single-operation-trial"></a>
 
@@ -78,19 +72,13 @@ not mean read-only storage. `SAVE_BOX_CFG` retains the factory configuration pat
 CFS_TEST_PRELOAD TNN=T1A CONFIRM=1
 ```
 
-`TNN` selects one physical slot, T1A–T4D. The command requires a connected cfs0
-MCU **1.1.3**, encoding 1, ready/standby, no print, pause, active error or competing
-operation, and a configured head sensor reporting no filament.
-
-The sequence is fresh STATE (mode `0`), MATERIAL (selected slot present),
-CONNECTIONS (zero), one selected `SET_PRE_LOADING` RUN, fresh STATE (mode `0`),
-then selected-slot RFID and remaining length. Metadata is saved only after its
-reply validates.
-
-The cooperative budget is 300 seconds, with two-second reads and RUN bounded by
-the remaining budget. Requests are not resent by the host. An ACK and IDLE
-telemetry do not expose the MCU's separate preload-busy state, so observe the
-material during the operation.
+Select a physical slot T1A–T4D. This trial requires a connected cfs0 **1.1.3**,
+encoding 1, standby with an empty head, and no active job, error or competing
+operation. Fresh STATE, MATERIAL and CONNECTIONS must show IDLE, the selected
+filament present and no connected lane. The command then requests one preload
+RUN and reads IDLE, RFID and remaining length. Its cooperative budget is 300
+seconds, with two-second reads. Observe the material: IDLE and an ACK do not
+report the MCU's separate preload-busy state.
 
 <a id="material-operation-trial"></a>
 
@@ -101,107 +89,134 @@ CFS_TEST_LOAD TNN=T1A CONFIRM=1
 CFS_TEST_UNLOAD TNN=T1A CONFIRM=1
 ```
 
-These are separate invocations; one does not start the other. Each reads the
-configured `BOX_LOAD_MATERIAL_WITH_MATERIAL` or `BOX_QUIT_MATERIAL` recipe,
-requires the supported phase order and supplies physical `TNN` to its feed
-phases. Existing macros are preserved. Custom recipes or extra arguments are
-rejected by this admission.
-
-Before a hardware check, home XYZ, inspect the actual position and simulate the
-configured route. Verify that the bed and cutter path are clear. Cutter entry
-requires a released switch and Y at or before the configured safe Y.
-
-Both commands require one online cfs0 MCU **1.1.3**, encoding 1, ready/standby,
-inactive virtual SD, and no pause/resume, active error, refill, drain or competing
-operation. A real head sensor is required. Positions, travel, temperatures,
-feed values and iteration counts are validated before heat, motion or native
-writes. The configuration is pinned for the invocation.
+Run these separately in standby on one connected cfs0 **1.1.3**, encoding 1,
+with no job, error, refill, drain or competing operation. They use the configured
+load and quit recipes and pass the physical slot to the feed phases. The
+trial checks the recipe and motion limits before acting. It requires a real
+head sensor, homed XYZ and a verified route. Cutter entry requires a released
+switch and Y at or before the configured safe Y.
 
 | Observation | LOAD | UNLOAD |
 | --- | --- | --- |
-| Initial head/source | Head absent, no loaded source | Head present; source hints match `TNN` or both are absent |
+| Initial head/source | Head empty, no loaded source | Head present, both source hints match `TNN` or both are absent |
 | Fresh mode | IDLE `0` | IDLE `0` or PRINTING `2` |
 | Fresh MATERIAL | Selected slot present | Selected slot present |
 | Fresh CONNECTIONS | Zero | Exactly the selected slot |
 | Fresh buffer | Neutral `0` or empty limit `2` | Valid normal observation |
-| Final result | Head present, selected CONNECTIONS, mode `2`, buffer not full, source recorded | Head absent, CONNECTIONS zero, mode `0`, buffer `2`, cutter released, source absent |
+| Final result | Head present, selected CONNECTIONS, mode `2`, buffer not full | Head empty, CONNECTIONS zero, mode `0`, buffer `2`, cutter released |
 
-LOAD performs the configured checks, extrusion positioning, cleaning, CFS loading,
-extruder phase, flush and position restoration. Its owned flush supplies
-`LEN=int(cfg.Tn_extrude)`: 150 mm in the reference profile. The length must be
-integral in 1–200 mm, with finite positive velocity/percent pairs and effective
-feed at most 200 mm. Actual speed and extrusion factors must equal 1.
-A failed feed stops before further cleaning.
+LOAD uses the configured `Tn_extrude` for its flush (150 mm in the reference
+profile). The configured length must be integral in 1–200 mm and effective
+feed at most 200 mm, with finite positive velocity/percent pairs and speed and
+extrusion factors of 1.
 
-Known-source UNLOAD performs the configured checks and sensed cut, then BUFFER
-retraction and blocking head E−20 assistance. It submits the final E−30 at F600
-(nominally three seconds) before issuing one selected MATERIAL request. A normal
-MATERIAL ACK is followed by `M400` before source cleanup and return positioning.
-This allows head withdrawal during the CFS request without requiring identical
-physical motor start times.
+With a known source, UNLOAD cuts, requests BUFFER retraction, withdraws E−20
+with the head and submits E−30 at F600 before one MATERIAL request. A normal
+reply is followed by `M400` and fresh clearance checks. With no source hints,
+the trial uses `TNN` to check the single detected lane, then uses selector-zero
+BUFFER and selected-lane MATERIAL while preserving the absent hints.
 
-Unknown-source UNLOAD leaves both source hints absent. `TNN` identifies only the
-single lane observed in fresh CONNECTIONS and MATERIAL. Its registered retraction
-phase admits fresh CONNECTIONS, MATERIAL, STATE, IDLE, selector-zero BUFFER and
-selected-lane MATERIAL in order. It retains the configured cold cut/heat sequence
-and does not substitute an old source hint.
+These trials have a 900-second cooperative budget and two-second reads. A
+failed phase stops before later phases or automatic retries.
 
-## CFS-only retraction
+<a id="tool-change-trial"></a>
+
+## Full tool change
+
+```gcode
+CFS_TEST_TOOL_CHANGE TOOL=T2 CONFIRM=1
+```
+
+Select a mapped logical or physical T-command. The 900-second trial requires a
+known loaded source and a different target on the same connected cfs0 **1.1.3**,
+encoding 1. It checks standby, homed XYZ, safe Y, current head/source agreement,
+target filament and the calculated purge before cutting. It checks fresh
+observations between unload, load and purge.
+
+The change and print trials cap the main purge and E−20 assist at F360
+(6 mm/s). The E−30 tail and short cleaning pulses use their own speeds. In
+normal operation, the Box-side change purge on baseline 1.1.3 also uses a
+6 mm/s ceiling. Sensed cuts in the trials wait up to five seconds for the
+current switch. A timeout stops the trial after that stroke.
+
+<a id="print-trial"></a>
+
+## One reviewed print file in passive mode
+
+```gcode
+CFS_TEST_PRINT_ARM FILENAME=<file> SHA256=<sha256> TOOLS=T1A,T1C CONFIRM=1
+CFS_TEST_PRINT_CONTROL ACTION=<action> CONFIRM=1
+CFS_TEST_PRINT_DISARM CONFIRM=1
+```
+
+Use an existing virtual-SD filename, its lowercase SHA-256 and two distinct
+physical slots on one connected cfs0 **1.1.3**, encoding 1. The file must contain
+one `START_PRINT`, one `END_PRINT`, and tools mapped to both slots. Limits are
+2 MiB, eight tool actions including startup and a 30-minute cooperative budget.
+Arming checks the file and device. Start the file separately.
+
+For this trial, the retained `START_PRINT` must call
+`CFS_PRINT_START_GUARD INITIAL_TOOL=<index-or-minus-one>` before its preparation
+steps and `BOX_START_PRINT_EXTRUDE_MATERIAL` after heating. The guard uses
+the first T-command in the armed file. An explicit index must match. The installer
+does not change macros. Startup checks fresh CFS sensors and the head against
+the recorded source.
+
+Control actions are `PAUSE`, `RESUME`, `CANCEL_PRINT`, `BOX_TNN_RETRY_PROCESS`
+and `BOX_ERROR_CLEAR`. Resume and retry require the owned job to be paused.
+Controlled pause requires homed XYZ, safe Y and no active tool change.
+Disarming stops future lines. Configuration, device identity, mappings, file
+and metadata changes or an abnormal reply revoke the trial. Genuine `0x50`
+retains its runout meaning.
 
 <a id="native-buffer-trial"></a>
+
+## CFS-only retraction
 
 ```gcode
 CFS_TEST_RETRACT TNN=T1C CONFIRM=1
 CFS_TEST_RETRACT TNN=T1C TRIGGER=MATERIAL CONFIRM=1
 ```
 
-The default trigger is BUFFER; MATERIAL is an explicit separate choice. These
-commands send no XYZ/E movement, heating or cutting and require no homing.
-They retain the same device/idle/ownership checks. Source hints must either
-both be absent or both match `TNN`; fresh CONNECTIONS must name exactly that
-lane and MATERIAL must include it.
+With `HEAD_ASSIST=0` (default), these commands require no homing and use only
+the CFS motors. Both source hints must match `TNN` or be absent. Fresh
+CONNECTIONS must show exactly the selected lane and MATERIAL must include it.
+The first STATE may carry `0x13` or `0x19` with four data bytes and mode `4`.
+Subsequent replies must be normal. Both triggers require IDLE and empty-limit
+buffer `2` at the end, while the selected filament remains present.
 
-The sequence is four fresh observations (STATE, MATERIAL, CONNECTIONS, BUFFER),
-IDLE, fresh normal STATE, one selected retraction, then the four observations
-again. Only the initial STATE may carry `0x13` or `0x19` with four data bytes and
-mode `4`; later replies must be normal.
+| Trigger | Cooperative budget | Request cap | Final path |
+| --- | --- | --- | --- |
+| BUFFER (default) | 60 s | 10 s | CONNECTIONS zero or selected lane, with head state reported |
+| MATERIAL | 240 s | 150 s | CONNECTIONS zero, head empty |
 
-BUFFER uses a 60-second cooperative budget and a ten-second request cap.
-Its final mode must be `0`, buffer `2`, and CONNECTIONS zero or the selected lane;
-the head reading is reported without requiring absence. MATERIAL uses a
-240-second budget and a 150-second request cap; final CONNECTIONS must be zero
-and the head absent. Both require the selected material to remain present.
-Neither assigns or clears a loaded source.
+For already cut filament, add `HEAD_ASSIST=1` only with `TRIGGER=MATERIAL`.
+This requires filament at the head, a pressed active cutter switch, a hot
+extruder and unit speed and extrusion factors. Fresh IDLE, selected
+CONNECTIONS and buffer `2` after BUFFER retraction authorize the E-only assist:
+blocking E−20 at F360, then E−30 at F600 before MATERIAL and `M400` after a
+normal reply. The trial preserves source hints and never finishes the print.
 
 ## Execution and completion
 
-`CONFIRM=1` marks an explicit invocation. Permission belongs to the current
-dispatch, operation, lifecycle, binding and device generation; it is revoked
-when the invocation ends. Ordinary commands and unrelated callbacks cannot
-inherit it. Full LOAD/UNLOAD temporarily admits only its registered phases and
-the armed load's real head-arrival callback.
-
-Every response must be fresh, normal and valid for its opcode/stage before
-decoder effects. A phase error stops advancement without automatic retry or
-recovery motion. Full LOAD/UNLOAD has a 900-second cooperative budget and
-two-second own reads. These deadlines cannot interrupt a stock-library wait,
-an MCU action or already submitted motion.
-
-Command return does not guarantee an empty Klipper queue: the configured LOAD
-restore tail can leave Z moving. Wait for actual motion to settle before the
-next operation. The recipes do not add an automatic heater-off command; switch
-off unused heating separately. On failure, inspect the actual material, position
-and heater state before another command.
+`CONFIRM=1` explicitly authorizes the named test and its own callbacks. The
+cooperative budgets do not interrupt a stock-library wait, an MCU action or
+queued motion. Before another command, confirm the head and bed have stopped.
+The recipes may leave heaters on. After a failure, check the actual material,
+position and heater state.
 
 <a id="reference-trial-results"></a>
+<a id="reference-printer-evidence"></a>
 
 ## Reference validation
 
-On K1C CFS Upgrade with cfs0 MCU 1.1.3 and printer Python 3.8.2, passive startup
-and file/cache rollback were verified. Preload was checked on all four slots,
-with fresh RFID/remaining data and correct spool display on the touchscreen and
-Creality Print. Two consecutive complete T1C load/unload cycles produced normal
-nozzle flow and filament return without manual assistance.
+On a K1C CFS Upgrade with first-generation CFS firmware **1.1.3**, printer checks
+covered preload on A–D, two T1C load/unload cycles, C→A→C and two-colour
+printing including a pause/resume cycle. A three-colour OrcaSlicer job
+(`T0 → T2 → T3`) finished after the operator reloaded and resumed following a
+broken filament.
 
-Printing, controlled fault/recovery cases and other MCU versions remain in the
-[hardware validation plan](implementation-plan.md).
+Local tests cover the paused-tool retry and the head-sensor check before
+resume. The build passed startup on the printer. Automatic recovery from a
+broken filament still needs a hardware test. See the
+[hardware validation plan](implementation-plan.md) for the remaining checks.

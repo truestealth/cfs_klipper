@@ -1,5 +1,8 @@
 """Complete box-side unloading and the separate explicit-source diagnostic."""
 
+from math import isfinite
+
+from .firmware import BASELINE_VERSION
 from .native import build_request
 
 
@@ -36,17 +39,22 @@ class Retraction:
         return call(self.box.communication_retrude_process, address, slot,
                     trigger, report_err=report_error)
 
-    def _sample(self, call, address, command, data=b""):
+    def _sample(self, call, address, command, data=b"", width=1, index=0):
         previous = self.box.last_replies.get(address)
-        result = self._send(call, address, command, data)
+        request = build_request(address, command, data)
+        result = call(self.box.send_native, request)
+        frame = self._normal_reply(address, request.command, width, previous, result)
+        return None if frame is None else frame.data[index]
+
+    def _normal_reply(self, address, command, width, previous, result):
         frame = self.box.last_replies.get(address)
         # Sensor events, timeouts and retained cache values cannot identify an
         # unknown source or select a buffer-relief operation.
         if (result is not True or frame is None or frame is previous
-                or frame.command != build_request(address, command, data).command
-                or frame.status != 0 or len(frame.data) != 1):
+                or frame.command != command
+                or frame.status != 0 or len(frame.data) != width):
             return None
-        return frame.data[0]
+        return frame
 
     def _masks(self, call, address):
         connections = self._sample(call, address, "GET_FILAMENT_SENSOR_STATE", b"\x01")
@@ -170,10 +178,18 @@ class Retraction:
 
     def _known(self, call, content, report_error):
         box = self.box
+        address, slot = content["addr"], content["num"]
+        if getattr(box.lifecycle, "passive", None) is False:
+            profile = box.device_versions.profile(address)
+            if profile is not None and profile.version == BASELINE_VERSION:
+                return self._known_baseline(call, address, slot, report_error)
         trial = getattr(box, "material_trial", None)
+        printing = getattr(box, "print_trial", None)
+        if (printing is not None and printing.active
+                and printing.owns_phase("UNLOAD", "BOX_RETRUDE_MATERIAL")):
+            trial = printing
         coordinated = (trial is not None and trial.owns_phase("UNLOAD", "BOX_RETRUDE_MATERIAL")
                        and not trial._unknown_source)
-        address, slot = content["addr"], content["num"]
         if not self._wait(call, address):
             return False
         if self._idle(call, address) is False:
@@ -244,6 +260,62 @@ class Retraction:
         if self._retract(call, address, slot, "MATERIAL") is False:
             return False
         return self._finish(call, report_error)
+
+    def _known_baseline(self, call, address, slot, report_error):
+        """Return the loaded first-generation filament and verify it cleared."""
+        box = self.box
+        source = box.last_cmd
+
+        def acknowledged(command, action, *args):
+            previous = box.last_replies.get(address)
+            result = action(call, address, *args)
+            return self._normal_reply(address, command, 0, previous, result) is not None
+
+        if not self._wait(call, address) or not acknowledged(0x04, self._idle):
+            return False
+        if call(box.get_filament_sensor_detect):
+            submit = getattr(box.toolhead, "flush_step_generation", None)
+            if not callable(submit):
+                raise RuntimeError("coordinated withdrawal needs Klipper step submission")
+            if not acknowledged(0x11, self._retract, slot, "BUFFER", report_error):
+                return self._error(call, "key_retrude_err3", report_error=report_error)
+            temperature = call(box.get_flush_temp, source, source)[2]
+            extrusion, speed = self._withdraw_scales(call)
+            if call(box.Tn_Extrude, -20 / extrusion, [360 / speed], temperature) is not True:
+                return False
+            actual_heater = call(box.toolhead.extruder.get_heater)
+            if actual_heater.can_extrude is not True:
+                raise RuntimeError("coordinated withdrawal needs a hot extruder")
+            extrusion, speed = self._withdraw_scales(call)
+            self._e_move(call, "G0 E%.2f F%.2f" % (-30 / extrusion, 600 / speed))
+            # Submit the short head move before waiting for the CFS motor.
+            call(submit)
+        if not acknowledged(0x11, self._retract, slot, "MATERIAL", report_error):
+            return False
+        call(box.gcode.run_script_from_command, "M400")
+        if not self.path_cleared(call, address) or source != box.last_cmd:
+            return self._error(call, "key_retrude_err4", report_error=report_error)
+        box.last_cmd_tmp = source
+        call(box.update_filament_pos, source, None)
+        box.last_cmd = None
+        return True
+
+    def path_cleared(self, call, address):
+        """Require fresh idle, connection, buffer and head observations."""
+        profile = self.box.device_versions.require_supported(address)
+        mode = self._sample(call, address, "GET_BOX_STATE", width=profile.state_data_length, index=3)
+        connections = self._sample(call, address, "GET_FILAMENT_SENSOR_STATE", b"\x01")
+        buffer = self._sample(call, address, "GET_BUFFER_STATE")
+        return (mode == 0 and connections == 0 and buffer == 2
+                and call(self.box.get_filament_sensor_detect) is False)
+
+    def _withdraw_scales(self, call):
+        box = self.box
+        status = call(box.gcode_move.get_status, call(box._reactor.monotonic))
+        scales = status["extrude_factor"], status["speed_factor"]
+        if not all(type(value) in (int, float) and isfinite(value) and value > 0 for value in scales):
+            raise ValueError("coordinated withdrawal needs valid extrusion and speed factors")
+        return scales
 
     def retrude_material_with_tnn(self, tnn=None):
         """Run the distinct diagnostic route, retaining its ignored returns.
