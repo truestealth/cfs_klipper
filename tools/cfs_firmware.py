@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan or delegate firmware changes for a single isolated cfs0 G32."""
+"""Inspect known CFS firmware images or prepare a version change."""
 
 import argparse
 from contextlib import contextmanager
@@ -11,10 +11,14 @@ import stat
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
+from typing import NamedTuple
 
 
 BACKEND_SHA256 = "d8f03fbe0fb127dd5db2fb2323680c713cd39abf22b8ad06b72633e56d409d5c"
 IMAGE_SHA256 = {
+    "108": "4de0216b2823ab1dae5ab12ff1c6a59a840ff6730f49cb8af3ac95c80a3bfaa9",
+    "109": "9c31e30291ff7a88b898c3fe9af77d782d939e602bad820510a5c1426c5ae817",
+    "112": "33abcc41d52292bf1e9110012cafcbf61fd25fb887e1e23fefe78ac7b1d545b6",
     "113": "386a1106391a332e6a97803c5ce00b87b6d3ddc4c3d61f6fe07fb19fd3125b76",
     "122": "b20a0b5420cf7cfabf5c2938e1067674b6ceccd7a2d9cf1a2dd3d1a184143e2b",
     "142": "e40c9971b2d487b6710c940ac831545f92fafc5b88a22fe4c7d9e35f0e086439",
@@ -24,6 +28,28 @@ IMAGE_SHA256 = {
 }
 BOOT = "cfs0_050_G32"
 APP = "cfs0_000_"
+HARDWARE_APPS = frozenset(APP + version for version in ("113", "122", "142", "150", "152", "153"))
+CATALOG = {
+    "cfs0_050_G30": {APP + version: IMAGE_SHA256[version]
+                    for version in ("108", "112", "113", "122", "142", "150", "152")},
+    BOOT: {APP + version: digest for version, digest in IMAGE_SHA256.items()},
+    "cfs6_100_G31": {
+        "cfs6_220_000": "485fc1c4356d6a4a387230bc97861de5ba40d5dbb2958ae5d3226b60aa9632e3",
+        "cfs6_221_000": "ae71bf4f6ac1e0448c94c5c7b6fc5f5edf2476f7c55f3f1e9a32264e434234ce",
+        "cfs6_222_000": "1190ef6de9e19240316f7f54b6fe8bd8718cdb226c5e1756e23cf458950c9ec0",
+        "cfs6_236_000": "3964c5ce8cb1f2849d4ffe9eb8239ca5ec01fc62fd113543a5d1b8b3d957b7a0",
+    },
+    "cfs6_100_G51": {
+        "cfs6_237_000": "1e728afad7cc9f75ddef11484bc5325036df33367ac4136e6a2eb2922b7bd956",
+    },
+}
+
+
+class FirmwareImage(NamedTuple):
+    loader: str
+    application: str
+    sha256: str
+    data: bytes
 
 
 def checked_bytes(path, expected):
@@ -36,15 +62,30 @@ def checked_bytes(path, expected):
 
 
 def image(path):
-    match = re.fullmatch(BOOT + "-" + APP + r"(\d{3})\.bin", path.name)
-    if not match or match[1] not in IMAGE_SHA256:
-        raise ValueError("not a known cfs0 G32 application image: %s" % path.name)
-    version = match[1]
-    return version, checked_bytes(path, IMAGE_SHA256[version])
+    name = path.name
+    if name == "cfs0_050_G30-cfs0_000_108 .bin":
+        name = "cfs0_050_G30-cfs0_000_108.bin"
+    loader, _, application = name[:-4].partition("-")
+    digest = CATALOG.get(loader, {}).get(application) if name.endswith(".bin") else None
+    if digest is None:
+        raise ValueError("not a known CFS firmware image: %s" % path.name)
+    return FirmwareImage(loader, application, digest, checked_bytes(path, digest))
 
 
 def version_text(version):
     return ".".join(version)
+
+
+def application_text(application):
+    return version_text(application[-3:]) if application.startswith(APP) else application
+
+
+def hardware_eligible(loader, application):
+    return loader == BOOT and application in HARDWARE_APPS
+
+
+def eligibility(loader, application):
+    return "hardware workflow available" if hardware_eligible(loader, application) else "offline only"
 
 
 def check_bus(device):
@@ -166,34 +207,69 @@ def check_transfer(output, current, target, *, dry_run):
     check_plan(output, current, target)
 
 
+def show_catalog(args):
+    if (args.target_image or args.apply or args.device or args.backend or args.serial
+            or args.isolated or args.ack_untested_downgrade):
+        raise ValueError("catalog and inspect take no hardware options")
+    if args.action == "catalog":
+        if args.current_image:
+            raise ValueError("catalog takes no image argument")
+        for loader, applications in sorted(CATALOG.items()):
+            for application, digest in sorted(applications.items()):
+                print("%s-%s.bin  %s  %s" % (loader, application, digest, eligibility(loader, application)))
+        return
+    if args.current_image is None:
+        raise ValueError("inspect takes one image")
+    selected = image(args.current_image)
+    print("Loader: %s\nApplication: %s\nSHA-256: %s\nScope: %s" % (
+        selected.loader, selected.application, selected.sha256,
+        eligibility(selected.loader, selected.application)))
+
+
 def run(args):
+    if args.action in ("catalog", "inspect"):
+        show_catalog(args)
+        return
+    if args.current_image is None:
+        raise ValueError("give a known firmware image")
     if args.action == "verify":
         if args.target_image is not None or args.apply or args.ack_untested_downgrade:
             raise ValueError("verify takes exactly one image and the hardware options")
-        current = None
-        target, data = image(args.current_image)
+        incumbent = None
+        selected = image(args.current_image)
         image_path = args.current_image
     else:
         if args.target_image is None:
             raise ValueError("give both the incumbent rollback image and the target image")
-        current, _ = image(args.current_image)
+        incumbent = image(args.current_image)
         image_path = args.target_image
-        target, data = image(image_path)
-        if current == target or (target > current) != (args.action == "update"):
+        selected = image(image_path)
+        if incumbent.loader != selected.loader:
+            raise ValueError("incumbent and target images must use the same CFS loader identity")
+        if (incumbent.application == selected.application
+                or (selected.application > incumbent.application) != (args.action == "update")):
             raise ValueError("image versions do not match the requested %s direction" % args.action)
-        print("cfs0 G32 %s: %s -> %s" % (args.action, version_text(current), version_text(target)))
+        print("%s %s: %s -> %s" % (selected.loader, args.action,
+                                    application_text(incumbent.application), application_text(selected.application)))
         print("Rollback image: %s" % args.current_image)
         if not args.apply:
-            print("Offline plan. Both image hashes verified.")
+            eligible = hardware_eligible(incumbent.loader, incumbent.application) and hardware_eligible(
+                selected.loader, selected.application)
+            print("Offline plan. Both image hashes verified. %s." % (
+                "Hardware workflow available for both images" if eligible else "This transition is offline only"))
             return
-        if args.action == "downgrade" and not args.ack_untested_downgrade:
-            raise ValueError("hardware downgrade is unvalidated. Supply --ack-untested-downgrade to proceed")
 
+    if (not hardware_eligible(selected.loader, selected.application)
+            or incumbent is not None and not hardware_eligible(incumbent.loader, incumbent.application)):
+        raise ValueError("hardware workflow is limited to the supported cfs0 G32 application versions")
+    if args.action == "downgrade" and not args.ack_untested_downgrade:
+        raise ValueError("hardware downgrade is unvalidated. Supply --ack-untested-downgrade to proceed")
     if (args.device is None or not args.device.is_absolute() or args.backend is None
             or not args.serial or args.serial == "(none)" or not args.serial.isprintable() or not args.isolated):
         raise ValueError("specify --device, --backend, --serial and --isolated for hardware commands")
     backend_data = checked_bytes(args.backend, BACKEND_SHA256)
     device = args.device.resolve(strict=True)
+    target = selected.application[-3:]
     with bus_lock(device), TemporaryDirectory(prefix="cfs-firmware-") as directory:
         # Pin the verified bytes for the complete invocation, including backend re-reads.
         backend = Path(directory) / "cfstool.py"
@@ -203,8 +279,9 @@ def run(args):
             print("CFS application version %s verified on the expected serial." % version_text(target))
             return
 
+        current = incumbent.application[-3:]
         staged = Path(directory) / image_path.name
-        staged.write_bytes(data)
+        staged.write_bytes(selected.data)
         if not sys.stdin.isatty():
             raise ValueError("apply requires an interactive terminal for both confirmations")
         check_identity(run_backend(backend, device, "diag"), current, args.serial)
@@ -220,8 +297,9 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("update", "downgrade", "verify"))
-    parser.add_argument("current_image", type=Path, help="incumbent image, or expected image for verify")
+    parser.add_argument("action", choices=("catalog", "inspect", "update", "downgrade", "verify"))
+    parser.add_argument("current_image", type=Path, nargs="?",
+                        help="incumbent image, or one image for inspect or verify")
     parser.add_argument("target_image", type=Path, nargs="?")
     parser.add_argument("--apply", action="store_true", help="enter the bootloader and request a write")
     parser.add_argument("--device", type=Path, help="absolute CH340 USB-RS485 device path")

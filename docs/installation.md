@@ -73,15 +73,22 @@ writers. If its rollback fails, retain `box.py.original` for recovery.
 
 ## CFS firmware maintenance
 
-The firmware tool handles the first-generation `cfs0` G32 controller. It
-checks known original images and delegates RS-485 transfers to a verified
-copy of the external loader supplied by the operator. Keep both the current
-and target images. The default command verifies the plan on disk.
+The offline catalogue includes 21 known application images by exact board and
+version: `cfs0` G30/G32 and `cfs6` G31/G51. `inspect` verifies the filename and
+SHA-256. An offline update or downgrade plan requires two known images for
+the same loader target, even when images for different targets share a hash.
 
 ```sh
+python3 tools/cfs_firmware.py catalog
+python3 tools/cfs_firmware.py inspect /path/to/image.bin
 python3 tools/cfs_firmware.py update /path/to/current.bin /path/to/target.bin
 python3 tools/cfs_firmware.py downgrade /path/to/current.bin /path/to/target.bin
 ```
+
+Hardware commands admit only `cfs0` G32 images for 1.1.3, 1.2.2, 1.4.2,
+1.5.0, 1.5.2 and 1.5.3. Keep copies of the current and target images. The tool
+delegates the RS-485 transfer to the checked external loader supplied by the
+operator.
 
 For hardware operations, use Linux as root with exclusive access to the serial
 port. Stop Klipper and physically connect only the intended CFS. Pass `--apply`,

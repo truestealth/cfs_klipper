@@ -25,21 +25,28 @@ class CfsFirmwareToolTest(unittest.TestCase):
         self.target = directory / "cfs0_050_G32-cfs0_000_153.bin"
         self.backend = directory / "test-backend.py"
         self.device = directory / "fake-device"
-        originals = {self.original: b"test image 113", self.target: b"test image 153",
-                     self.backend: b"test backend", self.device: b""}
-        for path, data in originals.items():
-            path.write_bytes(data)
+        self.directory = directory
+        self.catalog = {}
+        for loader, applications in firmware.CATALOG.items():
+            self.catalog[loader] = {}
+            for application in applications:
+                data = ("synthetic " + application).encode("ascii")
+                self.image_path(loader, application).write_bytes(data)
+                self.catalog[loader][application] = digest(data)
+        self.backend.write_bytes(b"test backend")
+        self.device.write_bytes(b"")
         self.serial = "TEST-DEVICE"
-        images = patch.object(firmware, "IMAGE_SHA256", {
-            "113": digest(originals[self.original]), "153": digest(originals[self.target]),
-        })
-        backend = patch.object(firmware, "BACKEND_SHA256", digest(originals[self.backend]))
+        images = patch.object(firmware, "CATALOG", self.catalog)
+        backend = patch.object(firmware, "BACKEND_SHA256", digest(b"test backend"))
         for override in (images, backend):
             override.start()
             self.addCleanup(override.stop)
         bus = patch.object(firmware, "bus_lock", side_effect=lambda device: contextlib.nullcontext())
         bus.start()
         self.addCleanup(bus.stop)
+
+    def image_path(self, loader, application):
+        return self.directory / ("%s-%s.bin" % (loader, application))
 
     def cli(self, *args):
         stream = io.StringIO()
@@ -58,9 +65,73 @@ class CfsFirmwareToolTest(unittest.TestCase):
             self.assertIn("1.1.3 -> 1.5.3", output)
             self.assertEqual(self.cli("downgrade", self.target, self.original)[0], 0)
             self.assertIn("direction", self.cli("update", self.target, self.original)[1])
+            self.assertIn("direction", self.cli("downgrade", self.original, self.original)[1])
             self.original.write_bytes(b"untrusted rollback")
             self.assertIn("SHA-256 mismatch", self.cli("update", self.original, self.target)[1])
             backend.assert_not_called()
+
+    def test_catalog_and_inspect_cover_every_canonical_image(self):
+        code, output = self.cli("catalog")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(len(output.splitlines()), 21)
+        self.assertEqual(output.count("hardware workflow available"), 6)
+        with patch.object(firmware, "run_backend") as backend:
+            for loader, applications in self.catalog.items():
+                for application, checksum in applications.items():
+                    with self.subTest(loader=loader, application=application):
+                        path = self.image_path(loader, application)
+                        self.assertIn("%s  %s" % (path.name, checksum), output)
+                        code, details = self.cli("inspect", path)
+                        self.assertEqual(code, 0, details)
+                        self.assertIn("Loader: " + loader, details)
+                        self.assertIn("Application: " + application, details)
+                        self.assertIn("SHA-256: " + checksum, details)
+            backend.assert_not_called()
+
+    def test_known_g30_108_alias_matches_exact_original_name(self):
+        original = self.image_path("cfs0_050_G30", "cfs0_000_108")
+        alias = self.directory / "cfs0_050_G30-cfs0_000_108 .bin"
+        alias.write_bytes(original.read_bytes())
+        self.assertEqual(self.cli("inspect", original), self.cli("inspect", alias))
+        alias.write_bytes(b"corruption")
+        self.assertIn("SHA-256 mismatch", self.cli("inspect", alias)[1])
+
+    def test_same_loader_cfs6_plan_keeps_native_application_names(self):
+        original = self.image_path("cfs6_100_G31", "cfs6_220_000")
+        target = self.image_path("cfs6_100_G31", "cfs6_236_000")
+        code, output = self.cli("update", original, target)
+        self.assertEqual(code, 0, output)
+        self.assertIn("cfs6_220_000 -> cfs6_236_000", output)
+        self.assertIn("offline only", output)
+        self.assertEqual(self.cli("downgrade", target, original)[0], 0)
+
+    def test_cross_loader_plans_fail_even_for_identical_application_bytes(self):
+        g30 = self.image_path("cfs0_050_G30", "cfs0_000_113")
+        g31 = self.image_path("cfs6_100_G31", "cfs6_220_000")
+        g51 = self.image_path("cfs6_100_G51", "cfs6_237_000")
+        self.assertEqual(self.original.read_bytes(), g30.read_bytes())
+        for original, target in ((self.original, g30), (g31, g51)):
+            with self.subTest(original=original.name, target=target.name):
+                code, output = self.cli("update", original, target)
+                self.assertEqual(code, 1)
+                self.assertIn("same CFS loader identity", output)
+
+    def test_offline_only_images_are_refused_before_backend_or_port_access(self):
+        cases = (
+            (self.image_path("cfs0_050_G32", "cfs0_000_112"), self.original),
+            (self.image_path("cfs0_050_G30", "cfs0_000_113"), self.image_path("cfs0_050_G30", "cfs0_000_152")),
+            (self.image_path("cfs6_100_G31", "cfs6_220_000"), self.image_path("cfs6_100_G31", "cfs6_236_000")),
+        )
+        self.backend.unlink()
+        self.device.unlink()
+        for original, target in cases:
+            with self.subTest(original=original.name):
+                code, output = self.cli("update", original, target, "--apply", *self.hardware())
+                self.assertEqual(code, 1)
+                self.assertIn("hardware workflow is limited", output)
+        g51 = self.image_path("cfs6_100_G51", "cfs6_237_000")
+        self.assertIn("hardware workflow is limited", self.cli("verify", g51, *self.hardware())[1])
+        firmware.bus_lock.assert_not_called()
 
     def test_apply_checks_direction_related_acknowledgement_before_hardware(self):
         with patch.object(firmware, "run_backend") as backend:
