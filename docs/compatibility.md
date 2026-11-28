@@ -234,6 +234,12 @@ verification.
 In a mixed chain, an active change or retract with an unresolved filament
 source is blocked if an early unit might still have filament in the path.
 
+#### Changes before the 1.1.3 baseline
+
+**1.0.8.** Enabling preload (`0x0D`, action 1) sets a pending event.
+Forced preload (actions 2 and 3) can enter the retraction path for selected
+slots with a zero sampled value even when preload is already active.
+
 Static analysis of two CFS2 applications found different reply layouts:
 
 | Board and application | Identity `0x14` | State `0x0A` |
