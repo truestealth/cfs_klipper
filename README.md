@@ -27,6 +27,27 @@ The standard entry point accepts ordinary slicer and printer commands through
 Klipper virtual SD. Set `passive: true` in `[box]` for telemetry and
 [scoped diagnostic commands](docs/installation.md#material-operation-trial).
 
+## Install on the K1C
+
+Run over SSH as root on the K1C with the CFS Upgrade. Finish any active print,
+manual motion or filament operation first.
+
+```sh
+cd /usr/data
+wget -O cfs-install.sh https://raw.githubusercontent.com/truestealth/cfs_klipper/main/install.sh && sh cfs-install.sh
+```
+
+The launcher downloads the current `main` archive, backs up the stock Box and
+restarts Klipper through the deployment tool. It needs HTTPS access to GitHub,
+`wget`, `tar` and Python 3.8 or later. The installation state and backups are
+kept in `/usr/data/cfs-deployment`.
+
+For updates and rollback, run `sh cfs-install.sh update` or
+`sh cfs-install.sh rollback`. Add `--check` to an
+action, for example `sh cfs-install.sh install --check`, to check prerequisites
+before stopping Klipper. For a previous manual installation or a modified
+`START_PRINT`, see the [installation and rollback guide](docs/installation.md).
+
 ## Project layout
 
 ```text

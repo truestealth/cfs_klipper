@@ -90,5 +90,5 @@ class SlotEvents:
                 logging.info("CFS ignored slot event addr=%d slot=%s event=0x%02x reason=unknown event",
                              address, slot, event)
             guard()
-        state.update_same_material_list(box.store.get_material_name)
+        state.update_same_material_list(box.store.material_name_lookup())
         guard()

@@ -158,7 +158,7 @@ class Runout:
         if box.last_cmd is not None:
             content = box.box_state.get_Tnn_content(box.last_cmd)
             call(box.box_state.modify_Tn_data, content["addr"], "none", "vender", content["num"])
-            call(box.box_state.update_same_material_list, box.store.get_material_name)
+            call(box.box_state.update_same_material_list, box.store.material_name_lookup())
             call(box.update_Tnn_map)
         box.is_use_ending_material = False
         box.box_filament_err = False
@@ -272,7 +272,7 @@ class Runout:
         box.last_cmd_tmp, box.last_cmd = source, None
         expected_source = None
         call(state.modify_Tn_data, address, "none", "vender", slot)
-        call(state.update_same_material_list, box.store.get_material_name)
+        call(state.update_same_material_list, box.store.material_name_lookup())
         for logical, physical in list(state.get_Tnn_map().items()):
             if physical == source:
                 call(box.gcode.run_script_from_command, "BOX_MODIFY_TN %s=%s" % (logical, target))

@@ -760,7 +760,7 @@ class Box:
             if (self.native is None or binding != self._binding_generation
                     or generation != self.device_versions.generation(request.address)):
                 return
-            self.box_state.update_same_material_list(self.store.get_material_name)
+            self.box_state.update_same_material_list(self.store.material_name_lookup())
 
         if self.lifecycle is not None and self.lifecycle.running:
             self.lifecycle.schedule(update)
@@ -1282,9 +1282,7 @@ class Box:
             raise gcmd.error("cfs: could not save CFS-print enable")
 
     def cmd_update_same_material_list(self, gcmd):
-        self.box_state.update_same_material_list(
-            material_name=self.store.get_material_name
-        )
+        self.box_state.update_same_material_list(self.store.material_name_lookup())
 
     def cmd_MODIFY_BOX_CFG(self, gcmd):
         try:

@@ -8,6 +8,40 @@ Normal CFS operation is enabled by default.
 
 ## Installation and rollback
 
+### Managed deployment on the printer
+
+Run on the Linux Klipper host from the extracted release with Python 3.8 or
+later. Finish standalone motion and filament operations before running it.
+Keep the state directory on persistent storage and reuse it for updates and
+rollback.
+
+```sh
+extras=/usr/share/klipper/klippy/extras
+cfs_state=/usr/data/cfs-deployment
+python3 tools/deploy.py install --extras "$extras" --state-dir "$cfs_state"
+python3 tools/deploy.py update --extras "$extras" --state-dir "$cfs_state"
+python3 tools/deploy.py rollback --extras "$extras" --state-dir "$cfs_state"
+```
+
+Run `update` from the release you want to deploy. To adopt an existing
+installation, also pass `--previous-release` with the matching extracted
+release and `--previous-backup` with its original v3 Box backup. The manager
+accepts the verified stock K1C entry and an unchanged set of managed module
+paths. It checks for active, paused and queued jobs and heater targets, then
+records the running Klipper's launch parameters and verifies readiness after
+replacing files. Add `--check` to an action to validate its prerequisites
+without stopping Klipper. A failed activation triggers recovery of the previous
+installation. An interruption can leave `pending.json` and a snapshot in the
+state directory. Keep them for recovery and inspect the recorded phase before
+another deployment.
+
+Factory rollback restores the Box entry and its original bytecode. If an
+active macro calls `CFS_PRINT_START_GUARD` or another extension-only command,
+restore a stock-compatible macro before running `rollback`. The manager checks
+this dependency before stopping Klipper.
+
+### File-only installer
+
 Run from the checkout or extracted package with Python 3.8 or later. Stop
 Klipper before installing or restoring files. Check the target's service wrapper
 before using its start branch: it may copy factory configuration or restart an
@@ -34,6 +68,32 @@ rejected. The installer retains `box_wrapper.so`.
 New backups use manifest version 3. Version 2 backups with a sibling `box.pyc`
 need separate verification before restore. The installer assumes no other
 writers. If its rollback fails, retain `box.py.original` for recovery.
+
+<a id="cfs-firmware-maintenance"></a>
+
+## CFS firmware maintenance
+
+The firmware tool handles the first-generation `cfs0` G32 controller. It
+checks known original images and delegates RS-485 transfers to a verified
+copy of the external loader supplied by the operator. Keep both the current
+and target images. The default command verifies the plan on disk.
+
+```sh
+python3 tools/cfs_firmware.py update /path/to/current.bin /path/to/target.bin
+python3 tools/cfs_firmware.py downgrade /path/to/current.bin /path/to/target.bin
+```
+
+For hardware operations, use Linux as root with exclusive access to the serial
+port. Stop Klipper and physically connect only the intended CFS. Pass `--apply`,
+`--device`, `--backend`, `--serial` and `--isolated` to start the device checks.
+This enters the bootloader before the `APPLY` and `YES` confirmations used for
+writing. Downgrade also requires `--ack-untested-downgrade`. After power-cycling
+the CFS, run `verify TARGET.bin` with the same hardware options except
+`--apply` and the downgrade acknowledgment. Confirm the live version before
+using the CFS again. Keep the images and the loader matching `BACKEND_SHA256`
+outside the source checkout. The wrapper leaves the printer-side `version.json`
+alone and reports the firmware from the CFS response. The wrapper has PC tests
+and the physical downgrade remains unverified.
 
 <a id="passive-startup"></a>
 

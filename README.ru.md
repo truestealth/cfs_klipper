@@ -29,6 +29,27 @@ Creality Print и пользовательские настройки.
 Параметр `passive: true` в `[box]` включает телеметрию и
 [отдельные диагностические операции](docs/installation.ru.md#material-operation-trial).
 
+## Установка на K1C
+
+Подключитесь по SSH с правами root к K1C с комплектом CFS Upgrade. Сначала
+завершите печать, ручные перемещения и операции с прутком.
+
+```sh
+cd /usr/data
+wget -O cfs-install.sh https://raw.githubusercontent.com/truestealth/cfs_klipper/main/install.sh && sh cfs-install.sh
+```
+
+Скрипт скачивает архив текущей ветки `main`, создаёт резервную копию штатного
+Box и перезапускает Klipper через установщик. Требуются доступ к GitHub по
+HTTPS, `wget`, `tar` и Python 3.8 или новее. Состояние установки и резервные
+копии сохраняются в `/usr/data/cfs-deployment`.
+
+Для обновления и отката запустите `sh cfs-install.sh update` или
+`sh cfs-install.sh rollback`. Добавьте `--check`,
+например `sh cfs-install.sh install --check`, чтобы проверить условия до
+остановки Klipper. Если Box установлен вручную или изменён `START_PRINT`, см.
+[инструкцию по установке и откату](docs/installation.ru.md).
+
 ## Структура проекта
 
 ```text

@@ -33,7 +33,7 @@ class RunoutTests(unittest.TestCase):
             material_auto_refill_flag=False, heart_process_enable=[True] * 4,
             native=object(), print_stats=SimpleNamespace(state="printing"),
             boxcfg=SimpleNamespace(Tn_extrude_velocity=[120, 90]),
-            store=SimpleNamespace(get_material_name=lambda kind: "name"),
+            store=SimpleNamespace(material_name_lookup=lambda: lambda kind: "name"),
             toolhead=SimpleNamespace(get_position=self.get_position),
             gcode=SimpleNamespace(run_script_from_command=self.script,
                                   respond_info=self.action("info")),

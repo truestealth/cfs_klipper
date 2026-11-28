@@ -48,15 +48,19 @@ def inputs(extras, backup):
 
 
 def sources():
-    source_dir = safe_path(ROOT / "src" / "cfs")
+    return release_sources(ROOT)
+
+
+def release_sources(root):
+    source_dir = safe_path(root / "src" / "cfs")
     if {path.name for path in source_dir.glob("*.py")} != set(FILES):
         raise ValueError("source Python files differ from the installation allowlist")
-    paths = {"box.py": ROOT / "klipper" / "box.py"}
+    paths = {"box.py": root / "klipper" / "box.py"}
     paths.update({"cfs/" + name: source_dir / name for name in FILES})
     return {name: safe_path(path).read_bytes() for name, path in paths.items()}
 
 
-def prepare(extras, backup):
+def prepare(extras, backup, files=None):
     extras, backup = inputs(extras, backup)
     for path in extras.iterdir():
         name = path.name.lower()
@@ -70,7 +74,7 @@ def prepare(extras, backup):
     box_caches(extras)
     info = box.stat()
     original = box.read_bytes()
-    return extras, backup, original, info, sources()
+    return extras, backup, original, info, sources() if files is None else files
 
 
 def write_exclusive(path, data):
@@ -125,8 +129,10 @@ def put_caches(extras, saved):
         os.utime(str(path), ns=(info["atime_ns"], info["mtime_ns"]))
 
 
-def install(extras, backup):
-    extras, backup, original, info, files = prepare(extras, backup)
+def install(extras, backup, files=None):
+    extras, backup, original, info, files = prepare(extras, backup, files)
+    if set(files) != {"box.py"} | {"cfs/" + name for name in FILES}:
+        raise ValueError("payload files differ from the installation allowlist")
     cache_existed, saved_cache = cache_snapshot(extras)
     manifest = {"version": 3, "extras": str(extras), "original": digest(original),
                 "mode": stat.S_IMODE(info.st_mode), "atime_ns": info.st_atime_ns,
@@ -176,7 +182,7 @@ def install(extras, backup):
         raise
 
 
-def restore(extras, backup):
+def restore(extras, backup, check_only=False):
     extras, backup = inputs(extras, backup)
     manifest = json.loads(safe_path(backup / "manifest.json").read_text(encoding="utf-8"))
     original = safe_path(backup / "box.py.original").read_bytes()
@@ -235,6 +241,8 @@ def restore(extras, backup):
         path = safe_path(extras / name)
         if not path.is_file() or digest(path.read_bytes()) != manifest["installed"][name]:
             raise ValueError("installed file has changed: " + name)
+    if check_only:
+        return
     # Restore the irreplaceable original before removing our unchanged files.
     box = extras / "box.py"
     for path in current_caches:

@@ -212,10 +212,24 @@ class SpoolStore:
                 return parameters[key]
         return None
 
-    def get_material_name(self, material_type):
+    def material_name_lookup(self):
+        """Use one lazy catalogue snapshot for a single grouping operation."""
+        records = None
+
+        def load_catalogue():
+            nonlocal records
+            if records is None:
+                records = self.load_material_database()
+            return records
+
+        return lambda material_type: self.get_material_name(material_type, load_catalogue)
+
+    def get_material_name(self, material_type, load_catalogue=None):
         if not isinstance(material_type, str):
             return ""
-        for record in self.load_material_database():
+        if load_catalogue is None:
+            load_catalogue = self.load_material_database
+        for record in load_catalogue():
             if not isinstance(record, dict):
                 continue
             base = record.get("base")

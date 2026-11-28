@@ -125,6 +125,42 @@ class BoxDataTests(unittest.TestCase):
         self.assertEqual(re.findall(r'"state":\s*"([^"]*)"', serialized)[0], "connect")
         self.assertEqual(re.findall(r'"version":\s*"([^"]*)"', serialized), ["1", "2", "3", "4"])
 
+    def test_material_grouping_reads_only_one_fresh_catalogue_per_command(self):
+        state, store = self.box.box_state, self.box.store
+        records = [None, {"base": []},
+                   {"base": {"id": "12345", "meterialType": None}},
+                   {"base": {"id": "12345", "meterialType": 0}},
+                   {"base": {"id": "12345", "meterialType": "duplicate"}},
+                   {"base": {"id": "23456", "meterialType": "second"}}]
+        with patch.object(store, "load_material_database", wraps=store.load_material_database) as read:
+            self.command("BOX_UPDATE_SAME_MATERIAL_LIST")
+            read.assert_not_called()
+            for slot, kind, colour in (("A", "G12345", "FFFFFF"),
+                                       ("B", "G12345", "000000"),
+                                       ("C", "G23456", "FFFFFF"),
+                                       ("D", "G12345", "FFFFFF")):
+                state.modify_Tn_data(1, "known", "vender", slot)
+                state.modify_Tn_data(1, kind, "material_type", slot)
+                state.modify_Tn_data(1, colour, "color_value", slot)
+            store.material_database.write_text(json.dumps({"result": {"list": records}}), encoding="utf-8")
+            self.command("BOX_UPDATE_SAME_MATERIAL_LIST")
+            read.assert_called_once_with()
+            self.assertEqual(state.Tn_data["same_material"], [
+                ["G12345", "FFFFFF", ["T1A", "T1D"], 0],
+                ["G12345", "000000", ["T1B"], 0],
+                ["G23456", "FFFFFF", ["T1C"], "second"],
+            ])
+            records[3]["base"]["meterialType"] = "edited"
+            store.material_database.write_text(json.dumps({"result": {"list": records}}), encoding="utf-8")
+            self.command("BOX_UPDATE_SAME_MATERIAL_LIST")
+            self.assertEqual(read.call_count, 2)
+            self.assertEqual([group[3] for group in state.Tn_data["same_material"]],
+                             ["edited", "edited", "second"])
+            store.material_database.write_text("{broken", encoding="utf-8")
+            self.command("BOX_UPDATE_SAME_MATERIAL_LIST")
+            self.assertEqual(read.call_count, 3)
+            self.assertEqual([group[3] for group in state.Tn_data["same_material"]], ["", "", ""])
+
     def test_preload_preferences_are_independent_ram_values(self):
         self.assertIsNone(self.box.preloading_en)
         self.assertIsNone(self.box.preloading_poweron)
