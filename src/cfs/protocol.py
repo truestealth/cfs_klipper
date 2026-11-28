@@ -149,14 +149,39 @@ def _rfid_effects(state, frame, request, context):
     return effects
 
 
+def _observe_state_fields(state, address, data):
+    for part, index in (("temperature", 0), ("dry_and_humidity", 1), ("mode", 3)):
+        state.modify_Tn_data(address, str(data[index]), part)
+
+
+class EarlyStateReplyError(ValueError):
+    """An early observation has invalid attribution or payload."""
+
+
+def observe_early_state(state, frame, request):
+    """Observe a proven early reply without creating any protocol effects."""
+    if frame is None:
+        return None
+    if frame.address != request.address or frame.command != 0x0A or len(frame.data) != 4:
+        raise EarlyStateReplyError("early CFS state requires an addressed four-byte reply")
+    if frame.status == 0x30:
+        if any(code not in (0, 1, 2, 3) for code in frame.data):
+            raise EarlyStateReplyError("invalid early CFS slot event")
+    else:
+        _observe_state_fields(state, frame.address, frame.data)
+    if frame.status:
+        logging.info("CFS early state observation addr=%d status=0x%02x data=%s",
+                     frame.address, frame.status, frame.data.hex())
+    return frame.status in (0, 0x30)
+
+
 def _normal_data(state, frame, request, profile, context):
     command, address, data = request.command, frame.address, frame.data
     if command == 0x0A:
         if profile is None:
             raise ValueError("a supported per-device firmware profile is required for state data")
         _length(data, profile.state_data_length, command)
-        for part, index in (("temperature", 0), ("dry_and_humidity", 1), ("mode", 3)):
-            state.modify_Tn_data(address, str(data[index]), part)
+        _observe_state_fields(state, address, data)
         return ([Effect("state_extension", (address, data[4], data[5]))]
                 if len(data) == 6 else [])
     if command == 0x05:

@@ -17,6 +17,14 @@ class ToolChange:
             return True
         if state.get_Tn_data(0, uppart="state") != "connect":
             return False
+        target = state.get_Tnn_map().get(vtnn)
+        for tool in (target, box.last_cmd):
+            content = state.Tnn_content.get(tool)
+            if content is not None and box.device_versions.observation_only(content["addr"]):
+                return False
+        if (target in state.Tnn_content and box.last_cmd is None
+                and box.device_versions.has_observation_only()):
+            return False
         guards = [box.host_guard()]
 
         def guard():

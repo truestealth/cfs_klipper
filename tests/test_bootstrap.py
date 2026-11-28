@@ -75,6 +75,25 @@ class BootstrapTests(unittest.TestCase):
             self.assertIn(name, self.printer.gcode.commands)
         self.assertNotIn('CFS_TEST_PRINT_ARM', self.printer.gcode.commands)
 
+    def test_packaged_passive_entry_observes_early_state(self):
+        self.config.values['passive'] = True
+        self.native.version = b'109'
+        port = self.root / 'synthetic-port'
+        port.touch()
+        self.native.serial_port = str(port)
+        table, greenlet = ModuleType('extras.auto_addr_wrapper'), ModuleType('greenlet')
+        table.addr_manager_table_mb = [SimpleNamespace(online=value) for value in (1, 0, 0, 0)]
+        greenlet.getcurrent = lambda: 'pc-worker'
+        entry = Path(__file__).resolve().parents[1] / 'klipper' / 'box.py'
+        with patch.dict(sys.modules, {'extras.cfs.box': sys.modules['cfs.box'],
+                                      'extras.auto_addr_wrapper': table, 'greenlet': greenlet}):
+            box = runpy.run_path(str(entry), run_name='extras.box')['load_config'](self.config)
+            self.printer.send_event('klippy:ready')
+            self.reactor.fire(box.lifecycle._timer)
+        self.assertEqual(self.native.commands(), [(1, 0x14, b''), (1, 0x0A, b''), (1, 0x0A, b'')])
+        self.assertEqual(box.get_status(0)['T1']['temperature'], '20')
+        self.assertIsNone(box.device_versions.profile(1))
+
     def test_saved_settings_and_recovery_hints_are_preserved_without_restoring_live_state(self):
         document = {"base_data": new_base_data(), "enable": 0,
                     "tnn_map": {"T%d%s" % (address, slot): "T1A"

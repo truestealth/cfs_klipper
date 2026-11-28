@@ -25,7 +25,9 @@ class Retraction:
             return result
         return call
 
-    def _connected(self):
+    def _unresolved_source_addresses(self):
+        if self.box.device_versions.has_observation_only():
+            raise RuntimeError("early CFS firmware cannot be ruled out as the filament source")
         return [address for address in range(1, 5)
                 if self.box.box_state.get_Tn_data(address, "state") == "connect"]
 
@@ -105,7 +107,7 @@ class Retraction:
             content = box.box_state.get_Tnn_content(box.last_cmd)
             guard()
             return self._known(self._calls([content["addr"]]), content, report_error)
-        addresses = self._connected()
+        addresses = self._unresolved_source_addresses()
         call = self._calls(addresses)
         if call(box.get_filament_sensor_detect):
             return self._unknown_head(call, addresses, report_error)
@@ -325,7 +327,7 @@ class Retraction:
         """
         box, cfg = self.box, self.box.boxcfg
         content = box.box_state.Tnn_content.get(tnn) if isinstance(tnn, str) else None
-        addresses = [content["addr"]] if content is not None else self._connected()
+        addresses = [content["addr"]] if content is not None else self._unresolved_source_addresses()
         call = self._calls(addresses)
         call(box.motion.go_to_extrude_pos)
         if call(box.get_filament_sensor_detect):

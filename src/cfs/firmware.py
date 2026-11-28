@@ -7,6 +7,7 @@ from typing import Optional
 BASELINE_VERSION = "1.1.3"
 SLOT_EVENT_DATA_LENGTH = 4
 _BUFFERS = (bytes, bytearray, memoryview)
+_OBSERVATION_ONLY_VERSIONS = frozenset(("1.0.8", "1.0.9", "1.1.2"))
 
 
 @dataclass(frozen=True)
@@ -125,6 +126,15 @@ class DeviceVersions:
         if profile is None:
             raise ValueError("No confirmed supported CFS identity at address %s" % address)
         return profile
+
+    def observation_only(self, address):
+        address = _address(address)
+        identity = self.get(address)
+        return (self._families.get(address) == "cfs0" and identity is not None
+                and identity.version in _OBSERVATION_ONLY_VERSIONS)
+
+    def has_observation_only(self):
+        return any(self.observation_only(address) for address in self._identities)
 
     def update(self, address, data, raw_reply=None):
         """Accept an identity payload, invalidating old selection on malformed data.

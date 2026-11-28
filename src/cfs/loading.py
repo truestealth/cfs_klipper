@@ -237,6 +237,9 @@ class Loading:
         """Load a physical slot through the retained box and head actions."""
         box = self.box
         guard = box.host_guard()
+        content = box.box_state.get_Tnn_content(tnn)
+        address, slot = content["addr"], content["num"]
+        guard = box.host_guard(address)
         owns_operation = not box.operations.active
         if not owns_operation:
             box.operations._check(box.operations._serial, check_error=False)
@@ -247,9 +250,6 @@ class Loading:
             if not box.store.update("last_cmd", last_cmd=tnn):
                 raise OSError("Unable to save the requested CFS target")
             box.box_state.tn_save_data = box.store.base_data
-        content = box.box_state.get_Tnn_content(tnn)
-        address, slot = content["addr"], content["num"]
-        guard = box.host_guard(address)
         source = box.last_cmd if box.last_cmd is not None else box.last_cmd_tmp
         if owns_operation:
             box.operations.begin(source, tnn, address)

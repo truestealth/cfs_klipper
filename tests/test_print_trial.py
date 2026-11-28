@@ -59,7 +59,8 @@ class PrintTrialTests(unittest.TestCase):
         self.lifecycle.check = self.check_lifecycle
         config_status = SimpleNamespace(get_status=lambda eventtime: deepcopy(self.configuration))
         versions = SimpleNamespace(require_supported=lambda address: SimpleNamespace(version="1.1.3"),
-            generation=lambda address: self.device_generation, get=lambda address: self.identity)
+            generation=lambda address: self.device_generation, get=lambda address: self.identity,
+            observation_only=lambda address: False, has_observation_only=lambda: False)
         heater = SimpleNamespace(can_extrude=True, min_extrude_temp=170, max_temp=300,
             get_temp=lambda eventtime: (220.0, 220.0))
         self.factors = {"speed_factor": 1.0, "extrude_factor": 1.0}

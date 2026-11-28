@@ -175,6 +175,68 @@ class LifecycleTests(unittest.TestCase):
         self.printer.send_event("klippy:ready")
         return self.lifecycle._timer
 
+    def test_active_early_address_stays_out_of_native_and_host_operations(self):
+        self.make_box(online=(1, 1, 0, 0))
+        self.native.responses[(1, 0x14)] = [reply(1, 0x14, data=b"112" + self.native.serial)]
+        self.ready()
+        self.lifecycle.get_connect_state()
+        self.assertEqual(self.box.box_state.get_Tn_data(1, "state"), "disconnect")
+        self.assertEqual(self.box.box_state.get_Tn_data(2, "state"), "connect")
+        self.assertEqual([cmd for cmd in self.native.commands() if cmd[0] == 1], [(1, 0x14, b"")])
+        self.lifecycle.aggregate_state()
+        count = len(self.native.calls)
+        before = self.box.store.path.read_bytes()
+        scripts = list(self.printer.gcode.scripts)
+        self.assertFalse(self.box.Tn_action("T1A"))
+        self.box.print_stats.state = "printing"
+        with self.assertRaisesRegex(RuntimeError, "early CFS firmware"):
+            self.box.loading.box_extrude_material("T1A")
+        with self.assertRaisesRegex(ValueError, "early CFS firmware"):
+            self.box.send_native(build_request(1, "GET_BOX_STATE"))
+        self.assertEqual(self.box.store.path.read_bytes(), before)
+        self.assertEqual(self.printer.records, [])
+        self.assertEqual(self.printer.gcode.scripts, scripts)
+        self.assertEqual(len(self.native.calls), count)
+        self.table[1].online = 0
+        self.lifecycle.get_connect_state()
+        self.lifecycle.aggregate_state()
+        self.assertEqual(self.box.box_state.Tn_data["state"], "disconnect")
+        self.assertEqual(self.printer.gcode.scripts[-1], "SET_FILAMENT_SENSOR SENSOR=head ENABLE=1")
+
+    def test_early_source_blocks_unknown_retrusion_and_tool_change_before_host_effects(self):
+        for online in ((1, 0, 0, 0), (1, 1, 0, 0)):
+            with self.subTest(online=online):
+                self.make_box(online=online)
+                self.native.responses[(1, 0x14)] = [
+                    reply(1, 0x14, data=b"112" + self.native.serial)
+                ]
+                self.ready()
+                self.lifecycle.get_connect_state()
+                self.lifecycle.aggregate_state()
+                calls = list(self.native.calls)
+                scripts = list(self.printer.gcode.scripts)
+                saved = self.box.store.path.read_bytes()
+                self.assertIsNone(self.box.last_cmd)
+                with self.assertRaisesRegex(RuntimeError, "cannot be ruled out"):
+                    self.box.box_retrude_material()
+                with self.assertRaisesRegex(RuntimeError, "cannot be ruled out"):
+                    self.box.retraction.retrude_material_with_tnn()
+                if online[1]:
+                    head = self.printer.objects["filament_switch_sensor head"].runout_helper
+                    for filament_present in (True, False):
+                        head.filament_present = filament_present
+                        self.assertFalse(self.box.Tn_action("T2A"))
+                        self.assertIsNone(self.box.last_cmd)
+                    self.box.last_cmd = "T1A"
+                    self.box.last_cmd_tmp = "T2B"
+                    self.assertFalse(self.box.Tn_action("T2A"))
+                    self.assertEqual(self.box.last_cmd, "T1A")
+                    self.assertEqual(self.box.last_cmd_tmp, "T2B")
+                self.assertEqual(self.printer.records, [])
+                self.assertEqual(self.box.store.path.read_bytes(), saved)
+                self.assertEqual(self.printer.gcode.scripts, scripts)
+                self.assertEqual(self.native.calls, calls)
+
     def test_registration_aliases_ready_order_and_borrowed_transport(self):
         self.make_box()
         self.assertEqual(len(self.printer.gcode.commands), 102)

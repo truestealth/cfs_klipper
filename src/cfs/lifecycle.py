@@ -5,8 +5,9 @@ import logging
 import os
 
 from .errors import ErrorHandler, format_error
-from .native import build_request
+from .native import FrameError, build_request
 from .operations import OperationCancelled
+from .protocol import EarlyStateReplyError
 
 
 class LifecycleStopped(RuntimeError):
@@ -225,6 +226,15 @@ class Lifecycle:
         self.box.print_state = self.box.print_stats.state
         return self.box.send_native(build_request(address, command, data))
 
+    def _poll_state(self, address):
+        try:
+            return self._request(address, "GET_BOX_STATE")
+        except (EarlyStateReplyError, FrameError) as error:
+            if not (self.passive and self.box.device_versions.observation_only(address)):
+                raise
+            logging.info("CFS rejected early poll addr=%d: %s", address, error)
+            return None
+
     def disconnect(self, address):
         self._initialized.pop(address, None)
         self.box.box_state.modify_Tn_data(address, "disconnect", "state")
@@ -243,9 +253,15 @@ class Lifecycle:
         for address in range(1, 5):
             guard()
             state = self.box.box_state.get_Tn_data(address, "state")
+            early = self.box.device_versions.observation_only(address)
             if not self.online(address) or not self.port_exists(self.serial_port):
-                if state == "connect":
+                if state == "connect" or early:
                     self.disconnect(address)
+                continue
+            if (early and not self.passive and self._initialized.get(address)
+                    == self.box.device_versions.generation(address)):
+                # The address owner may republish connect while its MCU stays online.
+                self.box.box_state.modify_Tn_data(address, "disconnect", "state")
                 continue
             if state not in ("None", "disconnect"):
                 # A newly confirmed family/version needs startup even when
@@ -264,6 +280,12 @@ class Lifecycle:
                     self.disconnect(address)
                 continue
             if self.box.device_versions.profile(address) is None:
+                if self.box.device_versions.observation_only(address):
+                    if self.passive:
+                        self._poll_state(address)
+                        guard()
+                    else:
+                        self.box.box_state.modify_Tn_data(address, "disconnect", "state")
                 self._initialized[address] = self.box.device_versions.generation(address)
                 continue
             first = self._request(address, "GET_BOX_STATE")
@@ -323,8 +345,10 @@ class Lifecycle:
         state = self.box.box_state.Tn_data
         connected = any(state["T%d" % address]["state"] == "connect" for address in range(1, 5))
         if not connected:
+            was_connected = state["state"] == "connect"
             state["state"] = "disconnect"
-            if not self.passive:
+            if (not self.passive and (was_connected or not any(
+                    self.box.device_versions.observation_only(address) for address in range(1, 5)))):
                 self.box.set_head_runout_enabled(1)
         elif state["state"] in ("None", "disconnect"):
             state["state"] = "connect"
@@ -348,12 +372,16 @@ class Lifecycle:
             address = self.address
             if (self.box.box_state.get_Tn_data(address, "state") == "connect"
                     and self.box.heart_process_enable[address - 1]
-                    and self.box.device_versions.profile(address) is not None):
-                result = self._request(address, "GET_BOX_STATE")
+                    and (self.box.device_versions.profile(address) is not None
+                         or self.passive and self.box.device_versions.observation_only(address))):
+                result = self._poll_state(address)
                 self.check(generation)
                 self.counters[address - 1] = self.counters[address - 1] - 1 if result is None else 5
                 if self.counters[address - 1] <= 0:
-                    self.timeout_process(address)
+                    if self.box.device_versions.observation_only(address):
+                        self.disconnect(address)
+                    else:
+                        self.timeout_process(address)
             self.aggregate_state()
             self.check(generation)
             return self.reactor.monotonic() + 1

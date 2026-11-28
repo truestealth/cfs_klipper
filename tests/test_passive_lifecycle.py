@@ -86,6 +86,77 @@ class PassiveLifecycleTests(unittest.TestCase):
         self.lifecycle.get_connect_state()
         self.assertEqual(self.native.commands(), [(1, 0x14, b""), (1, 0x14, b"")])
 
+    def test_early_passive_state_events_and_faults_have_no_host_effects(self):
+        for digits in (b"108", b"109", b"112"):
+            with self.subTest(version=digits):
+                self.make_box()
+                self.native.version = digits
+                self.box.events.process = lambda *args: self.fail("executed slot event")
+                self.lifecycle.report_error = lambda *args: self.fail("executed error policy")
+                before = self.box.store.path.read_bytes()
+                timer = self.ready()
+                self.reactor.fire(timer)
+                self.assertEqual(self.native.commands(), [(1, 0x14, b""), (1, 0x0A, b""), (1, 0x0A, b"")])
+                self.assertIsNone(self.box.device_versions.profile(1))
+                self.assertEqual(self.box.get_status(0)["T1"]["temperature"], "20")
+                command = self.printer.gcode.commands["BOX_GET_BOX_STATE"]
+                event = bytes((1, 2, 3, 0))
+                fault = bytes((23, 42, 0x80, 4))
+                self.native.responses[(1, 0x0A)] = [reply(1, 0x0A, status=0x30, data=event),
+                                                    reply(1, 0x0A, status=0x50, data=fault),
+                                                    reply(1, 0x0A, data=fault+b"\0\0")]
+                command(HostCommand({"ADDR": 1}))
+                self.assertEqual(self.box.slot_events[1]["data"], event)
+                command(HostCommand({"ADDR": 1}))
+                self.assertEqual(self.box.last_replies[1].data, fault)
+                self.assertEqual(self.box.get_status(0)["T1"]["mode"], "4")
+                with self.assertRaises(CommandError):
+                    command(HostCommand({"ADDR": 1}))
+                self.assertEqual(self.box.get_status(0)["T1"]["dry_and_humidity"], "42")
+                for request in (build_request(1, "GET_BUFFER_STATE"), diagnostic_request(1, 0xFF, 0x0A)):
+                    count = len(self.native.calls)
+                    with self.assertRaisesRegex(UnsupportedRequest, "early CFS firmware"):
+                        self.box.send_native(request)
+                    self.assertEqual(len(self.native.calls), count)
+                self.assertEqual(self.box.store.path.read_bytes(), before)
+                self.assertEqual(self.printer.gcode.scripts, [])
+
+    def test_early_and_full_profiles_keep_separate_startup_and_reconnect(self):
+        self.make_box(online=(1, 1, 0, 0))
+        self.native.responses[(1, 0x14)] = [reply(1, 0x14, data=b"108" + self.native.serial)]
+        self.ready()
+        self.lifecycle.get_connect_state()
+        self.assertEqual(self.native.commands(), [(1, 0x14, b""), (1, 0x0A, b""), (2, 0x14, b""),
+                                                 (2, 0x0A, b""), (2, 0x08, b"\x00")])
+        self.table[0].online = 0
+        self.lifecycle.get_connect_state()
+        self.assertFalse(self.box.device_versions.observation_only(1))
+        self.table[0].online = 1
+        self.native.responses[(1, 0x14)] = [reply(1, 0x14, data=b"108" + b"B" * 19)]
+        start = len(self.native.calls)
+        self.lifecycle.get_connect_state()
+        self.assertEqual(self.native.commands()[start:], [(1, 0x14, b"")])
+        self.assertFalse(self.box.device_versions.observation_only(1))
+        self.assertIsNotNone(self.box.device_versions.profile(2))
+
+    def test_malformed_early_poll_keeps_sibling_heartbeat_and_times_out_quietly(self):
+        self.make_box(online=(1, 1, 0, 0))
+        self.native.responses[(1, 0x14)] = [reply(1, 0x14, data=b"109" + self.native.serial)]
+        timer = self.ready()
+        self.lifecycle.get_connect_state()
+        self.lifecycle.report_error = lambda *args: self.fail("executed timeout policy")
+        self.native.responses[(1, 0x0A)] = [reply(2, 0x0A, data=b"\x14\x1e\x00\x01")]
+        self.native.calls.clear()
+        self.assertEqual(self.reactor.fire(timer), self.reactor.monotonic() + 1)
+        self.assertEqual(self.reactor.fire(timer), self.reactor.monotonic() + 1)
+        self.assertEqual(self.native.commands(), [(1, 0x0A, b""), (2, 0x0A, b"")])
+        self.lifecycle.address = 0
+        self.lifecycle.counters[0] = 1
+        self.native.responses[(1, 0x0A)] = [None]
+        self.assertEqual(self.reactor.fire(timer), self.reactor.monotonic() + 1)
+        self.assertEqual(self.box.box_state.get_Tn_data(1, "state"), "disconnect")
+        self.assertEqual(self.box.box_state.get_Tn_data(2, "state"), "connect")
+
     def test_missing_identity_disconnects_and_retries_without_mechanics(self):
         self.make_box()
         self.native.responses[(1, 0x14)] = [None]

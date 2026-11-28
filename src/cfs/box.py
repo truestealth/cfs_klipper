@@ -32,7 +32,7 @@ from .motion import Motion
 from .native import NativeSerial, Request, UnsupportedRequest, build_request, diagnostic_request, slot_mask
 from .operations import MaterialTrial, OperationContext, PreloadTrial
 from .print_trial import PrintTrial
-from .protocol import DecodeContext, decode_reply
+from .protocol import DecodeContext, decode_reply, observe_early_state
 from .state import BoxState
 from .storage import SpoolStore
 
@@ -139,6 +139,8 @@ class Box:
             if self.print_trial.active:
                 return self.print_trial.guard(address)
             return self.material_trial.guard(address)
+        if address is not None and self.device_versions.observation_only(address):
+            raise RuntimeError("early CFS firmware does not support host actions")
         guard = self.lifecycle._report_guard(address)
         guard()
         return guard
@@ -792,6 +794,14 @@ class Box:
             raise RuntimeError("the stock native object is not bound")
         if not isinstance(request, Request):
             raise ValueError("native calls require a built Request")
+        early = (request.address in range(1, 5)
+                 and self.device_versions.observation_only(request.address))
+        observe = (early and self.lifecycle is not None and self.lifecycle.passive
+                   and request.command == 0x0A and not request.diagnostic and not request.data
+                   and request.request_state == 0xFF)
+        if early and not observe and (request.command != 0x14 or request.diagnostic
+                                      or request.data or request.request_state != 0xFF):
+            raise UnsupportedRequest("early CFS firmware permits only identity and passive state observation")
         trial_guard = (self.preload_trial.admit(request)
                        if self.lifecycle is not None and self.lifecycle.passive else None)
         material_guard = (self.material_trial.admit(request)
@@ -818,7 +828,7 @@ class Box:
             raise UnsupportedRequest("unaddressed diagnostics have no confirmed CFS context")
         address = request.address
         profile = self.device_versions.profile(address)
-        if request.command not in (0x01, 0x14, 0x55):
+        if not observe and request.command not in (0x01, 0x14, 0x55):
             try:
                 profile = self.device_versions.require_supported(address)
             except ValueError as error:
@@ -843,7 +853,7 @@ class Box:
 
         try:
             options = {"retries_en": retries_en, "check_context": check_context}
-            if trial_guard is not None or material_guard is not None or print_guard is not None:
+            if observe or trial_guard is not None or material_guard is not None or print_guard is not None:
                 options["retry_errors"] = False
             frame = self.native.exchange(request, **options)
         except StaleReplyError as error:
@@ -875,6 +885,13 @@ class Box:
         if request.command == 0x14 and (frame is None or frame.status != 0):
             self.invalidate_device(address, raw_reply=frame.raw if frame else None)
             generation = self.device_versions.generation(address)
+            if early:
+                return False
+        if observe:
+            received = observe_early_state(self.box_state, frame, request)
+            if frame is not None and frame.status == 0x30:
+                self.slot_events[address] = {"data": frame.data, "generation": generation}
+            return received
         manager = protocol_scope(frame) if protocol_scope is not None else nullcontext()
         with manager:
             if context is None:

@@ -18,6 +18,7 @@ from cfs.state import BoxState
 class Fixture:
     def __init__(self, source="T2C", heads=(False, False)):
         self.box_state = BoxState()
+        self.device_versions = DeviceVersions()
         self.boxcfg = SimpleNamespace(Tn_retrude=23, Tn_retrude_velocity=[420], Tn_extrude_temp=231)
         self.last_cmd, self.last_cmd_tmp = source, "old"
         self.error, self.error_tnn = None, {}

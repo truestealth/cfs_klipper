@@ -216,6 +216,29 @@ different serial numbers also clear the previously confirmed family.
 
 The comparison covers first-generation `cfs0`/G32 applications. CFS2 (`cfs6`) and
 configurations with an external CFS-C cutter require their own validation.
+The G30 images for 1.1.3, 1.2.2, 1.4.2, 1.5.0 and 1.5.2 match the corresponding
+G32 application binaries byte for byte. This establishes application code
+equivalence. The G30 loader and printer mechanics require separate verification.
+
+For early `cfs0` 1.0.8, 1.0.9 and 1.1.2, passive mode covers `0x14` identity
+and four-byte `0x0A` state, fault and slot-event observations. The MCU can
+consume a pending notification when it answers `0x0A`. Box records the reply
+without running filament recovery or updating saved spool data. The scope is
+based on application analysis and PC tests. Mechanical operation requires
+separate verification.
+In a mixed chain, an active change or retract with an unresolved filament
+source is blocked if an early unit might still have filament in the path.
+
+Static analysis of two CFS2 applications found different reply layouts:
+
+| Board and application | Identity `0x14` | State `0x0A` |
+| --- | --- | --- |
+| G31 `cfs6_236_000` | ASCII `236` and a variable-length identifier | 13 state bytes or four slot-event bytes with status `0x30` |
+| G51 `cfs6_237_000` | ASCII `237` and a variable-length identifier | 13 state bytes or four slot-event bytes with status `0x30` |
+
+The fixed part of either identity reply carries the version digits. Selecting
+a CFS2 profile requires a trusted family identifier and confirmation that the
+stock host transport routes those replies. K1C runtime support is unverified.
 
 MCU firmware is separate from the printer firmware and `[box] version` setting.
 See the [protocol version requirements](protocol.md#firmware-versions).
