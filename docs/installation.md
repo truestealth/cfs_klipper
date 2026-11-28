@@ -85,22 +85,30 @@ python3 tools/cfs_firmware.py update /path/to/current.bin /path/to/target.bin
 python3 tools/cfs_firmware.py downgrade /path/to/current.bin /path/to/target.bin
 ```
 
-Hardware commands admit only `cfs0` G32 images for 1.1.3, 1.2.2, 1.4.2,
-1.5.0, 1.5.2 and 1.5.3. Keep copies of the current and target images. The tool
-delegates the RS-485 transfer to the checked external loader supplied by the
-operator.
+Hardware commands are limited to the exact `cfs0_050_G32` loader and nine
+known app images: 1.0.8, 1.0.9, 1.1.2, 1.1.3, 1.2.2, 1.4.2, 1.5.0, 1.5.2 and
+1.5.3. Earlier versions 1.0.8, 1.0.9 and 1.1.2 are experimental candidates
+for firmware maintenance. The Box extension allows observation only for them.
+Keep copies of the current and target images. The tool delegates the RS-485
+transfer to the checked external firmware tool supplied by the operator.
 
 For hardware operations, use Linux as root with exclusive access to the serial
 port. Stop Klipper and physically connect only the intended CFS. Pass `--apply`,
 `--device`, `--backend`, `--serial` and `--isolated` to start the device checks.
-This enters the bootloader before the `APPLY` and `YES` confirmations used for
-writing. Downgrade also requires `--ack-untested-downgrade`. After power-cycling
-the CFS, run `verify TARGET.bin` with the same hardware options except
-`--apply` and the downgrade acknowledgment. Confirm the live version before
-using the CFS again. Keep the images and the loader matching `BACKEND_SHA256`
-outside the source checkout. The wrapper leaves the printer-side `version.json`
-alone and reports the firmware from the CFS response. The wrapper has PC tests
-and the physical downgrade remains unverified.
+Use the exact 19 printable ASCII characters of the application serial number.
+Before the write, the tool verifies both the application identity and the full
+loader identity. The bootloader dry run precedes the `APPLY` and `YES`
+confirmations. If the CFS stays in the bootloader after the dry run, power-cycle
+the CFS before entering `APPLY`. Downgrade also requires `--ack-untested-downgrade`.
+
+After the transfer has completed, power-cycle the CFS and run `verify TARGET.bin`
+with the same hardware options except `--apply` and the downgrade acknowledgment.
+`verify` sends one application identity request (`0x14`) to address 1. It requires
+a valid CRC, the target version and an exact serial match. Keep the images and
+the external tool matching `BACKEND_SHA256` outside the source checkout.
+The wrapper preserves the printer-side `version.json`. PC tests cover the
+wrapper, including verification for the three early versions. Physical downgrade
+remains unverified. A CFS left in its bootloader needs a separate recovery procedure.
 
 <a id="passive-startup"></a>
 

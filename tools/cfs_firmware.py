@@ -7,6 +7,7 @@ import hashlib
 import os
 from pathlib import Path
 import re
+import runpy
 import stat
 import subprocess
 import sys
@@ -28,7 +29,7 @@ IMAGE_SHA256 = {
 }
 BOOT = "cfs0_050_G32"
 APP = "cfs0_000_"
-HARDWARE_APPS = frozenset(APP + version for version in ("113", "122", "142", "150", "152", "153"))
+HARDWARE_APPS = frozenset(APP + version for version in ("108", "109", "112", "113", "122", "142", "150", "152", "153"))
 CATALOG = {
     "cfs0_050_G30": {APP + version: IMAGE_SHA256[version]
                     for version in ("108", "112", "113", "122", "142", "150", "152")},
@@ -185,10 +186,23 @@ def run_backend(backend, device, *arguments, expected=None):
     return transcript.decode("utf-8", errors="replace")
 
 
-def check_identity(output, version, serial):
-    observed_version = re.findall(r"^\s*Firmware\s*:\s*([0-9.]+)[ \t]*$", output, re.M)
-    observed_serial = re.findall(r"^\s*Serial number\s*:\s*([^\r\n]+)$", output, re.M)
-    if observed_version != [version_text(version)] or observed_serial != [serial]:
+def verify_app_identity(backend, device, version, serial):
+    """Check one APP identity reply without issuing the diagnostic command suite."""
+    check_bus(device)
+    transport = runpy.run_path(str(backend))
+    fd = transport["open_port"](str(device))
+    try:
+        request = transport["build"](1, 0x14, status=0xFF)
+        replies = transport["collect"](fd, request)
+    finally:
+        os.close(fd)
+    if len(replies) != 1:
+        raise ValueError("expected one CRC-valid CFS APP identity reply on address 1")
+    raw = replies[0]["raw"]
+    if (len(raw) != 28 or raw[:5] != b"\xf7\x01\x19\x00\x14"
+            or transport["crc8"](raw[2:-1]) != raw[-1]):
+        raise ValueError("invalid CFS APP identity frame")
+    if raw[5:-1] != version.encode("ascii") + serial:
         raise ValueError("CFS application version or serial does not match the expected device")
 
 
@@ -264,9 +278,11 @@ def run(args):
         raise ValueError("hardware workflow is limited to the supported cfs0 G32 application versions")
     if args.action == "downgrade" and not args.ack_untested_downgrade:
         raise ValueError("hardware downgrade is unvalidated. Supply --ack-untested-downgrade to proceed")
-    if (args.device is None or not args.device.is_absolute() or args.backend is None
-            or not args.serial or args.serial == "(none)" or not args.serial.isprintable() or not args.isolated):
+    if args.device is None or not args.device.is_absolute() or args.backend is None or not args.isolated:
         raise ValueError("specify --device, --backend, --serial and --isolated for hardware commands")
+    if not args.serial or len(args.serial) != 19 or not args.serial.isascii() or not args.serial.isprintable():
+        raise ValueError("--serial must contain the exact 19 printable ASCII bytes of the CFS serial number")
+    serial = args.serial.encode("ascii")
     backend_data = checked_bytes(args.backend, BACKEND_SHA256)
     device = args.device.resolve(strict=True)
     target = selected.application[-3:]
@@ -275,7 +291,7 @@ def run(args):
         backend = Path(directory) / "cfstool.py"
         backend.write_bytes(backend_data)
         if args.action == "verify":
-            check_identity(run_backend(backend, device, "diag"), target, args.serial)
+            verify_app_identity(backend, device, target, serial)
             print("CFS application version %s verified on the expected serial." % version_text(target))
             return
 
@@ -284,12 +300,12 @@ def run(args):
         staged.write_bytes(selected.data)
         if not sys.stdin.isatty():
             raise ValueError("apply requires an interactive terminal for both confirmations")
-        check_identity(run_backend(backend, device, "diag"), current, args.serial)
+        verify_app_identity(backend, device, current, serial)
         check_transfer(run_backend(backend, device, "flash", staged), current, target, dry_run=True)
         print("The dry run ended without writing. If the CFS stayed in the loader, power-cycle it now.")
         if input("One CFS must be physically isolated. Type APPLY to continue: ").strip() != "APPLY":
             raise ValueError("apply cancelled")
-        check_identity(run_backend(backend, device, "diag"), current, args.serial)
+        verify_app_identity(backend, device, current, serial)
         output = run_backend(backend, device, "flash", staged, "--flash", expected=(current, target, staged.name))
         check_transfer(output, current, target, dry_run=False)
         print("Transfer completed. Power-cycle the CFS, then run verify with the target image and serial before using it.")
