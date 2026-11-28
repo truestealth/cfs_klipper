@@ -244,6 +244,11 @@ slots with a zero sampled value even when preload is already active.
 operation's slot. It invokes the selected-slot retraction path only when it
 starts from idle. This branch matches the corresponding 1.1.3 branch.
 
+**1.1.2.** The forced-preload wait and slot selection carry over from
+1.0.9. The examined feed and retraction stages share the 1.1.3 distance
+checks and optical sensor retry paths. End-to-end completion and recovery
+still require device testing.
+
 Static analysis of two CFS2 applications found different reply layouts:
 
 | Board and application | Identity `0x14` | State `0x0A` |
