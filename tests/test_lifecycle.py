@@ -269,6 +269,74 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(self.box.box_state.get_Tn_data(1, "state"), "connect")
         self.assertTrue(self.lifecycle._callbacks)
 
+    def test_active_startup_reconnect_and_heartbeat_for_every_supported_layout(self):
+        for index, (version, width) in enumerate(((b"113", 4), (b"122", 4), (b"142", 6),
+                                                 (b"150", 6), (b"152", 6), (b"153", 6))):
+            with self.subTest(version=version):
+                address = index % 4 + 1
+                self.make_box(online=tuple(int(lane == address) for lane in range(1, 5)))
+                self.assertFalse(self.lifecycle.passive)
+                self.native.version = version
+                state = self.box.box_state
+                initial = bytes((21, 31, 0, 3, 2, 4))[:width]
+                self.native.responses[address, 0x0A] = [reply(address, 0x0A, data=initial)]
+                heartbeat = self.ready()
+                self.lifecycle.get_connect_state()
+                self.assertEqual(self.native.commands(), [
+                    (address, 0x14, b""), (address, 0x0A, b""), (address, 0x04, b"\x00\x01"),
+                    (address, 0x0D, b"\x0f\x00"), (address, 0x08, b"\x00"),
+                ])
+                self.assertEqual(state.get_Tn_data(address, "state"), "connect")
+                profile = self.box.device_versions.require_supported(address)
+                self.assertEqual((profile.version, profile.state_data_length), (".".join(version.decode()), width))
+                extensions = {"connection_mask": 2, "tag_predicate_mask": 4} if width == 6 else None
+                self.assertEqual(self.box.state_extensions.get(address), extensions)
+
+                def poll(response):
+                    self.lifecycle.address = address - 1
+                    self.native.responses[address, 0x0A] = [response]
+                    return self.reactor.fire(heartbeat)
+
+                self.native.calls.clear()
+                event = bytes((0, 2, 0, 0))
+                self.assertEqual(poll(reply(address, 0x0A, status=0x30, data=event)), self.reactor.monotonic() + 1)
+                self.assertEqual(self.native.commands(), [(address, 0x0A, b"")])
+                self.assertEqual(self.box.slot_events[address]["data"], event)
+                self.assertEqual(state.get_Tn_data(address, "vender", "B"), "none")
+                self.assertEqual(state.get_box_mode(address), "3")
+                self.assertEqual(self.box.state_extensions.get(address), extensions)
+
+                generation = self.box.device_versions.generation(address)
+                self.table[address - 1].online = 0
+                self.reactor.fire(heartbeat)
+                self.assertIsNone(self.box.device_versions.get(address))
+                self.assertNotIn(address, self.box.slot_events)
+                self.table[address - 1].online = 1
+                self.native.calls.clear()
+                recovered = bytes((25, 32, 1, 1, 8, 5))[:width]
+                self.native.responses[address, 0x0A] = [reply(address, 0x0A, data=recovered)]
+                self.lifecycle.get_connect_state()
+                self.assertEqual(self.native.commands(), [(address, 0x14, b""), (address, 0x0A, b""),
+                                                          (address, 0x0D, b"\x0f\x00")])
+                self.assertGreater(self.box.device_versions.generation(address), generation)
+                self.assertIs(self.box.device_versions.require_supported(address), profile)
+                self.assertEqual(state.get_Tn_data(address, "temperature"), "25")
+                extensions = {"connection_mask": 8, "tag_predicate_mask": 5} if width == 6 else None
+                self.assertEqual(self.box.state_extensions.get(address), extensions)
+
+                wrong_width = 6 if width == 4 else 4
+                malformed = bytes((99, 98, 0, 5, 1, 3))[:wrong_width]
+                self.native.calls.clear()
+                with self.assertLogs(level="ERROR") as logs:
+                    self.assertEqual(poll(reply(address, 0x0A, data=malformed)), self.reactor.NEVER)
+                self.assertIn("0x0a", " ".join(logs.output).lower())
+                self.assertEqual(self.native.commands(), [(address, 0x0A, b"")])
+                self.assertEqual(state.get_Tn_data(address, "temperature"), "25")
+                self.assertEqual(state.get_Tn_data(address, "dry_and_humidity"), "32")
+                self.assertEqual(state.get_box_mode(address), "1")
+                self.assertEqual(self.box.state_extensions.get(address), extensions)
+                self.assertNotIn(address, self.box.slot_events)
+
     def test_unknown_mode_and_missing_first_reply_retry_once(self):
         for first in (None, reply(1, 0x0A, data=b"\x14\x1e\x00\xff")):
             with self.subTest(first=first):
