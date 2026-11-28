@@ -121,6 +121,79 @@ class PassiveLifecycleTests(unittest.TestCase):
                 self.assertEqual(self.box.store.path.read_bytes(), before)
                 self.assertEqual(self.printer.gcode.scripts, [])
 
+    def test_explicit_early_reads_validate_native_replies_without_updates(self):
+        rfid = b"A:busy;B:none;C:unknown;D:" + b"x;\x00:\n" * 8 + b";"
+        reads = (
+            ("RFID", 0x02, b"\x0f", rfid, b"A:busy;C:none;B:none;D:none;"),
+            ("REMAIN", 0x03, b"\x0f", b"\xff\x00\x05\x64", b"\x00" * 3),
+            ("BUFFER", 0x05, b"", b"\x02", b"\x04"),
+            ("MATERIAL", 0x08, b"\x00", b"\x0f", b"\x10"),
+            ("CONNECTIONS", 0x08, b"\x01", b"\x04", b"\x01\x01"),
+        )
+        for version in (b"108", b"109", b"112"):
+            with self.subTest(version=version):
+                self.make_box()
+                self.native.version = version
+                self.reactor.fire(self.ready())
+                self.assertEqual(self.native.commands(), [(1, 0x14, b""),
+                                                         (1, 0x0A, b""), (1, 0x0A, b"")])
+                self.lifecycle.report_error = lambda *args: self.fail("unexpected report")
+                self.box._schedule_groups = lambda *args: self.fail("unexpected cache scheduling")
+                state = self.box.box_state
+                before = deepcopy((state.Tn_data, state.Tn_inner_data, state.tn_save_data))
+                saved = self.box.store.path.read_bytes()
+                previous = self.box.last_replies.copy()
+                observe = self.printer.gcode.commands["CFS_OBSERVE_EARLY"]
+                self.native.calls.clear()
+                for read, opcode, body, data, malformed in reads:
+                    with self.subTest(read=read):
+                        self.native.responses[(1, opcode)] = [reply(1, opcode, data=data),
+                                                              reply(1, opcode, data=malformed)]
+                        command = HostCommand({"ADDR": 1, "READ": read})
+                        observe(command)
+                        self.assertEqual(self.printer.gcode.messages[-1],
+                                         "CFS ADDR=1 READ=%s STATUS=0x00 DATA=%s" % (read, data.hex()))
+                        with self.assertRaises(CommandError):
+                            observe(command)
+                        self.assertEqual(self.native.commands()[-2:], [(1, opcode, body)] * 2)
+                        self.assertEqual(self.native.calls[-1][-1], (False,))
+                self.assertEqual(len(self.native.calls), 2 * len(reads))
+                self.assertEqual((state.Tn_data, state.Tn_inner_data, state.tn_save_data), before)
+                self.assertEqual(self.box.last_replies, previous)
+                self.assertEqual(self.box.store.path.read_bytes(), saved)
+                self.assertEqual(self.printer.gcode.scripts, [])
+
+    def test_explicit_early_reads_reject_wrong_profile_and_stale_reply(self):
+        self.make_box(online=(1, 1, 0, 0))
+        self.native.responses[(1, 0x14)] = [reply(1, 0x14, data=b"108" + self.native.serial)]
+        self.reactor.fire(self.ready())
+        observe = self.printer.gcode.commands["CFS_OBSERVE_EARLY"]
+        self.native.calls.clear()
+        for address, read in ((1, "LOAD"), (2, "MATERIAL"), (3, "MATERIAL")):
+            with self.assertRaises(CommandError):
+                observe(HostCommand({"ADDR": address, "READ": read}))
+        self.assertEqual(self.native.calls, [])
+
+        command = HostCommand({"ADDR": 1, "READ": "BUFFER"})
+        self.native.responses[(1, 0x05)] = [reply(1, 0x05, status=2), None,
+                                            reply(1, 0x05, status=0x30, data=b"\x02")]
+        observe(command)
+        self.assertTrue(self.printer.gcode.messages[-1].endswith("STATUS=0x02 DATA="))
+        for error in ("no early CFS diagnostic reply", "unexpected early CFS diagnostic error"):
+            with self.assertRaisesRegex(CommandError, error):
+                observe(command)
+        self.assertEqual(self.native.commands(), [(1, 0x05, b"")] * 3)
+
+        def disconnect(*args):
+            self.table[0].online = 0
+            return reply(1, 0x05, data=b"\x02")
+
+        messages = self.printer.gcode.messages[:]
+        self.native.cmd_send_data_with_response = disconnect
+        with self.assertRaisesRegex(CommandError, "disconnected during diagnosis"):
+            observe(command)
+        self.assertEqual(self.printer.gcode.messages, messages)
+
     def test_early_and_full_profiles_keep_separate_startup_and_reconnect(self):
         self.make_box(online=(1, 1, 0, 0))
         self.native.responses[(1, 0x14)] = [reply(1, 0x14, data=b"108" + self.native.serial)]

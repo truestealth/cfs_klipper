@@ -223,9 +223,14 @@ equivalence. The G30 loader and printer mechanics require separate verification.
 For early `cfs0` 1.0.8, 1.0.9 and 1.1.2, passive mode covers `0x14` identity
 and four-byte `0x0A` state, fault and slot-event observations. The MCU can
 consume a pending notification when it answers `0x0A`. Box records the reply
-without running filament recovery or updating saved spool data. The scope is
-based on application analysis and PC tests. Mechanical operation requires
-separate verification.
+without running filament recovery or updating saved spool data.
+
+In passive mode, `CFS_OBSERVE_EARLY ADDR=1 READ=RFID` returns one checked
+response as a status and hexadecimal payload. The available reads are `RFID`
+and `REMAIN` for all four slots, `BUFFER`, `MATERIAL`, and `CONNECTIONS`.
+These requests leave live and saved spool data intact. The scope is based on
+application analysis and PC tests. Mechanical operation requires separate
+verification.
 In a mixed chain, an active change or retract with an unresolved filament
 source is blocked if an early unit might still have filament in the path.
 

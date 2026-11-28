@@ -52,6 +52,7 @@ class Lifecycle:
         box.gcode.register_command("DO_AFTER_PAUSE", box.cmd_do_after_pause)
         box.gcode.register_command("CFS_PRINT_START_GUARD", box.cmd_print_start_guard)
         if self.passive:
+            box.gcode.register_command("CFS_OBSERVE_EARLY", box.cmd_observe_early)
             box.gcode.register_command("CFS_TEST_PRELOAD", box.cmd_test_preload)
             box.gcode.register_command("CFS_TEST_LOAD", lambda gcmd: box.cmd_test_material(gcmd, "LOAD"))
             box.gcode.register_command("CFS_TEST_UNLOAD", lambda gcmd: box.cmd_test_material(gcmd, "UNLOAD"))

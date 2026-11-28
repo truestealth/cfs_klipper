@@ -7,6 +7,7 @@ has been handled. A true sender outcome does not establish completed motion.
 
 from dataclasses import dataclass
 import logging
+import re
 import struct
 
 from .firmware import parse_identity
@@ -173,6 +174,23 @@ def observe_early_state(state, frame, request):
         logging.info("CFS early state observation addr=%d status=0x%02x data=%s",
                      frame.address, frame.status, frame.data.hex())
     return frame.status in (0, 0x30)
+
+
+def validate_early_read_reply(frame):
+    """Validate one explicit early diagnostic reply without applying observations."""
+    command, data = frame.command, frame.data
+    if frame.status:
+        if frame.status not in (1, 2) or data:
+            raise ValueError("unexpected early CFS diagnostic error reply")
+    elif command == 0x02:
+        # Records can contain binary RFID data, including delimiters.
+        pattern = b"".join(bytes((slot,)) + b":(?:busy|none|unknown|.{40});" for slot in b"ABCD")
+        if not re.fullmatch(pattern, data, re.DOTALL):
+            raise ValueError("early CFS RFID reply requires four ordered slot records")
+    else:
+        _length(data, {0x03: 4, 0x05: 1, 0x08: 1}[command], command)
+        if (command == 0x05 and data[0] > 3) or (command == 0x08 and data[0] > 15):
+            raise ValueError("early CFS diagnostic reply exceeds its sensor mask width")
 
 
 def _normal_data(state, frame, request, profile, context):

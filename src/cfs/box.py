@@ -32,7 +32,7 @@ from .motion import Motion
 from .native import NativeSerial, Request, UnsupportedRequest, build_request, diagnostic_request, slot_mask
 from .operations import MaterialTrial, OperationContext, PreloadTrial
 from .print_trial import PrintTrial
-from .protocol import DecodeContext, decode_reply, observe_early_state
+from .protocol import DecodeContext, decode_reply, observe_early_state, validate_early_read_reply
 from .state import BoxState
 from .storage import SpoolStore
 
@@ -1050,6 +1050,43 @@ class Box:
             raise gcmd.error("cfs: test retract: %s" % error) from error
         self.gcode.respond_info("CFS test %s observations (not full unload): %s" % (trigger, result))
         return result
+
+    def cmd_observe_early(self, gcmd):
+        address = gcmd.get_int("ADDR", minval=1, maxval=4)
+        read = gcmd.get("READ").upper()
+        reads = {
+            "RFID": ("GET_RFID", b"\x0f"),
+            "REMAIN": ("GET_REMAIN_LEN", b"\x0f"),
+            "BUFFER": ("GET_BUFFER_STATE", b""),
+            "MATERIAL": ("GET_FILAMENT_SENSOR_STATE", b"\x00"),
+            "CONNECTIONS": ("GET_FILAMENT_SENSOR_STATE", b"\x01"),
+        }
+        if read not in reads:
+            raise gcmd.error("READ must be RFID, REMAIN, BUFFER, MATERIAL, or CONNECTIONS")
+        lifecycle = self.lifecycle
+        if (self.native is None or lifecycle is None or not lifecycle.passive
+                or not lifecycle.running or not self.device_versions.observation_only(address)):
+            raise gcmd.error("early CFS diagnostics require a running passive early-firmware device")
+        command, data = reads[read]
+        request = build_request(address, command, data)
+        guard = lifecycle._report_guard(address, operation=False)
+
+        def check_context():
+            guard()
+            if not lifecycle.online(address) or not lifecycle.port_exists(lifecycle.serial_port):
+                raise StaleReplyError("CFS disconnected during diagnosis")
+
+        try:
+            frame = self.native.exchange(request, retries_en=False, check_context=check_context,
+                                         retry_errors=False)
+            check_context()
+            if frame is None:
+                raise ValueError("no early CFS diagnostic reply")
+            validate_early_read_reply(frame)
+        except (OSError, ValueError, RuntimeError) as error:
+            raise gcmd.error("cfs: %s" % error) from error
+        self.gcode.respond_info("CFS ADDR=%d READ=%s STATUS=0x%02X DATA=%s" % (
+            address, read, frame.status, frame.data.hex()))
 
     def register_native_commands(self, gcode):
         self.gcode = gcode
