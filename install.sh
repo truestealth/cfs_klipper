@@ -16,7 +16,7 @@ case "${1-}" in
     *) fail "Unknown action: $1. Use install, update, or rollback." ;;
 esac
 
-for utility in wget tar mktemp rm; do
+for utility in tar mktemp rm; do
     command -v "$utility" >/dev/null 2>&1 || fail "Missing required command: $utility"
 done
 
@@ -38,7 +38,17 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 archive=$work/release.tar.gz
-wget -O "$archive" 'https://codeload.github.com/truestealth/cfs_klipper/tar.gz/refs/heads/main' || fail 'Could not download the CFS release.'
+"$python" - "$archive" <<'PY' || fail 'Could not download the CFS release over verified HTTPS.'
+import shutil
+import ssl
+import sys
+from urllib.request import urlopen
+
+url = "https://codeload.github.com/truestealth/cfs_klipper/tar.gz/refs/heads/main"
+with urlopen(url, timeout=30, context=ssl.create_default_context()) as response:
+    with open(sys.argv[1], "xb") as archive:
+        shutil.copyfileobj(response, archive)
+PY
 tar -xzf "$archive" -C "$work" || fail 'Could not extract the CFS release.'
 deploy=$work/cfs_klipper-main/tools/deploy.py
 [ -f "$deploy" ] || fail 'The CFS archive does not contain tools/deploy.py.'

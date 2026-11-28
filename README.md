@@ -34,13 +34,21 @@ manual motion or filament operation first.
 
 ```sh
 cd /usr/data
-wget -O cfs-install.sh https://raw.githubusercontent.com/truestealth/cfs_klipper/main/install.sh && sh cfs-install.sh
+wget -O cfs-install.sh https://raw.githubusercontent.com/truestealth/cfs_klipper/main/install.sh
 ```
 
-The launcher downloads the current `main` archive, backs up the stock Box and
-restarts Klipper through the deployment tool. It needs HTTPS access to GitHub,
-`wget`, `tar` and Python 3.8 or later. The installation state and backups are
+`wget` downloads the launcher. The launcher uses Python 3.8 or later and the
+system trust store to verify the HTTPS certificate when downloading the current
+`main` archive. It extracts the archive with `tar`, then calls the deployment
+tool to back up Box and restart Klipper. The installation state and backups are
 kept in `/usr/data/cfs-deployment`.
+
+Some BusyBox builds of `wget` lack certificate validation. If yours reports
+this, download the launcher on a PC with certificate validation and copy it to
+the printer over SSH, or compare the downloaded file with a trusted copy.
+[Source of `install.sh`](install.sh)
+
+After a successful, verified download, run `sh cfs-install.sh`.
 
 For updates and rollback, run `sh cfs-install.sh update` or
 `sh cfs-install.sh rollback`. Add `--check` to an

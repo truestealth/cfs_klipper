@@ -36,13 +36,21 @@ Creality Print и пользовательские настройки.
 
 ```sh
 cd /usr/data
-wget -O cfs-install.sh https://raw.githubusercontent.com/truestealth/cfs_klipper/main/install.sh && sh cfs-install.sh
+wget -O cfs-install.sh https://raw.githubusercontent.com/truestealth/cfs_klipper/main/install.sh
 ```
 
-Скрипт скачивает архив текущей ветки `main`, создаёт резервную копию штатного
-Box и перезапускает Klipper через установщик. Требуются доступ к GitHub по
-HTTPS, `wget`, `tar` и Python 3.8 или новее. Состояние установки и резервные
-копии сохраняются в `/usr/data/cfs-deployment`.
+`wget` скачивает стартовый скрипт. Архив текущей ветки `main` скрипт скачивает
+через Python 3.8 или новее с проверкой сертификата по системному хранилищу.
+Далее `tar` распаковывает архив, а установщик создаёт копию штатного Box и
+перезапускает Klipper. Состояние установки и резервные копии сохраняются в
+`/usr/data/cfs-deployment`.
+
+В некоторых сборках BusyBox `wget` не проверяет сертификат. Если он сообщает
+об этом, скачайте скрипт на ПК с проверкой сертификата и скопируйте его на
+принтер по SSH или сравните скачанный файл с доверенной копией.
+[Исходник `install.sh`](install.sh)
+
+После скачивания и сверки запустите `sh cfs-install.sh`.
 
 Для обновления и отката запустите `sh cfs-install.sh update` или
 `sh cfs-install.sh rollback`. Добавьте `--check`,
