@@ -240,6 +240,10 @@ source is blocked if an early unit might still have filament in the path.
 Forced preload (actions 2 and 3) can enter the retraction path for selected
 slots with a zero sampled value even when preload is already active.
 
+**1.0.9.** Forced preload waits when preload is already active and skips that
+operation's slot. It invokes the selected-slot retraction path only when it
+starts from idle. This branch matches the corresponding 1.1.3 branch.
+
 Static analysis of two CFS2 applications found different reply layouts:
 
 | Board and application | Identity `0x14` | State `0x0A` |
